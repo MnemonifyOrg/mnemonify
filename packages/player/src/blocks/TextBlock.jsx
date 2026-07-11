@@ -5,6 +5,7 @@ function RichTextSegment({ segment, assets, onOpenLightbox }) {
       <button
         type="button"
         className="block-text__asset-link"
+        tabIndex={0}
         onClick={() => onOpenLightbox && onOpenLightbox(asset)}
       >
         {segment.v}

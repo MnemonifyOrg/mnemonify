@@ -27,6 +27,7 @@ export default function AccordionBlock({ block, assets, onTrigger }) {
                 type="button"
                 id={triggerId}
                 className="accordion-item__trigger"
+                tabIndex={0}
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 onClick={() => toggle(index)}

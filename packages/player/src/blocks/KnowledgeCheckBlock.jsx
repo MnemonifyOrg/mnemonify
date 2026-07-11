@@ -40,6 +40,7 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
       <button
         type="button"
         className="knowledge-check__submit"
+        tabIndex={0}
         disabled={!selectedId || submitted}
         onClick={handleSubmit}
       >

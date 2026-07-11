@@ -155,7 +155,7 @@ During development, the practical metric per phase is: the phase's acceptance cr
 
 | Phase | Deliverable | Definition of done |
 |---|---|---|
-| 1 | JSON schema + responsive player | Hand-written sample course renders responsively with 6 core block types |
+| 1 | JSON schema + responsive player | Hand-written sample course renders responsively with 7 core block types |
 | 2 | SCORM 2004 3rd Ed wrapper | Sample course zip passes SCORM Cloud; completion, score, suspend/resume verified; tested in Ethos |
 | 3 | Block editor | Author can build the Phase 1 sample course entirely through the UI |
 | 4 | Trigger and variable engine + trigger builder UI | Author can build a branching course with variables through dropdowns only |

@@ -6,7 +6,8 @@
     "theme": {
       "accent": "#0f766e",
       "font_pair": "default"
-    }
+    },
+    "completion_rule": "viewed_all_pages"
   },
   "variables": [
     { "name": "readDiagnosis", "type": "boolean", "default": false }

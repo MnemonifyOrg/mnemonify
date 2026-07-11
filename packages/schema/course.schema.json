@@ -52,6 +52,9 @@
               "type": "string"
             }
           }
+        },
+        "completion_rule": {
+          "enum": ["viewed_all_pages", "passed_final_quiz"]
         }
       }
     },

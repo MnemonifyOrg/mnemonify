@@ -1,0 +1,9 @@
+{
+  "name": "@mnemonify/launcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "archiver": "^7.0.1"
+  }
+}

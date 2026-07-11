@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mnemonify Course</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      #mnemonify-player {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="scorm-api.js"></script>
+    <script>
+      (async function boot() {
+        const response = await fetch('config.json');
+        const config = await response.json();
+        const iframe = document.createElement('iframe');
+        iframe.id = 'mnemonify-player';
+        iframe.title = 'Mnemonify Course Player';
+        iframe.src =
+          config.contentServerUrl.replace(/\/$/, '') +
+          '/player?courseId=' +
+          encodeURIComponent(config.courseId) +
+          '&versionId=' +
+          encodeURIComponent(config.versionId);
+        document.body.appendChild(iframe);
+      })();
+    </script>
+  </body>
+</html>

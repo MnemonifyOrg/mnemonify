@@ -172,7 +172,7 @@ Each phase ends with a working, testable artifact. No phase begins until the pri
 
 1. **(Legal, blocking before public release, not before development)** Does Sebastin's employment agreement contain an IP assignment clause covering personal projects? Confirm before open-sourcing.
 2. **(Product, non-blocking)** Project name. Needed before repo creation is finalized, but a working title is fine to start.
-3. **(Product, non-blocking)** Exact v1 block list for Phase 1: proposed set is text, heading, image, list, accordion, tabs, knowledge check (multiple choice). Confirm or adjust.
+3. **(Product, non-blocking)** Exact v1 block list for Phase 1: proposed set is text, heading, image, list, accordion, tabs, knowledge check (multiple choice). Confirm or adjust. CLOSED
 4. **(Technical, resolve in Phase 2)** Ethos-specific SCORM quirks: does Ethos handle suspend_data and score reporting per spec? Verify with a minimal test package early.
 5. **(Product, resolve by Phase 6)** Hosted version pricing model, if any: donations, flat nominal fee, or free with paid support.
 

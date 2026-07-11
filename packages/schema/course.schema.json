@@ -1,0 +1,311 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mnemonify.org/schema/course.schema.json",
+  "title": "Mnemonify Course Document",
+  "description": "Schema for a Mnemonify course JSON document. See ARCHITECTURE.md Section 3 for the authoritative document model.",
+  "type": "object",
+  "required": ["schema_version", "meta", "variables", "assets", "pages"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "meta": { "$ref": "#/definitions/meta" },
+    "variables": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/variable" }
+    },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/asset" }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/page" }
+    }
+  },
+  "definitions": {
+    "meta": {
+      "type": "object",
+      "required": ["course_id", "title", "theme"],
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "type": "string",
+          "pattern": "^crs_[a-zA-Z0-9]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "theme": {
+          "type": "object",
+          "required": ["accent"],
+          "additionalProperties": false,
+          "properties": {
+            "accent": {
+              "type": "string",
+              "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+            },
+            "font_pair": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "required": ["name", "type", "default"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "type": {
+          "enum": ["boolean", "number", "text"]
+        },
+        "default": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "boolean" } } },
+          "then": { "properties": { "default": { "type": "boolean" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "number" } } },
+          "then": { "properties": { "default": { "type": "number" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "text" } } },
+          "then": { "properties": { "default": { "type": "string" } } }
+        }
+      ]
+    },
+    "asset": {
+      "type": "object",
+      "required": ["asset_id", "kind", "src", "alt"],
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "pattern": "^ast_[a-zA-Z0-9_]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["image"]
+        },
+        "src": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "type": "string"
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "required": ["page_id", "title", "blocks"],
+      "additionalProperties": false,
+      "properties": {
+        "page_id": {
+          "type": "string",
+          "pattern": "^pg_[a-zA-Z0-9_]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/block" }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["block_id", "type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "pattern": "^blk_[a-zA-Z0-9_]+$"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "object"
+        },
+        "visibility": { "$ref": "#/definitions/visibility" },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/trigger" }
+        }
+      }
+    },
+    "visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "initial": {
+          "enum": ["visible", "hidden"]
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["trigger_id", "event", "actions"],
+      "additionalProperties": false,
+      "properties": {
+        "trigger_id": {
+          "type": "string",
+          "pattern": "^trg_[a-zA-Z0-9_]+$"
+        },
+        "event": {
+          "enum": [
+            "onPageEnter",
+            "onPageExit",
+            "onClick",
+            "onOpen",
+            "onClose",
+            "onComplete",
+            "onCorrect",
+            "onIncorrect",
+            "onVarChange",
+            "onTimerEnd"
+          ]
+        },
+        "condition": { "$ref": "#/definitions/condition" },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/action" }
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "required": ["var", "op", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "var": { "type": "string" },
+        "op": { "enum": ["==", "!=", ">", "<", ">=", "<="] },
+        "value": {}
+      }
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/definitions/comparison" },
+        {
+          "type": "object",
+          "required": ["all"],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/definitions/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["any"],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/definitions/condition" }
+            }
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "enum": [
+            "SET_VAR",
+            "ADJUST_VAR",
+            "SHOW_BLOCK",
+            "HIDE_BLOCK",
+            "ENABLE_BLOCK",
+            "DISABLE_BLOCK",
+            "JUMP_TO_PAGE",
+            "OPEN_LIGHTBOX",
+            "SET_STATE",
+            "SCORM_COMPLETE",
+            "SCORM_SET_SCORE"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "SET_VAR" } } },
+          "then": {
+            "required": ["var", "value"],
+            "properties": { "var": { "type": "string" }, "value": {} }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "ADJUST_VAR" } } },
+          "then": {
+            "required": ["var", "value"],
+            "properties": { "var": { "type": "string" }, "value": { "type": "number" } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": { "enum": ["SHOW_BLOCK", "HIDE_BLOCK", "ENABLE_BLOCK", "DISABLE_BLOCK"] }
+            }
+          },
+          "then": {
+            "required": ["target"],
+            "properties": { "target": { "type": "string" } }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "JUMP_TO_PAGE" } } },
+          "then": {
+            "required": ["target"],
+            "properties": { "target": { "type": "string" } }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "OPEN_LIGHTBOX" } } },
+          "then": {
+            "required": ["asset_id"],
+            "properties": { "asset_id": { "type": "string" } }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "SET_STATE" } } },
+          "then": {
+            "required": ["target", "state"],
+            "properties": { "target": { "type": "string" }, "state": { "type": "string" } }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "SCORM_SET_SCORE" } } },
+          "then": {
+            "required": ["value"],
+            "properties": { "value": { "type": "number" } }
+          }
+        }
+      ]
+    }
+  }
+}

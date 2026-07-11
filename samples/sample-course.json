@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "course_id": "crs_fs001",
+    "title": "Frozen Section Interpretation: Case 1",
+    "theme": {
+      "accent": "#0f766e",
+      "font_pair": "default"
+    }
+  },
+  "variables": [
+    { "name": "readDiagnosis", "type": "boolean", "default": false }
+  ],
+  "assets": [
+    {
+      "asset_id": "ast_slide01",
+      "kind": "image",
+      "src": "assets/slide01.jpg",
+      "alt": "H&E stained frozen section showing glandular epithelium with focal nuclear atypia at the inked margin",
+      "caption": "Figure 1. Frozen section, H&E, 20x."
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "pg_case1",
+      "title": "Case Discussion",
+      "blocks": [
+        {
+          "block_id": "blk_heading1",
+          "type": "heading",
+          "content": {
+            "text": "Case 1: Breast Margin Frozen Section",
+            "level": 1
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_text1",
+          "type": "text",
+          "content": {
+            "rich_text": [
+              {
+                "t": "text",
+                "v": "A 54-year-old woman undergoes breast-conserving surgery for a 1.8 cm invasive carcinoma. The intraoperative frozen section is submitted to assess the surgical margin closest to the lesion."
+              }
+            ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_image1",
+          "type": "image",
+          "content": {
+            "asset_id": "ast_slide01"
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_list1",
+          "type": "list",
+          "content": {
+            "style": "bulleted",
+            "items": [
+              "Review the architectural pattern of the lesion",
+              "Assess the distance from tumor to the inked margin",
+              "Note any freezing or crush artifact that could obscure interpretation"
+            ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_acc1",
+          "type": "accordion",
+          "content": {
+            "items": [
+              {
+                "title": "Reveal diagnosis",
+                "body_blocks": [
+                  {
+                    "block_id": "blk_acc1_text1",
+                    "type": "text",
+                    "content": {
+                      "rich_text": [
+                        {
+                          "t": "text",
+                          "v": "Invasive ductal carcinoma present at the inked margin. Re-excision of the margin is recommended."
+                        }
+                      ]
+                    },
+                    "triggers": []
+                  }
+                ]
+              }
+            ]
+          },
+          "triggers": [
+            {
+              "trigger_id": "trg_acc1_open",
+              "event": "onOpen",
+              "actions": [
+                { "action": "SET_VAR", "var": "readDiagnosis", "value": true }
+              ]
+            }
+          ]
+        },
+        {
+          "block_id": "blk_tabs1",
+          "type": "tabs",
+          "content": {
+            "items": [
+              {
+                "label": "Gross Description",
+                "body_blocks": [
+                  {
+                    "block_id": "blk_tabs1_gross_text",
+                    "type": "text",
+                    "content": {
+                      "rich_text": [
+                        {
+                          "t": "text",
+                          "v": "The specimen consists of a firm, irregular mass measuring 1.9 x 1.6 x 1.4 cm, located 0.2 cm from the closest inked margin."
+                        }
+                      ]
+                    },
+                    "triggers": []
+                  }
+                ]
+              },
+              {
+                "label": "Microscopic Description",
+                "body_blocks": [
+                  {
+                    "block_id": "blk_tabs1_micro_text",
+                    "type": "text",
+                    "content": {
+                      "rich_text": [
+                        {
+                          "t": "text",
+                          "v": "Sections show infiltrating nests of atypical glandular epithelium with moderate nuclear pleomorphism extending to the inked margin."
+                        }
+                      ]
+                    },
+                    "triggers": []
+                  }
+                ]
+              }
+            ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_kc1",
+          "type": "knowledge-check",
+          "content": {
+            "question": "Based on the frozen section findings, what is the most appropriate intraoperative recommendation?",
+            "options": [
+              {
+                "id": "opt_a",
+                "text": "No further action; margins are clear",
+                "correct": false
+              },
+              {
+                "id": "opt_b",
+                "text": "Re-excise the involved margin",
+                "correct": true
+              },
+              {
+                "id": "opt_c",
+                "text": "Convert immediately to mastectomy without further sampling",
+                "correct": false
+              },
+              {
+                "id": "opt_d",
+                "text": "Defer any decision until permanent sections regardless of frozen result",
+                "correct": false
+              }
+            ]
+          },
+          "triggers": []
+        }
+      ]
+    }
+  ]
+}

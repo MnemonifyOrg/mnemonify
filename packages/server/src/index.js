@@ -82,6 +82,21 @@ app.get('/player', (req, res) => {
 
 app.use(express.static(PLAYER_DIST_DIR));
 
+// Global error handler (must be registered last). Route handlers that
+// throw or reject are individually responsible for their own try/catch
+// (Express 4 does not auto-catch async rejections), but this is the
+// safety net for middleware-level errors -- e.g. multer's file-size
+// limit -- that call next(err) before a route handler ever runs. Without
+// this, such requests would hang instead of returning an error response.
+app.use((err, req, res, next) => {
+  console.error('[server] unhandled error:', err);
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+});
+
 app.listen(PORT, () => {
   console.log(`[server] Mnemonify content server listening on port ${PORT}`);
   console.log(`[server] CONTENT_BASE_URL=${CONTENT_BASE_URL}`);

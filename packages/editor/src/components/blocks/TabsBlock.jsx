@@ -49,6 +49,7 @@ export default function TabsBlockEditor({ block, onChange }) {
               className="editable-field"
               contentEditable
               suppressContentEditableWarning
+              data-placeholder="Tab title..."
               onClick={() => setActiveIndex(index)}
               onBlur={(e) => updateItem(index, { label: e.currentTarget.textContent })}
             >
@@ -72,6 +73,7 @@ export default function TabsBlockEditor({ block, onChange }) {
           className="editable-field tabs-block-editor__body"
           contentEditable
           suppressContentEditableWarning
+          data-placeholder="Click to add tab content..."
           onBlur={(e) => updateItem(safeActive, withBodyText(items[safeActive], e.currentTarget.textContent))}
         >
           {bodyText(items[safeActive])}

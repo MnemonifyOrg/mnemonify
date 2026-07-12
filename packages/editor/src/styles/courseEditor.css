@@ -385,6 +385,14 @@
   display: block;
   margin-bottom: var(--space-2);
 }
+.image-block-editor__error {
+  color: var(--color-danger);
+  background: var(--color-danger-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
 
 /* Live preview */
 .preview-frame-container {

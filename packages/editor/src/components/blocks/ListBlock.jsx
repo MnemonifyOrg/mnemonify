@@ -40,6 +40,7 @@ export default function ListBlockEditor({ block, onChange }) {
             className="editable-field"
             contentEditable
             suppressContentEditableWarning
+            data-placeholder="Click to add list item..."
             onBlur={(e) => handleBlurRow(index, e.currentTarget.textContent)}
             onKeyDown={(e) => handleKeyDown(e, index)}
           >

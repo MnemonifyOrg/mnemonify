@@ -40,6 +40,7 @@ export default function AccordionBlockEditor({ block, onChange }) {
               className="editable-field"
               contentEditable
               suppressContentEditableWarning
+              data-placeholder="Click to add accordion title..."
               onBlur={(e) => updateItem(index, { title: e.currentTarget.textContent })}
             >
               {item.title}
@@ -52,6 +53,7 @@ export default function AccordionBlockEditor({ block, onChange }) {
             className="editable-field accordion-block-editor__body"
             contentEditable
             suppressContentEditableWarning
+            data-placeholder="Click to add content..."
             onBlur={(e) => updateItem(index, withBodyText(item, e.currentTarget.textContent))}
           >
             {bodyText(item)}

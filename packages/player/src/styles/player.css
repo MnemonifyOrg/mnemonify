@@ -110,6 +110,29 @@ input:focus-visible {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+.block-image__placeholder {
+  width: 100%;
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+/* Not-yet-implemented block type, shown only in editor preview */
+.block-unavailable-preview {
+  width: 100%;
+  padding: var(--space-5) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
+  font-size: var(--text-sm);
+  font-style: italic;
+}
 
 /* List block */
 .block-list {

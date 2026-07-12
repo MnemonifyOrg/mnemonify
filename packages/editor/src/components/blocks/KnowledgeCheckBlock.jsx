@@ -33,6 +33,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
         className="editable-field knowledge-check-block-editor__question"
         contentEditable
         suppressContentEditableWarning
+        data-placeholder="Click to add your question..."
         onBlur={(e) => {
           const text = e.currentTarget.textContent;
           if (text !== question) setContent({ question: text });
@@ -49,6 +50,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
               className="editable-field"
               contentEditable
               suppressContentEditableWarning
+              data-placeholder="Click to add answer option..."
               onBlur={(e) => {
                 const text = e.currentTarget.textContent;
                 if (text !== option.text) updateOption(option.id, { text });

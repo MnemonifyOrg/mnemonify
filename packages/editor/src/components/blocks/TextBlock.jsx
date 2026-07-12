@@ -39,7 +39,14 @@ export default function TextBlockEditor({ block, onChange }) {
           <u>U</u>
         </button>
       </div>
-      <div ref={ref} className="editable-field text-block-editor__body" contentEditable suppressContentEditableWarning onBlur={handleBlur} />
+      <div
+        ref={ref}
+        className="editable-field text-block-editor__body"
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder="Click to add text..."
+        onBlur={handleBlur}
+      />
     </div>
   );
 }

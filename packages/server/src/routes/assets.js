@@ -50,30 +50,39 @@ const singleUpload = multer({
 });
 
 router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
-  const { course_id, alt, caption } = req.body;
-  if (!req.file || !course_id) {
-    res.status(400).json({ error: 'file and course_id are required' });
-    return;
-  }
-  if (!IMAGE_MIME_TYPES.has(req.file.mimetype)) {
-    res.status(400).json({ error: `Unsupported file type: ${req.file.mimetype}` });
-    return;
-  }
+  // Express 4 does not catch rejected promises from async handlers -- an
+  // uncaught error here previously left the request hanging forever
+  // (client stuck on "Uploading...", see DECISIONS.md). Every failure
+  // path below must produce a response.
+  try {
+    const { course_id, alt, caption } = req.body;
+    if (!req.file || !course_id) {
+      res.status(400).json({ error: 'file and course_id are required' });
+      return;
+    }
+    if (!IMAGE_MIME_TYPES.has(req.file.mimetype)) {
+      res.status(400).json({ error: `Unsupported file type: ${req.file.mimetype}` });
+      return;
+    }
 
-  const dir = courseUploadsDir(course_id);
-  fs.mkdirSync(dir, { recursive: true });
-  const filename = uniqueFilename(dir, req.file.originalname);
-  fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    const dir = courseUploadsDir(course_id);
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = uniqueFilename(dir, req.file.originalname);
+    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
 
-  const asset = await insertAsset({
-    courseId: course_id,
-    kind: 'image',
-    filename,
-    filePath: `${course_id}/${filename}`,
-    alt,
-    caption,
-  });
-  res.status(201).json(asset);
+    const asset = await insertAsset({
+      courseId: course_id,
+      kind: 'image',
+      filename,
+      filePath: `${course_id}/${filename}`,
+      alt,
+      caption,
+    });
+    res.status(201).json(asset);
+  } catch (err) {
+    console.error('[assets] upload failed:', err);
+    res.status(500).json({ error: 'Upload failed. Please try again.' });
+  }
 });
 
 const bulkUpload = multer({

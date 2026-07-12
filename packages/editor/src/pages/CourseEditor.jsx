@@ -57,8 +57,13 @@ export default function CourseEditor() {
     const current = courseRef.current;
     if (!current) return;
     setSaveStatus('saving');
-    await api.updateCourse(current.id, { title: current.title, course_json: current.course_json });
-    setSaveStatus('saved');
+    try {
+      await api.updateCourse(current.id, { title: current.title, course_json: current.course_json });
+      setSaveStatus('saved');
+    } catch (err) {
+      console.error('[course-editor] autosave failed:', err);
+      setSaveStatus('unsaved');
+    }
   }
 
   function scheduleSave() {

@@ -23,6 +23,7 @@ export default function HeadingBlockEditor({ block, onChange }) {
       data-level={block.content.level || 2}
       contentEditable
       suppressContentEditableWarning
+      data-placeholder="Click to add heading..."
       onBlur={handleBlur}
       onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
     />

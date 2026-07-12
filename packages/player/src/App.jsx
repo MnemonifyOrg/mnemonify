@@ -159,13 +159,20 @@ export default function App() {
   }
 
   const page = course.pages[0];
+  const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
 
   return (
     <div className="player">
       <main className="player__page">
         <h1 className="player__page-title">{page.title}</h1>
         {page.blocks.map((block) => (
-          <BlockRenderer key={block.block_id} block={block} assets={course.assets} onTrigger={handleTrigger} />
+          <BlockRenderer
+            key={block.block_id}
+            block={block}
+            assets={course.assets}
+            onTrigger={handleTrigger}
+            isPreview={isPreview}
+          />
         ))}
       </main>
     </div>

@@ -1,31 +1,41 @@
 import { useRef, useState } from 'react';
 import api from '../../lib/api.js';
-import { genAssetId } from '../../lib/idGen.js';
 
 export default function ImageBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
 
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('course_id', courseId);
-    const uploaded = await api.uploadAsset(formData);
-    setUploading(false);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('course_id', courseId);
+      const uploaded = await api.uploadAsset(formData);
 
-    const assetEntry = {
-      asset_id: genAssetId(),
-      kind: 'image',
-      src: `uploads/${uploaded.file_path}`,
-      alt: '',
-      caption: '',
-    };
-    onAddCourseAsset(assetEntry);
-    onChange({ ...block, content: { ...block.content, asset_id: assetEntry.asset_id } });
+      // The block/course JSON is only touched here, after the upload has
+      // actually succeeded -- a failed or in-flight upload never reaches
+      // this point, so it can't leave a dangling asset_id behind.
+      const assetEntry = {
+        asset_id: uploaded.asset_id,
+        kind: 'image',
+        src: `uploads/${uploaded.file_path}`,
+        alt: '',
+        caption: '',
+      };
+      onAddCourseAsset(assetEntry);
+      onChange({ ...block, content: { ...block.content, asset_id: assetEntry.asset_id } });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   }
 
   if (!asset) {
@@ -33,6 +43,7 @@ export default function ImageBlockEditor({ block, assets, onChange, courseId, on
       <div className="image-block-editor image-block-editor__upload-zone" onClick={() => fileInputRef.current?.click()}>
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         <p>{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
+        {error && <p className="image-block-editor__error">{error}</p>}
       </div>
     );
   }
@@ -44,6 +55,7 @@ export default function ImageBlockEditor({ block, assets, onChange, courseId, on
         Replace image
       </button>
       <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
+      {error && <p className="image-block-editor__error">{error}</p>}
     </div>
   );
 }

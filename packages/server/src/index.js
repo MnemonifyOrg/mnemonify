@@ -1,17 +1,27 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import coursesRouter from './routes/courses.js';
+import assetsRouter from './routes/assets.js';
+import usersRouter from './routes/users.js';
+import wordRouter from './routes/word.js';
+
+dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const CONTENT_BASE_URL = process.env.CONTENT_BASE_URL || 'http://localhost:3001';
 
 const PLAYER_DIST_DIR = path.resolve(__dirname, '../../player/dist');
 const PLAYER_ASSETS_DIR = path.resolve(__dirname, '../../player/public/assets');
 const SAMPLES_DIR = path.resolve(__dirname, '../../../samples');
+const UPLOADS_DIR = path.resolve(__dirname, '../uploads');
+
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const COURSES = {
   sample: path.join(SAMPLES_DIR, 'sample-course.json'),
@@ -36,10 +46,19 @@ app.use((req, res, next) => {
 app.use(
   cors({
     origin: '*',
-    methods: ['GET', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: '*',
   })
 );
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use('/api', coursesRouter);
+app.use('/api', assetsRouter);
+app.use('/api', usersRouter);
+app.use('/api', wordRouter);
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.get('/content/:courseId', (req, res) => {
   const coursePath = COURSES[req.params.courseId];

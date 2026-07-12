@@ -57,6 +57,14 @@
           "triggers": []
         },
         {
+          "block_id": "blk_carousel1",
+          "type": "carousel",
+          "content": {
+            "asset_ids": []
+          },
+          "triggers": []
+        },
+        {
           "block_id": "blk_list1",
           "type": "list",
           "content": {

@@ -3,7 +3,7 @@ import { useState } from 'react';
 export default function KnowledgeCheckBlock({ block, onTrigger }) {
   const [selectedId, setSelectedId] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const { question, options } = block.content;
+  const { question, options, correct_feedback, incorrect_feedback, show_feedback } = block.content;
 
   function handleSubmit() {
     setSubmitted(true);
@@ -79,9 +79,11 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
       >
         Submit
       </button>
-      {submitted && (
+      {submitted && show_feedback !== false && (
         <div className="knowledge-check__feedback" data-correct={String(!!selectedOption?.correct)} role="status">
-          {selectedOption?.correct ? 'Correct.' : 'Not quite — review the case findings and try again.'}
+          {selectedOption?.correct
+            ? correct_feedback || 'Correct.'
+            : incorrect_feedback || 'Not quite — review the case findings and try again.'}
         </div>
       )}
     </div>

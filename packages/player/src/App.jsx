@@ -52,30 +52,46 @@ export default function App() {
       let restoredVariables = initialVariables(bundledCourse);
       let restoredPageId = bundledCourse.pages[0].page_id;
 
-      try {
-        scormAvailable = await scorm2004.initialize();
-        if (cancelled) return;
+      const params = new URLSearchParams(window.location.search);
+      const isPreview = params.get('preview') === 'true';
 
-        if (scormAvailable) {
-          const params = new URLSearchParams(window.location.search);
-          const courseId = params.get('courseId') || 'sample';
-          const contentServerUrl = window.location.origin;
-          const response = await fetch(`${contentServerUrl}/content/${courseId}`);
-          loadedCourse = await response.json();
+      try {
+        if (isPreview) {
+          // Editor preview context (ARCHITECTURE.md 5.6): loads the current
+          // saved state straight from the API, not the published content
+          // endpoint, and never touches SCORM -- this isn't a real learner
+          // session.
+          const previewCourseId = params.get('courseId');
+          const response = await fetch(`${window.location.origin}/api/courses/${previewCourseId}`);
+          const record = await response.json();
+          if (cancelled) return;
+          loadedCourse = record.course_json;
+          restoredVariables = initialVariables(loadedCourse);
+          restoredPageId = loadedCourse.pages[0].page_id;
+        } else {
+          scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
 
-          const suspend = await scorm2004.getSuspendData();
-          restoredVariables = suspend.variables || initialVariables(loadedCourse);
-          restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
+          if (scormAvailable) {
+            const courseId = params.get('courseId') || 'sample';
+            const contentServerUrl = window.location.origin;
+            const response = await fetch(`${contentServerUrl}/content/${courseId}`);
+            loadedCourse = await response.json();
+            if (cancelled) return;
 
-          await scorm2004.setLocation(restoredPageId);
-          await scorm2004.setSuspendData({ variables: restoredVariables, pageId: restoredPageId });
+            const suspend = await scorm2004.getSuspendData();
+            restoredVariables = suspend.variables || initialVariables(loadedCourse);
+            restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
+
+            await scorm2004.setLocation(restoredPageId);
+            await scorm2004.setSuspendData({ variables: restoredVariables, pageId: restoredPageId });
+          }
         }
       } catch (err) {
-        // Never leave the learner stuck on "Loading course..." because SCORM
-        // communication failed -- fall back to the bundled course so the
-        // player still works, same as a standalone/preview context.
-        console.error('[player] SCORM boot failed, falling back to bundled course:', err);
+        // Never leave the learner/author stuck on "Loading course..." because
+        // SCORM communication or a preview fetch failed -- fall back to the
+        // bundled course so the player still works.
+        console.error('[player] Boot failed, falling back to bundled course:', err);
         scormAvailable = false;
         loadedCourse = bundledCourse;
         restoredVariables = initialVariables(bundledCourse);

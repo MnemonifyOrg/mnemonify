@@ -1,0 +1,66 @@
+:root {
+  /* Brand colors */
+  --color-dark: #0F172A;
+  --color-primary: #0891B2;
+  --color-primary-hover: #0E7490;
+  --color-primary-light: #E0F2FE;
+  --color-accent: #F59E0B;
+  --color-accent-hover: #D97706;
+  --color-bg: #F8FAFC;
+  --color-bg-secondary: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-border-focus: #0891B2;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-error: #EF4444;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+
+  /* Typography */
+  --font-heading: 'DM Sans', sans-serif;
+  --font-body: 'Roboto', sans-serif;
+
+  /* Type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-md: 0 4px 6px rgba(15,23,42,0.08);
+  --shadow-lg: 0 10px 15px rgba(15,23,42,0.10);
+
+  /* Player-specific */
+  --player-bg: #FFFFFF;
+  --player-max-width: 860px;
+  --player-chrome-height: 56px;
+  --player-chrome-bg: var(--color-dark);
+  --player-chrome-text: #FFFFFF;
+  --player-progress-bg: rgba(255,255,255,0.2);
+  --player-progress-fill: var(--color-accent);
+  --player-content-padding: var(--space-8);
+}

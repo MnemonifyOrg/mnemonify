@@ -14,7 +14,7 @@ function baseCourse(title, blocks) {
     meta: {
       course_id: `crs_${Math.random().toString(36).slice(2, 8)}`,
       title,
-      theme: { accent: '#0f766e', font_pair: 'default' },
+      theme: { accent: '#0891B2', font_pair: 'default' },
       completion_rule: 'viewed_all_pages',
     },
     variables: [],

@@ -58,7 +58,7 @@ export function createBlankCourseJson(title) {
     meta: {
       course_id: genCourseId(),
       title: title || 'Untitled Course',
-      theme: { accent: '#0f766e' },
+      theme: { accent: '#0891B2' },
       completion_rule: 'viewed_all_pages',
     },
     variables: [],

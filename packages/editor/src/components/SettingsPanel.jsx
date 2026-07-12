@@ -13,7 +13,7 @@ function CourseSettings({ meta, onChangeMeta }) {
       <input
         type="color"
         className="color-input"
-        value={meta.theme?.accent || '#0f766e'}
+        value={meta.theme?.accent || '#0891B2'}
         onChange={(e) => onChangeMeta({ ...meta, theme: { ...meta.theme, accent: e.target.value } })}
       />
 

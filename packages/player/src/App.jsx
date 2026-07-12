@@ -117,7 +117,11 @@ export default function App() {
 
   useEffect(() => {
     if (!course) return;
-    document.documentElement.style.setProperty('--color-accent', course.meta.theme.accent);
+    // Per-course customizable interactive color (meta.theme.accent, see
+    // ARCHITECTURE.md 3.3). Overrides brand.css's --color-primary default
+    // -- named --color-primary (not --color-accent) so it doesn't collide
+    // with the brand system's own fixed --color-accent (amber CTA color).
+    document.documentElement.style.setProperty('--color-primary', course.meta.theme.accent);
   }, [course]);
 
   useEffect(() => {

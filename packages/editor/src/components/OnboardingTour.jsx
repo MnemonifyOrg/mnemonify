@@ -157,7 +157,7 @@ export default function OnboardingTour({ onComplete }) {
         <h3>{step.title}</h3>
         <p>{step.body}</p>
         <div className="onboarding-tour__actions">
-          <button className="btn-text" onClick={finish}>
+          <button className="onboarding-tour__skip" onClick={finish}>
             Skip
           </button>
           <div className="onboarding-tour__nav">

@@ -160,7 +160,9 @@ export default function CourseLibrary() {
   return (
     <div className="course-library">
       <header className="top-bar">
-        <span className="wordmark">Mnemonify</span>
+        <span className="wordmark">
+          <img src="/brand/Mnemonify-Horizontal-Lockup.png" alt="Mnemonify" height="36" style={{ height: '36px', width: 'auto' }} />
+        </span>
         <nav className="top-bar__nav">
           <Link to="/templates">Templates</Link>
         </nav>

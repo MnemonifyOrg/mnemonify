@@ -1,11 +1,16 @@
 .course-library {
   min-height: 100vh;
+  background: var(--color-bg);
 }
 
 .wordmark {
-  font-weight: 800;
-  font-size: var(--text-xl);
-  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+}
+.wordmark img {
+  height: 36px;
+  width: auto;
+  display: block;
 }
 
 .top-bar__nav {
@@ -14,10 +19,10 @@
 .top-bar__nav a {
   text-decoration: none;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.7);
 }
 .top-bar__nav a:hover {
-  color: var(--color-text);
+  color: #fff;
 }
 
 .course-library__main {
@@ -35,8 +40,8 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
-  background: var(--color-accent-surface);
-  border-color: var(--color-accent);
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
   flex-wrap: wrap;
 }
 .onboarding-banner__actions {
@@ -48,7 +53,7 @@
 .empty-state {
   text-align: center;
   padding: var(--space-6);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .course-grid {
@@ -63,16 +68,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .course-card:hover {
-  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
 }
 .course-card h3 {
   margin: 0 0 var(--space-2);
   font-size: var(--text-lg);
+  font-family: var(--font-heading);
+  color: var(--color-dark);
 }
 .course-card__meta {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--text-sm);
   margin: var(--space-2) 0 0;
 }
@@ -81,6 +90,15 @@
   gap: var(--space-2);
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);
+}
+/* Status badges: draft vs published */
+.course-card .badge {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.course-card .badge-accent {
+  background: #D1FAE5;
+  color: #065F46;
 }
 
 .tab-strip {
@@ -95,12 +113,12 @@
   border-bottom: 3px solid transparent;
   padding: var(--space-2) var(--space-3);
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   cursor: pointer;
 }
 .tab-strip__tab--active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 .new-course-blank {
@@ -122,15 +140,15 @@
   text-align: left;
   padding: var(--space-3);
   cursor: pointer;
-  background: var(--color-bg);
+  background: var(--color-surface);
 }
 .template-grid__item:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
 }
 .template-grid__item p {
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .modal-close {

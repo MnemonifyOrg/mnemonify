@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
 import { STARTER_TEMPLATES } from '../lib/starterTemplates.js';
 import { createBlankCourseJson } from '../lib/blockDefaults.js';
@@ -161,11 +161,14 @@ export default function CourseLibrary() {
     <div className="course-library">
       <header className="top-bar">
         <span className="wordmark">
-          <img src="/brand/Mnemonify-Horizontal-Lockup.png" alt="Mnemonify" height="36" style={{ height: '36px', width: 'auto' }} />
+          <img
+            src="/brand/Mnemonify-Source-Logo.png"
+            alt="Mnemonify"
+            height="40"
+            style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
+          />
         </span>
-        <nav className="top-bar__nav">
-          <Link to="/templates">Templates</Link>
-        </nav>
+        <div className="top-bar__nav" />
         <button className="btn" onClick={() => setShowImportModal(true)}>
           Import Word
         </button>

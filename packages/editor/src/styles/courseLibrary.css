@@ -8,9 +8,10 @@
   align-items: center;
 }
 .wordmark img {
-  height: 36px;
+  height: 40px;
   width: auto;
   display: block;
+  object-fit: contain;
 }
 
 .top-bar__nav {

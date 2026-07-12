@@ -52,6 +52,29 @@ describe('findAPI / discoverDirectAPI', () => {
     winB.parent = winA;
     expect(findAPI(winA)).toBeNull();
   });
+
+  it('treats a cross-origin SecurityError on property access as "not found" instead of throwing', () => {
+    // Real cross-origin windows (e.g. a launcher on the LMS's domain vs a
+    // player served from a different content-server origin) can throw when
+    // JS reads a custom property like API_1484_11 across the origin
+    // boundary in some browsers, instead of quietly returning undefined.
+    const throwingParent = new Proxy(
+      {},
+      {
+        get(target, prop) {
+          if (prop === 'API_1484_11') {
+            throw new DOMException('Blocked a frame with origin X from accessing a frame with origin Y.', 'SecurityError');
+          }
+          if (prop === 'parent') return throwingParent;
+          return target[prop];
+        },
+      }
+    );
+    const playerWindow = { parent: throwingParent };
+
+    expect(() => discoverDirectAPI(playerWindow)).not.toThrow();
+    expect(discoverDirectAPI(playerWindow)).toBeNull();
+  });
 });
 
 describe('initialize()', () => {

@@ -53,9 +53,24 @@ export function findAPI(win) {
 
 export function discoverDirectAPI(startWindow) {
   if (!startWindow) return null;
-  let found = findAPI(startWindow);
+  // Reading a custom property (API_1484_11) across an origin boundary is
+  // supposed to quietly return undefined per the HTML spec's cross-origin
+  // property fallback, but WebKit/Safari has been known to throw a
+  // SecurityError for cross-origin frame access instead. Either way, a
+  // failure here just means "not found here" -- fall through to the
+  // postMessage bridge rather than letting initialize() reject.
+  let found;
+  try {
+    found = findAPI(startWindow);
+  } catch (err) {
+    found = null;
+  }
   if (!found && startWindow.opener) {
-    found = findAPI(startWindow.opener);
+    try {
+      found = findAPI(startWindow.opener);
+    } catch (err) {
+      found = null;
+    }
   }
   return found;
 }

@@ -46,31 +46,44 @@ export default function App() {
 
     async function boot() {
       scorm2004.startTimer();
-      const scormAvailable = await scorm2004.initialize();
-      if (cancelled) return;
-      setIsScorm(scormAvailable);
 
+      let scormAvailable = false;
       let loadedCourse = bundledCourse;
       let restoredVariables = initialVariables(bundledCourse);
       let restoredPageId = bundledCourse.pages[0].page_id;
 
-      if (scormAvailable) {
-        const params = new URLSearchParams(window.location.search);
-        const courseId = params.get('courseId') || 'sample';
-        const contentServerUrl = window.location.origin;
-        const response = await fetch(`${contentServerUrl}/content/${courseId}`);
-        loadedCourse = await response.json();
+      try {
+        scormAvailable = await scorm2004.initialize();
         if (cancelled) return;
 
-        const suspend = await scorm2004.getSuspendData();
-        restoredVariables = suspend.variables || initialVariables(loadedCourse);
-        restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
+        if (scormAvailable) {
+          const params = new URLSearchParams(window.location.search);
+          const courseId = params.get('courseId') || 'sample';
+          const contentServerUrl = window.location.origin;
+          const response = await fetch(`${contentServerUrl}/content/${courseId}`);
+          loadedCourse = await response.json();
+          if (cancelled) return;
 
-        await scorm2004.setLocation(restoredPageId);
-        await scorm2004.setSuspendData({ variables: restoredVariables, pageId: restoredPageId });
+          const suspend = await scorm2004.getSuspendData();
+          restoredVariables = suspend.variables || initialVariables(loadedCourse);
+          restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
+
+          await scorm2004.setLocation(restoredPageId);
+          await scorm2004.setSuspendData({ variables: restoredVariables, pageId: restoredPageId });
+        }
+      } catch (err) {
+        // Never leave the learner stuck on "Loading course..." because SCORM
+        // communication failed -- fall back to the bundled course so the
+        // player still works, same as a standalone/preview context.
+        console.error('[player] SCORM boot failed, falling back to bundled course:', err);
+        scormAvailable = false;
+        loadedCourse = bundledCourse;
+        restoredVariables = initialVariables(bundledCourse);
+        restoredPageId = bundledCourse.pages[0].page_id;
       }
 
       if (cancelled) return;
+      setIsScorm(scormAvailable);
       answeredRef.current = { total: countKnowledgeChecks(loadedCourse.pages[0]), correct: 0, answeredCount: 0 };
       setVariables(restoredVariables);
       setCourse(loadedCourse);

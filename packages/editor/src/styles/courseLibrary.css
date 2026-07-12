@@ -14,6 +14,17 @@
   object-fit: contain;
 }
 
+.top-bar__templates-link {
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.75);
+}
+.top-bar__templates-link:hover {
+  color: #fff;
+}
+
 .top-bar__nav {
   flex: 1;
 }

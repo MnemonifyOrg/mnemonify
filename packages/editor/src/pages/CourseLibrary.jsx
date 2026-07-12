@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import { STARTER_TEMPLATES } from '../lib/starterTemplates.js';
 import { createBlankCourseJson } from '../lib/blockDefaults.js';
@@ -168,6 +168,9 @@ export default function CourseLibrary() {
             style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
           />
         </span>
+        <Link to="/templates" className="top-bar__templates-link">
+          Templates
+        </Link>
         <div className="top-bar__nav" />
         <button className="btn" onClick={() => setShowImportModal(true)}>
           Import Word

@@ -20,6 +20,8 @@ router.get('/templates/:id/export-word', async (req, res) => {
     return;
   }
   const template = result.rows[0];
+  const pages = template.course_json?.pages || [];
+  console.log(`[word-export] course_id=${template.id} pages=${pages.length} blocksOnFirstPage=${pages[0]?.blocks?.length ?? 0}`);
   const buffer = await buildTemplateWordDoc(template);
 
   res.setHeader('Content-Disposition', `attachment; filename="${template.title.replace(/[^\w.-]+/g, '_')}.docx"`);

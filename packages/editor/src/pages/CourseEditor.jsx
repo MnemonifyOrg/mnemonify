@@ -27,6 +27,7 @@ export default function CourseEditor() {
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showTour, setShowTour] = useState(searchParams.get('tour') === '1');
+  const [showExportSaving, setShowExportSaving] = useState(false);
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -74,7 +75,23 @@ export default function CourseEditor() {
 
   function saveNow() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    doSave();
+    return doSave();
+  }
+
+  async function handleExportWord() {
+    // The export endpoint reads course_json straight from the DB. Word
+    // export used to be a plain <a href>, which navigated immediately --
+    // any edit still sitting in the 5s autosave debounce would be missing
+    // from the exported doc. Force a save first so the export always
+    // reflects what's on screen right now.
+    const savingIndicatorTimer = setTimeout(() => setShowExportSaving(true), 500);
+    try {
+      await saveNow();
+    } finally {
+      clearTimeout(savingIndicatorTimer);
+      setShowExportSaving(false);
+    }
+    window.location.href = `/api/templates/${course.id}/export-word`;
   }
 
   function updateCourseJson(updater) {
@@ -264,9 +281,9 @@ export default function CourseEditor() {
           Save as Template
         </button>
         {course.is_template && (
-          <a className="btn" href={`/api/templates/${course.id}/export-word`}>
-            Export Word
-          </a>
+          <button className="btn" onClick={handleExportWord} disabled={showExportSaving}>
+            {showExportSaving ? 'Saving before export...' : 'Export Word'}
+          </button>
         )}
 
         <span className="course-editor__save-status" data-status={saveStatus} data-tour="save-status">

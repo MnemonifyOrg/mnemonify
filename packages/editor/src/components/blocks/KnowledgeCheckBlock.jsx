@@ -1,8 +1,14 @@
+import { useRef, useState } from 'react';
+
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
+const BLUR_HIDE_DELAY_MS = 150;
 
 export default function KnowledgeCheckBlockEditor({ block, onChange }) {
   const { question = '', options = [] } = block.content;
+  const containerRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
+  const [toolbarPos, setToolbarPos] = useState(null);
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -27,16 +33,59 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
     setContent({ options: options.filter((o) => o.id !== id) });
   }
 
+  // The toolbar tracks whichever field is currently focused, rather than
+  // sitting permanently above one fixed field (unlike TextBlock.jsx, which
+  // only ever has one field). Blur hides it after a short delay so a click
+  // on a toolbar button -- which itself steals focus -- doesn't hide the
+  // toolbar before the click is registered; the delay is cancelled if
+  // another field in this same block picks up focus in the meantime.
+  function handleFieldFocus(e) {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    const fieldRect = e.currentTarget.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    setToolbarPos({ top: fieldRect.top - containerRect.top, left: fieldRect.left - containerRect.left });
+  }
+
+  function handleFieldBlur() {
+    blurTimeoutRef.current = setTimeout(() => setToolbarPos(null), BLUR_HIDE_DELAY_MS);
+  }
+
+  function format(command) {
+    document.execCommand(command);
+  }
+
   return (
-    <div className="knowledge-check-block-editor">
+    <div className="knowledge-check-block-editor" ref={containerRef} style={{ position: 'relative' }}>
+      {toolbarPos && (
+        <div
+          className="rich-text-toolbar knowledge-check-block-editor__toolbar"
+          style={{ top: toolbarPos.top, left: toolbarPos.left }}
+        >
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('bold')}>
+            <strong>B</strong>
+          </button>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('italic')}>
+            <em>I</em>
+          </button>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('underline')}>
+            <u>U</u>
+          </button>
+        </div>
+      )}
+
       <div
         className="editable-field knowledge-check-block-editor__question"
         contentEditable
         suppressContentEditableWarning
         data-placeholder="Click to add your question..."
+        onFocus={handleFieldFocus}
         onBlur={(e) => {
           const text = e.currentTarget.textContent;
           if (text !== question) setContent({ question: text });
+          handleFieldBlur();
         }}
       >
         {question}
@@ -51,9 +100,11 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
               contentEditable
               suppressContentEditableWarning
               data-placeholder="Click to add answer option..."
+              onFocus={handleFieldFocus}
               onBlur={(e) => {
                 const text = e.currentTarget.textContent;
                 if (text !== option.text) updateOption(option.id, { text });
+                handleFieldBlur();
               }}
             >
               {option.text}
@@ -77,9 +128,11 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
         className="editable-field"
         contentEditable
         suppressContentEditableWarning
+        onFocus={handleFieldFocus}
         onBlur={(e) => {
           const text = e.currentTarget.textContent;
           if (text !== (block.content.correct_feedback || '')) setContent({ correct_feedback: text });
+          handleFieldBlur();
         }}
       >
         {block.content.correct_feedback || ''}
@@ -90,9 +143,11 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
         className="editable-field"
         contentEditable
         suppressContentEditableWarning
+        onFocus={handleFieldFocus}
         onBlur={(e) => {
           const text = e.currentTarget.textContent;
           if (text !== (block.content.incorrect_feedback || '')) setContent({ incorrect_feedback: text });
+          handleFieldBlur();
         }}
       >
         {block.content.incorrect_feedback || ''}

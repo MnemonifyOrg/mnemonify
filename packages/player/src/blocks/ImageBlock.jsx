@@ -1,3 +1,9 @@
+// Percentage of the block's available container width, not pixels and
+// not freeform drag-resize -- keeps images responsive and stacking
+// correctly with the no-freeform-canvas rule. See DECISIONS.md.
+const WIDTH_PRESET_PCT = { small: 25, medium: 50, large: 75, full: 100 };
+const ALIGN_ITEMS = { left: 'flex-start', center: 'center', right: 'flex-end' };
+
 export default function ImageBlock({ block, assets }) {
   const asset = assets.find((a) => a.asset_id === block.content.asset_id);
   // Renders a placeholder rather than nothing (or crashing) when
@@ -11,8 +17,13 @@ export default function ImageBlock({ block, assets }) {
     );
   }
   const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const widthPreset = block.content.width_preset || 'medium';
+  const isFull = widthPreset === 'full';
+  const alignment = isFull ? 'center' : block.content.alignment || 'center';
+  const pct = WIDTH_PRESET_PCT[widthPreset] ?? WIDTH_PRESET_PCT.medium;
+
   return (
-    <figure className="block block-image">
+    <figure className="block block-image" style={{ alignItems: ALIGN_ITEMS[alignment], '--image-width-pct': `${pct}%` }}>
       <img src={resolvedSrc} alt={asset.alt} />
       {asset.caption && <figcaption>{asset.caption}</figcaption>}
     </figure>

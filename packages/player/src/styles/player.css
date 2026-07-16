@@ -130,11 +130,19 @@ input:focus-visible {
   gap: var(--space-2);
 }
 .block-image img {
-  width: 100%;
+  width: var(--image-width-pct, 100%);
+  max-width: 100%;
   height: auto;
   display: block;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+/* Never let a "small" preset become illegibly tiny on a phone screen --
+   floors every preset (including full, harmlessly) at 60% width. */
+@media (max-width: 767px) {
+  .block-image img {
+    width: max(var(--image-width-pct, 100%), 60%);
+  }
 }
 .block-image figcaption {
   font-size: var(--text-sm);

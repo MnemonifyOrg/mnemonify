@@ -303,13 +303,16 @@ export default function CourseEditor() {
     );
   }
 
-  function handleChangeBlock(blockId, updatedBlock) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) =>
-        p.page_id !== activePageId ? p : { ...p, blocks: p.blocks.map((b) => (b.block_id === blockId ? updatedBlock : b)) }
-      ),
-    }));
+  function handleChangeBlock(blockId, updatedBlock, options) {
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) =>
+          p.page_id !== activePageId ? p : { ...p, blocks: p.blocks.map((b) => (b.block_id === blockId ? updatedBlock : b)) }
+        ),
+      }),
+      options
+    );
   }
 
   function regenerateIds(block) {
@@ -404,7 +407,11 @@ export default function CourseEditor() {
             onKeyDown={(e) => e.key === 'Enter' && setEditingTitle(false)}
           />
         ) : (
-          <h1 className="course-editor__title" onClick={() => setEditingTitle(true)}>
+          <h1
+            className="course-editor__title"
+            title={json.meta?.title || 'Untitled Course'}
+            onClick={() => setEditingTitle(true)}
+          >
             {json.meta?.title || 'Untitled Course'}
           </h1>
         )}
@@ -531,7 +538,7 @@ export default function CourseEditor() {
           assets={json.assets}
           onChangeMeta={handleChangeMeta}
           onUpdateCourseAsset={handleUpdateCourseAsset}
-          onChangeBlock={(updated) => handleChangeBlock(selectedBlock.block_id, updated)}
+          onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
         />
       </div>
     </div>

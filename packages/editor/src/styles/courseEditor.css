@@ -6,15 +6,28 @@
 
 .course-editor__top-bar {
   flex-shrink: 0;
+  /* .top-bar (base.css) already sets align-items: center and a fixed
+     height, but that alone doesn't stop a long, wrapping title from
+     overflowing the bar above and below it (a flex item taller than its
+     row still renders at its full content height, centered on the
+     overflow) -- the buttons themselves never stretched, they stayed
+     centered and compact even with a 3-line title. Restated here for
+     clarity since this is the exact bug this rule exists to prevent. */
+  align-items: center;
 }
 
 .course-editor__history-controls {
   display: flex;
   gap: var(--space-1);
+  flex-shrink: 0;
 }
 .course-editor__history-controls button {
   font-size: var(--text-lg);
   line-height: 1;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  flex-shrink: 0;
 }
 .course-editor__history-controls button:disabled {
   opacity: 0.35;
@@ -32,6 +45,18 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   color: rgba(255, 255, 255, 0.9);
+  /* Truncate rather than wrap: a wrapped title in this fixed-height bar
+     overflows above and below it once it needs more than ~2 lines (the
+     row itself doesn't grow -- .top-bar's height is fixed -- but the
+     title text isn't clipped by anything, so it renders past the bar's
+     edges, vertically centered on its own overflow, visually breaking
+     the layout). min-width: 0 lets this flex item actually shrink below
+     its text's intrinsic width, which text-overflow: ellipsis requires. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .course-editor__title:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -39,6 +64,7 @@
 .course-editor__title-input {
   font-size: var(--text-lg);
   font-weight: 700;
+  min-width: 0;
   max-width: 320px;
   background: transparent;
   color: #fff;
@@ -453,11 +479,24 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+.image-block-editor__preview {
+  display: flex;
+  margin-bottom: var(--space-2);
+}
 .image-block-editor img {
   max-width: 100%;
   border-radius: var(--radius-sm);
   display: block;
-  margin-bottom: var(--space-2);
+}
+.image-block-settings__segmented {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.image-block-settings__segmented .btn {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
 }
 .image-block-editor__error {
   color: var(--color-error);

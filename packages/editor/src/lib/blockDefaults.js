@@ -24,7 +24,9 @@ function defaultContent(type) {
     case 'heading':
       return { text: '', level: 2 };
     case 'image':
-      return { asset_id: null };
+      // width_preset/alignment: percentage-based sizing, not pixels or
+      // freeform resize -- see DECISIONS.md for why.
+      return { asset_id: null, width_preset: 'medium', alignment: 'center' };
     case 'list':
       return { style: 'bulleted', items: [''] };
     case 'accordion':

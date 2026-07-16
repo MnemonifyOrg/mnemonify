@@ -76,7 +76,9 @@
           "block_id": "blk_image1",
           "type": "image",
           "content": {
-            "asset_id": "ast_slide01"
+            "asset_id": "ast_slide01",
+            "width_preset": "large",
+            "alignment": "center"
           },
           "triggers": []
         },

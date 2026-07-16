@@ -81,9 +81,16 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
       </button>
       {submitted && show_feedback !== false && (
         <div className="knowledge-check__feedback" data-correct={String(!!selectedOption?.correct)} role="status">
-          {selectedOption?.correct
-            ? correct_feedback || 'Correct.'
-            : incorrect_feedback || 'Not quite — review the case findings and try again.'}
+          {/* An option's own feedback (answer-level, ARCHITECTURE.md 3.8)
+              takes precedence over the block-level correct_feedback /
+              incorrect_feedback when present, so distractor-specific
+              rationale (e.g. "why this option is wrong") can be shown
+              instead of the generic message. */}
+          {selectedOption?.feedback?.rich_text?.length
+            ? selectedOption.feedback.rich_text.map((segment, i) => <span key={i}>{segment.v}</span>)
+            : selectedOption?.correct
+              ? correct_feedback || 'Correct.'
+              : incorrect_feedback || 'Not quite — review the case findings and try again.'}
         </div>
       )}
     </div>

@@ -39,6 +39,35 @@ body {
   margin: 0;
 }
 
+.player__course-header {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.player__course-footer {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+  margin-top: auto;
+}
+
+.block-reflection__prompt {
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+}
+
+.block-reflection__textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  resize: vertical;
+}
+
 .block {
   width: 100%;
 }

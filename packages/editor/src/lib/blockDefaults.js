@@ -3,7 +3,7 @@ import { genBlockId, genCourseId, genPageId } from './idGen.js';
 // Default content shapes per block type, matching the Phase 1 content
 // model documented in DECISIONS.md (2026-07-11 entry). Used both by the
 // starter templates and by the "Add Block" picker in the editor.
-export const BLOCK_TYPES = ['text', 'heading', 'image', 'list', 'accordion', 'tabs', 'knowledge-check', 'carousel'];
+export const BLOCK_TYPES = ['text', 'heading', 'image', 'list', 'accordion', 'tabs', 'knowledge-check', 'carousel', 'reflection'];
 
 export const BLOCK_LABELS = {
   text: 'Text',
@@ -14,6 +14,7 @@ export const BLOCK_LABELS = {
   tabs: 'Tabs',
   'knowledge-check': 'Knowledge Check',
   carousel: 'Image Carousel',
+  reflection: 'Reflection',
 };
 
 function defaultContent(type) {
@@ -40,13 +41,19 @@ function defaultContent(type) {
       };
     case 'carousel':
       return { asset_ids: [] };
+    case 'reflection':
+      // storage_mode is "local" and only "local" -- see ARCHITECTURE.md 3.8
+      // and REQUIREMENTS.md P1-46. Do not add a way to change it here.
+      return { prompt: { rich_text: [{ t: 'text', v: '' }] }, storage_mode: 'local' };
     default:
       return {};
   }
 }
 
 export function createBlock(type) {
-  return { block_id: genBlockId(), type, content: defaultContent(type), triggers: [] };
+  const block = { block_id: genBlockId(), type, content: defaultContent(type), triggers: [] };
+  if (type === 'reflection') block.include_in_pdf = true;
+  return block;
 }
 
 // A schema-valid, empty course document. Blank-course creation and the

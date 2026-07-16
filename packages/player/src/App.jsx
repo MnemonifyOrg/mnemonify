@@ -4,6 +4,17 @@ import BlockRenderer from './blocks/BlockRenderer.jsx';
 import { runTriggers } from './engine/triggerEngine.js';
 import scorm2004 from './lms/scorm2004.js';
 
+function RichTextPreview({ field }) {
+  if (!field?.rich_text?.length) return null;
+  return (
+    <>
+      {field.rich_text.map((segment, i) => (
+        <span key={i}>{segment.v}</span>
+      ))}
+    </>
+  );
+}
+
 function initialVariables(course) {
   const vars = {};
   course.variables.forEach((v) => {
@@ -168,6 +179,15 @@ export default function App() {
   return (
     <div className="player">
       <main className="player__page">
+        {/* Course-wide header, rendered above the content on every page. Once
+            Phase 4 adds real multi-page navigation this moves into shared
+            chrome above the page outlet rather than living inside
+            player__page; for now there is only ever one page (course.pages[0]). */}
+        {course.meta.header && (
+          <div className="player__course-header">
+            <RichTextPreview field={course.meta.header} />
+          </div>
+        )}
         <h1 className="player__page-title">{page.title}</h1>
         {page.blocks.map((block) => (
           <BlockRenderer
@@ -178,6 +198,11 @@ export default function App() {
             isPreview={isPreview}
           />
         ))}
+        {course.meta.footer && (
+          <div className="player__course-footer">
+            <RichTextPreview field={course.meta.footer} />
+          </div>
+        )}
       </main>
     </div>
   );

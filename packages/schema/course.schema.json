@@ -55,7 +55,60 @@
         },
         "completion_rule": {
           "enum": ["viewed_all_pages", "passed_final_quiz"]
+        },
+        "header": { "$ref": "#/definitions/rich_text_field" },
+        "footer": { "$ref": "#/definitions/rich_text_field" },
+        "page_numbering": {
+          "type": "boolean"
+        },
+        "objectives": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/objective" }
+        },
+        "concepts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/concept" }
         }
+      }
+    },
+    "rich_text_field": {
+      "type": "object",
+      "required": ["rich_text"],
+      "additionalProperties": false,
+      "properties": {
+        "rich_text": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/rich_text_segment" }
+        }
+      }
+    },
+    "rich_text_segment": {
+      "type": "object",
+      "required": ["t", "v"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "type": "string" },
+        "v": { "type": "string" },
+        "asset_id": { "type": "string" }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "required": ["objective_id", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "objective_id": { "type": "string" },
+        "text": { "type": "string" },
+        "standard_code": { "type": "string" }
+      }
+    },
+    "concept": {
+      "type": "object",
+      "required": ["concept_id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": { "type": "string" },
+        "name": { "type": "string" }
       }
     },
     "variable": {
@@ -152,6 +205,18 @@
         "triggers": {
           "type": "array",
           "items": { "$ref": "#/definitions/trigger" }
+        },
+        "include_in_pdf": {
+          "type": "boolean"
+        },
+        "faculty_notes": { "$ref": "#/definitions/rich_text_field" },
+        "objective_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "concept_ids": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     },

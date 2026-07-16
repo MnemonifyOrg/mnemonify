@@ -13,6 +13,19 @@ import '../styles/courseEditor.css';
 const AUTOSAVE_DELAY_MS = 5000;
 const PREVIEW_WIDTHS = { phone: '375px', tablet: '768px', desktop: '100%' };
 
+// Undo/redo (ARCHITECTURE.md 3.9). MAX_UNDO_STACK caps memory; TYPING_BURST_MS
+// coalesces a run of rapid changes (e.g. keystrokes in a controlled input)
+// into a single undo step so undo reverts a meaningful chunk, not one
+// keystroke -- see the design note above updateCourseJson/pushUndoSnapshot.
+const MAX_UNDO_STACK = 50;
+const TYPING_BURST_MS = 500;
+
+function isEditableElement(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+
 export default function CourseEditor() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -31,6 +44,20 @@ export default function CourseEditor() {
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
+
+  // Undo/redo state. The stacks themselves are refs (not React state) since
+  // pushing to them is a synchronous side effect that must happen exactly
+  // once per mutation, not tied to React's render/commit cycle -- only
+  // canUndo/canRedo (derived booleans for the toolbar buttons) need to be
+  // state so their re-render is triggered. Snapshots are in-memory only:
+  // never written to localStorage or the server, so they do not survive a
+  // page reload (matches ARCHITECTURE.md 3.9's accepted v1 simplification).
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const burstActiveRef = useRef(false);
+  const burstTimerRef = useRef(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   useEffect(() => {
     api.getCourse(id).then((c) => {
@@ -53,6 +80,28 @@ export default function CourseEditor() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [saveStatus]);
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || e.key.toLowerCase() !== 'z') return;
+      // While actively focused inside a text field, let the browser's own
+      // native undo (in-progress keystrokes not yet committed to React
+      // state -- see the 2026-07-12 contentEditable decision in
+      // DECISIONS.md) handle Cmd+Z instead of intercepting it here. Once
+      // focus leaves the field (on blur, the field's own value is already
+      // committed via updateCourseJson), app-level undo/redo takes over.
+      if (isEditableElement(document.activeElement)) return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        handleRedo();
+      } else {
+        handleUndo();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   async function doSave() {
     const current = courseRef.current;
@@ -94,12 +143,96 @@ export default function CourseEditor() {
     window.location.href = `/api/templates/${course.id}/export-word`;
   }
 
-  function updateCourseJson(updater) {
+  function pushUndoSnapshot(previousJson) {
+    undoStackRef.current.push(previousJson);
+    if (undoStackRef.current.length > MAX_UNDO_STACK) undoStackRef.current.shift();
+    // Standard undo/redo behavior: any new change clears the redo stack --
+    // you cannot redo after making a new change.
+    redoStackRef.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  }
+
+  // Single choke point for every document mutation (block/page/settings
+  // changes all route through this). The undo-snapshot push happens here,
+  // outside the setCourse updater -- React 18 StrictMode double-invokes
+  // updater functions in dev to surface side effects, so a side effect
+  // (mutating undoStackRef, starting a timer) inside the updater would push
+  // two snapshots per change. Reading courseRef.current (kept in sync by the
+  // effect above) instead of the updater's own `prev` avoids that entirely.
+  //
+  // Burst debouncing: if a mutation arrives while a burst is already active
+  // (another mutation happened within the last TYPING_BURST_MS), no new
+  // snapshot is pushed -- the whole burst reverts as one undo step. A pause
+  // of TYPING_BURST_MS ends the burst, so the next mutation (whenever it
+  // comes) starts a fresh one. This gives one snapshot per rapid typing
+  // session (e.g. the course title input, which fires onChange on every
+  // keystroke).
+  //
+  // forceSnapshot: true bypasses the burst check entirely and always pushes
+  // its own snapshot, then resets the burst so it can't merge into whatever
+  // comes next either. Block add/delete/duplicate/reorder and page add/
+  // delete/rename pass this -- ARCHITECTURE.md 3.9 lists these as their own
+  // undo steps unconditionally, unlike text edits, and two such actions
+  // firing within the same TYPING_BURST_MS window (e.g. a fast double-click,
+  // or scripted/automated actions) must not silently coalesce into one undo
+  // step the way a burst of keystrokes should.
+  function updateCourseJson(updater, { forceSnapshot = false } = {}) {
+    const prevJson = courseRef.current.course_json;
+    if (forceSnapshot || !burstActiveRef.current) {
+      pushUndoSnapshot(prevJson);
+    }
+    if (forceSnapshot) {
+      burstActiveRef.current = false;
+      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    } else {
+      burstActiveRef.current = true;
+      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = setTimeout(() => {
+        burstActiveRef.current = false;
+      }, TYPING_BURST_MS);
+    }
+
     setCourse((prev) => {
       const nextJson = updater(prev.course_json);
       return { ...prev, course_json: nextJson, title: nextJson.meta?.title ?? prev.title };
     });
     scheduleSave();
+  }
+
+  // Applies a restored (undo/redo) document. Deliberately bypasses
+  // updateCourseJson -- restoring history must never itself push a new undo
+  // snapshot, or undo/redo would corrupt their own stacks. Still schedules
+  // autosave, per spec: an undo is itself a change to the current document.
+  function applyRestoredJson(restoredJson) {
+    burstActiveRef.current = false;
+    if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    setCourse((prev) => ({ ...prev, course_json: restoredJson, title: restoredJson.meta?.title ?? prev.title }));
+    if (!restoredJson.pages.some((p) => p.page_id === activePageId)) {
+      setActivePageId(restoredJson.pages[0]?.page_id || null);
+    }
+    scheduleSave();
+  }
+
+  function handleUndo() {
+    if (undoStackRef.current.length === 0) return;
+    const currentJson = courseRef.current.course_json;
+    const restoredJson = undoStackRef.current.pop();
+    redoStackRef.current.push(currentJson);
+    applyRestoredJson(restoredJson);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+  }
+
+  function handleRedo() {
+    if (redoStackRef.current.length === 0) return;
+    const currentJson = courseRef.current.course_json;
+    const restoredJson = redoStackRef.current.pop();
+    undoStackRef.current.push(currentJson);
+    if (undoStackRef.current.length > MAX_UNDO_STACK) undoStackRef.current.shift();
+    applyRestoredJson(restoredJson);
+    setCanRedo(redoStackRef.current.length > 0);
+    setCanUndo(true);
   }
 
   function handleChangeMeta(newMeta) {
@@ -144,24 +277,30 @@ export default function CourseEditor() {
 
   function handleAddPage() {
     const newPage = { page_id: genPageId(), title: `Page ${course.course_json.pages.length + 1}`, blocks: [] };
-    updateCourseJson((json) => ({ ...json, pages: [...json.pages, newPage] }));
+    updateCourseJson((json) => ({ ...json, pages: [...json.pages, newPage] }), { forceSnapshot: true });
     setActivePageId(newPage.page_id);
   }
 
   function handleRenamePage(pageId, title) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) => (p.page_id === pageId ? { ...p, title } : p)),
-    }));
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => (p.page_id === pageId ? { ...p, title } : p)),
+      }),
+      { forceSnapshot: true }
+    );
   }
 
   function handleDeletePage(pageId) {
     if (!window.confirm('Delete this page and all its blocks?')) return;
-    updateCourseJson((json) => {
-      const pages = json.pages.filter((p) => p.page_id !== pageId);
-      if (activePageId === pageId) setActivePageId(pages[0]?.page_id || null);
-      return { ...json, pages };
-    });
+    updateCourseJson(
+      (json) => {
+        const pages = json.pages.filter((p) => p.page_id !== pageId);
+        if (activePageId === pageId) setActivePageId(pages[0]?.page_id || null);
+        return { ...json, pages };
+      },
+      { forceSnapshot: true }
+    );
   }
 
   function handleChangeBlock(blockId, updatedBlock) {
@@ -192,40 +331,52 @@ export default function CourseEditor() {
   }
 
   function handleDuplicateBlock(blockId) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) => {
-        if (p.page_id !== activePageId) return p;
-        const index = p.blocks.findIndex((b) => b.block_id === blockId);
-        const clone = regenerateIds(p.blocks[index]);
-        const blocks = [...p.blocks];
-        blocks.splice(index + 1, 0, clone);
-        return { ...p, blocks };
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => {
+          if (p.page_id !== activePageId) return p;
+          const index = p.blocks.findIndex((b) => b.block_id === blockId);
+          const clone = regenerateIds(p.blocks[index]);
+          const blocks = [...p.blocks];
+          blocks.splice(index + 1, 0, clone);
+          return { ...p, blocks };
+        }),
       }),
-    }));
+      { forceSnapshot: true }
+    );
   }
 
   function handleDeleteBlock(blockId) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: p.blocks.filter((b) => b.block_id !== blockId) })),
-    }));
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: p.blocks.filter((b) => b.block_id !== blockId) })),
+      }),
+      { forceSnapshot: true }
+    );
     if (selectedBlockId === blockId) setSelectedBlockId(null);
   }
 
   function handleAddBlock(newBlock) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: [...p.blocks, newBlock] })),
-    }));
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: [...p.blocks, newBlock] })),
+      }),
+      { forceSnapshot: true }
+    );
     setSelectedBlockId(newBlock.block_id);
   }
 
   function handleReorderBlocks(newBlocks) {
-    updateCourseJson((json) => ({
-      ...json,
-      pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: newBlocks })),
-    }));
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: newBlocks })),
+      }),
+      { forceSnapshot: true }
+    );
     saveNow();
   }
 
@@ -257,6 +408,27 @@ export default function CourseEditor() {
             {json.meta?.title || 'Untitled Course'}
           </h1>
         )}
+
+        <div className="course-editor__history-controls">
+          <button
+            className="btn-text"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            aria-label="Undo"
+            title="Undo (Cmd+Z)"
+          >
+            ↶
+          </button>
+          <button
+            className="btn-text"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            aria-label="Redo"
+            title="Redo (Cmd+Shift+Z)"
+          >
+            ↷
+          </button>
+        </div>
 
         <div className="course-editor__preview-toggle" data-tour="preview-toggle">
           {['phone', 'tablet', 'desktop'].map((m) => (

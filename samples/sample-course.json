@@ -7,7 +7,24 @@
       "accent": "#0f766e",
       "font_pair": "default"
     },
-    "completion_rule": "viewed_all_pages"
+    "completion_rule": "viewed_all_pages",
+    "header": {
+      "rich_text": [
+        { "t": "text", "v": "CAP Pathology Education Series" }
+      ]
+    },
+    "footer": {
+      "rich_text": [
+        { "t": "text", "v": "© 2026 College of American Pathologists" }
+      ]
+    },
+    "page_numbering": false,
+    "objectives": [
+      { "objective_id": "obj_01", "text": "Identify margin involvement on intraoperative frozen section", "standard_code": "" }
+    ],
+    "concepts": [
+      { "concept_id": "cpt_01", "name": "Frozen section margin assessment" }
+    ]
   },
   "variables": [
     { "name": "readDiagnosis", "type": "boolean", "default": false }
@@ -33,7 +50,14 @@
             "text": "Case 1: Breast Margin Frozen Section",
             "level": 1
           },
-          "triggers": []
+          "triggers": [],
+          "faculty_notes": {
+            "rich_text": [
+              { "t": "text", "v": "Ask learners to state the distance to margin in mm before revealing the diagnosis -- this is the detail students most often skip." }
+            ]
+          },
+          "objective_ids": ["obj_01"],
+          "concept_ids": ["cpt_01"]
         },
         {
           "block_id": "blk_text1",
@@ -171,7 +195,14 @@
               {
                 "id": "opt_b",
                 "text": "Re-excise the involved margin",
-                "correct": true
+                "correct": true,
+                "feedback": {
+                  "rich_text": [
+                    { "t": "text", "v": "Correct. Tumor at the inked margin means residual disease is presumed to remain in the patient; re-excision is the standard intraoperative response." }
+                  ],
+                  "image_id": null,
+                  "reference_ids": []
+                }
               },
               {
                 "id": "opt_c",
@@ -184,6 +215,20 @@
                 "correct": false
               }
             ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_reflection1",
+          "type": "reflection",
+          "include_in_pdf": true,
+          "content": {
+            "prompt": {
+              "rich_text": [
+                { "t": "text", "v": "What would you want to know from the surgeon before finalizing this frozen section report?" }
+              ]
+            },
+            "storage_mode": "local"
           },
           "triggers": []
         }

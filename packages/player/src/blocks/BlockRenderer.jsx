@@ -5,6 +5,7 @@ import ListBlock from './ListBlock.jsx';
 import AccordionBlock from './AccordionBlock.jsx';
 import TabsBlock from './TabsBlock.jsx';
 import KnowledgeCheckBlock from './KnowledgeCheckBlock.jsx';
+import ReflectionBlock from './ReflectionBlock.jsx';
 
 const REGISTRY = {
   heading: HeadingBlock,
@@ -14,9 +15,14 @@ const REGISTRY = {
   accordion: AccordionBlock,
   tabs: TabsBlock,
   'knowledge-check': KnowledgeCheckBlock,
+  reflection: ReflectionBlock,
 };
 
 export default function BlockRenderer({ block, assets, onTrigger, isPreview }) {
+  // block.faculty_notes is intentionally never passed to any block
+  // component below, in any context (SCORM, standalone, preview, review).
+  // It is editor/instructor-only content (ARCHITECTURE.md 3.8) -- the
+  // player must not read this field at all, not just avoid displaying it.
   const Component = REGISTRY[block.type];
   if (!Component) {
     // Carousel rendering is Phase 5 scope (not implemented yet). In editor

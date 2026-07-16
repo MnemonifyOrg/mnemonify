@@ -9,6 +9,10 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
   const [toolbarPos, setToolbarPos] = useState(null);
+  // Power-user feature most authors won't touch on every question -- tracked
+  // as transient editor-only UI state, not persisted to the document, so a
+  // collapsed-and-empty feedback field adds no visual clutter by default.
+  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState(() => new Set());
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -16,6 +20,29 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
 
   function updateOption(id, patch) {
     setContent({ options: options.map((o) => (o.id === id ? { ...o, ...patch } : o)) });
+  }
+
+  function toggleOptionFeedback(id) {
+    setExpandedFeedbackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function updateOptionFeedback(id, text) {
+    const trimmed = text.trim();
+    setContent({
+      options: options.map((o) => {
+        if (o.id !== id) return o;
+        if (!trimmed) {
+          const { feedback, ...rest } = o;
+          return rest;
+        }
+        return { ...o, feedback: { rich_text: [{ t: 'text', v: text }], image_id: null, reference_ids: [] } };
+      }),
+    });
   }
 
   function markCorrect(id) {
@@ -92,30 +119,57 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
       </div>
 
       <ul className="knowledge-check-block-editor__options">
-        {options.map((option) => (
-          <li key={option.id}>
-            <input type="radio" checked={!!option.correct} onChange={() => markCorrect(option.id)} title="Mark as correct answer" />
-            <div
-              className="editable-field"
-              contentEditable
-              suppressContentEditableWarning
-              data-placeholder="Click to add answer option..."
-              onFocus={handleFieldFocus}
-              onBlur={(e) => {
-                const text = e.currentTarget.textContent;
-                if (text !== option.text) updateOption(option.id, { text });
-                handleFieldBlur();
-              }}
-            >
-              {option.text}
-            </div>
-            {options.length > MIN_OPTIONS && (
-              <button className="btn-text" onClick={() => deleteOption(option.id)}>
-                ✕
+        {options.map((option) => {
+          const feedbackExpanded = expandedFeedbackIds.has(option.id) || !!option.feedback;
+          return (
+            <li key={option.id}>
+              <div className="kc-option-row">
+                <input type="radio" checked={!!option.correct} onChange={() => markCorrect(option.id)} title="Mark as correct answer" />
+                <div
+                  className="editable-field"
+                  contentEditable
+                  suppressContentEditableWarning
+                  data-placeholder="Click to add answer option..."
+                  onFocus={handleFieldFocus}
+                  onBlur={(e) => {
+                    const text = e.currentTarget.textContent;
+                    if (text !== option.text) updateOption(option.id, { text });
+                    handleFieldBlur();
+                  }}
+                >
+                  {option.text}
+                </div>
+                {options.length > MIN_OPTIONS && (
+                  <button className="btn-text" onClick={() => deleteOption(option.id)}>
+                    ✕
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn-text kc-option-feedback-toggle"
+                onClick={() => toggleOptionFeedback(option.id)}
+              >
+                {option.feedback ? 'Feedback for this option ✓' : 'Add feedback for this option'}
               </button>
-            )}
-          </li>
-        ))}
+              {feedbackExpanded && (
+                <div
+                  className="editable-field kc-option-feedback-field"
+                  contentEditable
+                  suppressContentEditableWarning
+                  data-placeholder="Shown instead of the general feedback when this option is selected..."
+                  onFocus={handleFieldFocus}
+                  onBlur={(e) => {
+                    updateOptionFeedback(option.id, e.currentTarget.textContent);
+                    handleFieldBlur();
+                  }}
+                >
+                  {option.feedback?.rich_text?.[0]?.v || ''}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {options.length < MAX_OPTIONS && (
         <button className="btn" onClick={addOption}>

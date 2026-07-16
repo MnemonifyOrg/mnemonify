@@ -1,26 +1,28 @@
 :root {
-  /* Brand colors */
-  --color-dark: #0F172A;
-  --color-primary: #0891B2;
-  --color-primary-hover: #0E7490;
-  --color-primary-light: #E0F2FE;
-  --color-accent: #F59E0B;
-  --color-accent-hover: #D97706;
-  --color-bg: #F8FAFC;
-  --color-bg-secondary: #F1F5F9;
+  /* Brand colors -- aliased to --mn-* tokens from mnemonify-tokens.css so
+     every component referencing --color-* inherits the brand kit with no
+     per-component changes (see DECISIONS.md). */
+  --color-dark: var(--mn-color-deep-navy);
+  --color-primary: var(--mn-color-primary-blue);
+  --color-primary-hover: var(--mn-color-indigo);
+  --color-primary-light: var(--mn-color-light-gray);
+  --color-accent: var(--mn-color-violet);
+  --color-accent-hover: var(--mn-color-purple);
+  --color-bg: var(--mn-color-soft-white);
+  --color-bg-secondary: var(--mn-color-light-gray);
   --color-surface: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-border-focus: #0891B2;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
+  --color-border: var(--mn-color-slate);
+  --color-border-focus: var(--mn-color-primary-blue);
+  --color-text-primary: var(--mn-color-deep-navy);
+  --color-text-secondary: var(--mn-color-slate);
+  --color-text-muted: var(--mn-color-slate);
   --color-error: #EF4444;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
+  --color-success: var(--mn-color-emerald);
+  --color-warning: var(--mn-color-coral);
 
   /* Typography */
-  --font-heading: 'DM Sans', sans-serif;
-  --font-body: 'Roboto', sans-serif;
+  --font-heading: var(--mn-font-display, 'DM Sans', sans-serif);
+  --font-body: var(--mn-font-ui, 'Inter', sans-serif);
 
   /* Type scale */
   --text-xs: 0.75rem;

@@ -41,10 +41,9 @@ export default function TemplateLibrary() {
       <header className="top-bar">
         <span className="wordmark">
           <img
-            src="/brand/Mnemonify-Source-Logo.png"
-            alt="Mnemonify"
-            height="40"
-            style={{ height: '40px', width: 'auto', objectFit: 'contain' }}
+            src="/brand/logos/svg/mnemonify-primary-horizontal-reversed.svg"
+            alt="Mnemonify, Learning creation for everyone"
+            className="mnemonify-logo"
           />
         </span>
         <nav className="top-bar__nav">

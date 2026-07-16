@@ -43,8 +43,10 @@ body {
   width: 100%;
 }
 
-/* TODO Phase 4: top bar uses /brand/Mnemonify-Horizontal-Lockup.png
-   at height 32px, on var(--player-chrome-bg) background */
+/* Phase 4 top bar: use
+   /brand/logos/svg/mnemonify-primary-horizontal-reversed.svg
+   on --color-dark background, or mnemonify-mark.svg alone if space
+   is constrained. Never set both width and height. */
 
 /* Focus visibility for keyboard users */
 a:focus-visible,

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+<defs><linearGradient id="mn-gradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#06B6D4"/><stop offset=".48" stop-color="#2563EB"/><stop offset="1" stop-color="#7C3AED"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-opacity=".12"/></filter></defs>
+<rect width="1600" height="1100" fill="#FAFAFC"/><rect x="40" y="40" width="1520" height="1020" rx="34" fill="#FFF" stroke="#E2E8F0"/>
+<text x="90" y="110" font-family="DM Sans,Arial" font-size="44" font-weight="800" fill="#0A1020">Mnemonify Brand Kit</text><text x="90" y="150" font-family="Inter,Arial" font-size="22" fill="#475569">Approved logo and implementation assets</text>
+<g transform="translate(90 210)"><g transform="translate(0 0) scale(1.0)">
+      <path d="M30 30 L30 170 M170 30 L170 170 M30 30 L100 100 L170 30 M30 170 L100 100 L170 170"
+            fill="none" stroke="url(#mn-gradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="30" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="30" cy="170" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="100" cy="100" r="16" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="170" r="18" fill="url(#mn-gradient)"/>
+    </g><text x="235" y="95" font-family="DM Sans,Arial" font-size="78" font-weight="800" fill="#0A1020">Mnemonify</text><text x="240" y="148" font-family="Inter,Arial" font-size="31" font-weight="700" fill="#2563EB">Learning creation for everyone.</text></g>
+<line x1="90" y1="460" x2="1510" y2="460" stroke="#E2E8F0"/>
+<text x="90" y="520" font-family="Inter,Arial" font-size="22" font-weight="800" fill="#2563EB">APP ICONS</text>
+<g filter="url(#s)"><rect x="90" y="560" width="300" height="300" rx="66" fill="#FFF" stroke="#E2E8F0"/><rect x="450" y="560" width="300" height="300" rx="66" fill="#0A1020"/></g><g transform="translate(140 610) scale(1.0)">
+      <path d="M30 30 L30 170 M170 30 L170 170 M30 30 L100 100 L170 30 M30 170 L100 100 L170 170"
+            fill="none" stroke="url(#mn-gradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="30" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="30" cy="170" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="100" cy="100" r="16" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="170" r="18" fill="url(#mn-gradient)"/>
+    </g><g transform="translate(500 610) scale(1.0)">
+      <path d="M30 30 L30 170 M170 30 L170 170 M30 30 L100 100 L170 30 M30 170 L100 100 L170 170"
+            fill="none" stroke="url(#mn-gradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="30" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="30" cy="170" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="100" cy="100" r="16" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="30" r="18" fill="url(#mn-gradient)"/>
+      <circle cx="170" cy="170" r="18" fill="url(#mn-gradient)"/>
+    </g>
+<text x="240" y="900" text-anchor="middle" font-family="Inter,Arial" font-size="22" font-weight="700" fill="#0A1020">Light</text><text x="600" y="900" text-anchor="middle" font-family="Inter,Arial" font-size="22" font-weight="700" fill="#0A1020">Dark</text>
+<text x="850" y="520" font-family="Inter,Arial" font-size="22" font-weight="800" fill="#2563EB">BRAND VALUES</text>
+<g font-family="Inter,Arial" font-size="24" font-weight="800"><text x="850" y="605" fill="#2563EB">OPEN</text><text x="850" y="675" fill="#7C3AED">SIMPLE</text><text x="850" y="745" fill="#06B6D4">FLEXIBLE</text><text x="850" y="815" fill="#7C3AED">COMMUNITY</text></g>
+<g font-family="Inter,Arial" font-size="19" fill="#475569"><text x="1040" y="605">Open source by design</text><text x="1040" y="675">No coding required</text><text x="1040" y="745">Build many learning experiences</text><text x="1040" y="815">Built together, for everyone</text></g>
+<text x="850" y="920" font-family="Inter,Arial" font-size="18" fill="#475569">Canonical assets: SVG • PNG • ICO • CSS • JSON • Markdown</text></svg>

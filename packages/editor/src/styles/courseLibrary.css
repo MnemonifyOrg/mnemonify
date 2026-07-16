@@ -7,11 +7,13 @@
   display: inline-flex;
   align-items: center;
 }
-.wordmark img {
-  height: 40px;
-  width: auto;
+
+/* Preserve intrinsic aspect ratio -- width-constrained only, no explicit
+   height, per BRAND-GUIDE.md's rule against setting both dimensions. */
+.mnemonify-logo {
   display: block;
-  object-fit: contain;
+  width: min(100%, 200px);
+  height: auto;
 }
 
 .top-bar__templates-link {

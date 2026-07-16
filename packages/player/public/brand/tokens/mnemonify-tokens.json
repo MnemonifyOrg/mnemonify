@@ -1,0 +1,110 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "brand": {
+    "name": "Mnemonify",
+    "tagline": "Learning creation for everyone.",
+    "values": [
+      "Open",
+      "Simple",
+      "Flexible",
+      "Community"
+    ],
+    "colors": {
+      "deep-navy": {
+        "$type": "color",
+        "$value": "#0A1020"
+      },
+      "primary-blue": {
+        "$type": "color",
+        "$value": "#2563EB"
+      },
+      "bright-cyan": {
+        "$type": "color",
+        "$value": "#06B6D4"
+      },
+      "emerald": {
+        "$type": "color",
+        "$value": "#10B981"
+      },
+      "violet": {
+        "$type": "color",
+        "$value": "#7C3AED"
+      },
+      "light-gray": {
+        "$type": "color",
+        "$value": "#F1F5F9"
+      },
+      "indigo": {
+        "$type": "color",
+        "$value": "#4F46E5"
+      },
+      "purple": {
+        "$type": "color",
+        "$value": "#6D28D9"
+      },
+      "coral": {
+        "$type": "color",
+        "$value": "#FF6B6B"
+      },
+      "teal": {
+        "$type": "color",
+        "$value": "#14B8A6"
+      },
+      "slate": {
+        "$type": "color",
+        "$value": "#475569"
+      },
+      "soft-white": {
+        "$type": "color",
+        "$value": "#FAFAFC"
+      },
+      "white": {
+        "$type": "color",
+        "$value": "#FFFFFF"
+      }
+    },
+    "gradient": {
+      "brand": {
+        "$type": "gradient",
+        "$value": [
+          {
+            "color": "#06B6D4",
+            "position": 0
+          },
+          {
+            "color": "#2563EB",
+            "position": 0.48
+          },
+          {
+            "color": "#7C3AED",
+            "position": 1
+          }
+        ]
+      }
+    },
+    "typography": {
+      "display": {
+        "family": "DM Sans",
+        "fallback": [
+          "Inter",
+          "Arial",
+          "sans-serif"
+        ]
+      },
+      "ui": {
+        "family": "Inter",
+        "fallback": [
+          "Arial",
+          "sans-serif"
+        ]
+      }
+    },
+    "logo": {
+      "markAspectRatio": "1:1",
+      "outerNodeSquare": "140 x 140 units",
+      "strokeWidth": "14 units",
+      "outerNodeRadius": "18 units",
+      "centerNodeRadius": "16 units"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+/* Mnemonify Brand Tokens */
+:root {
+  --mn-color-deep-navy: #0A1020;
+  --mn-color-primary-blue: #2563EB;
+  --mn-color-bright-cyan: #06B6D4;
+  --mn-color-emerald: #10B981;
+  --mn-color-violet: #7C3AED;
+  --mn-color-light-gray: #F1F5F9;
+  --mn-color-indigo: #4F46E5;
+  --mn-color-purple: #6D28D9;
+  --mn-color-coral: #FF6B6B;
+  --mn-color-teal: #14B8A6;
+  --mn-color-slate: #475569;
+  --mn-color-soft-white: #FAFAFC;
+  --mn-gradient-brand: linear-gradient(90deg, #06B6D4 0%, #2563EB 48%, #7C3AED 100%);
+  --mn-font-display: "DM Sans", "Inter", Arial, sans-serif;
+  --mn-font-ui: "Inter", Arial, sans-serif;
+  --mn-radius-sm: 6px;
+  --mn-radius-md: 10px;
+  --mn-radius-lg: 16px;
+  --mn-radius-app-icon: 22%;
+  --mn-space-1: 4px;
+  --mn-space-2: 8px;
+  --mn-space-3: 12px;
+  --mn-space-4: 16px;
+  --mn-space-6: 24px;
+  --mn-space-8: 32px;
+  --mn-shadow-md: 0 4px 12px rgba(10, 16, 32, 0.10);
+  --mn-shadow-lg: 0 10px 28px rgba(10, 16, 32, 0.14);
+}

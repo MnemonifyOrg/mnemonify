@@ -1,9 +1,9 @@
 # Architecture: Mnemonify
 
-**Version:** 0.2 (In development)
+**Version:** 0.3 (In development)
 **Companion to:** REQUIREMENTS.md
-**Status:** Phase 1 complete
-**Last updated:** July 11, 2026
+**Status:** Phases 1-3 complete; Phase 3.5 next
+**Last updated:** July 14, 2026
 
 This document is the technical source of truth. Claude Code must read it at the start of every session and must not deviate from it without updating it first.
 
@@ -145,6 +145,184 @@ Course
   }
 }
 ```
+
+### 3.6 Two-column block schema
+
+The two-column block is a container block that holds two inner blocks, one per slot. It is the primary layout pattern for pathology courses where clinical text sits left and a WSI embed sits right.
+
+```json
+{
+  "block_id": "blk_col1",
+  "type": "two_column",
+  "include_in_pdf": true,
+  "layout": { "split": 40, "split_min": 25, "split_max": 75 },
+  "left": {
+    "block_id": "blk_col1_left",
+    "type": "text",
+    "content": { "rich_text": [ { "t": "text", "v": "Clinical information..." } ] },
+    "triggers": []
+  },
+  "right": {
+    "block_id": "blk_col1_right",
+    "type": "embed",
+    "content": {
+      "url": "https://www.digitalscope.org/LinkHandler.axd?LinkId=...",
+      "label": "View Whole Slide Image",
+      "sandbox": "allow-scripts allow-same-origin allow-popups"
+    },
+    "triggers": []
+  },
+  "triggers": []
+}
+```
+
+Rules:
+- `split` is the left column width as a percentage (integer 25 to 75). Right column is 100 minus split.
+- Allowed inner block types for left and right slots: text, heading, image, embed. No nested two-column blocks.
+- Inner block_ids use the parent block_id as a prefix (e.g., blk_col1_left, blk_col1_right).
+- On mobile (below 768px): left slot stacks on top, right slot below, both full width. No author effort required.
+- The draggable divider in the editor updates split live and triggers autosave.
+- PDF rendering: left content prints full width, right content prints full width below it.
+
+### 3.7 Table block schema
+
+Required for CBC results, lab value tables, and other structured data in pathology cases.
+
+```json
+{
+  "block_id": "blk_tbl1",
+  "type": "table",
+  "include_in_pdf": true,
+  "content": {
+    "has_header_row": true,
+    "has_header_col": true,
+    "rows": [
+      ["", "WBC", "RBC", "HGB"],
+      ["Result", "5.2 x 10³", "2.7 x 10³", "9.9 g/dL"],
+      ["Range", "4.0-10.0", "3.7-5.3", "11.7-16.0"]
+    ]
+  },
+  "triggers": []
+}
+```
+
+Rules:
+- rows is a 2D array of strings. All rows must have the same column count.
+- has_header_row: first row renders as th elements.
+- has_header_col: first cell of each row renders as th.
+- Cell content is plain text only. No rich text, no nested blocks.
+- Player renders as a standard HTML table with overflow-x: auto wrapper for narrow screens.
+- Editor: add/remove row, add/remove column, each cell is a contentEditable field.
+
+### 3.8 Schema hooks added ahead of their UI
+
+These fields enter the schema now because retrofitting them after Phase 4 means touching the schema, player, editor, Word export, and every existing course document. Adding them now costs almost nothing.
+
+**Course meta additions:**
+
+```json
+"meta": {
+  "header": { "rich_text": [] },
+  "footer": { "rich_text": [ { "t": "text", "v": "© 2026 Example Org" } ] },
+  "page_numbering": false,
+  "objectives": [
+    { "objective_id": "obj_01", "text": "Identify features of MDS with del(5q)", "standard_code": "" }
+  ],
+  "concepts": [
+    { "concept_id": "cpt_01", "name": "Immunohistochemistry interpretation" }
+  ]
+}
+```
+
+- `header` / `footer`: rendered on every page in the player and included in PDF export. Optional; omit or leave empty to render nothing.
+- `page_numbering`: when true, nav drawer and player chrome show "Page N of M", recalculated on page add/delete/reorder.
+- `objectives`: `standard_code` is free text — Common Core, NGSS, state standards, or CME/accreditation codes all fit. No UI in Phase 3.5; the field simply exists.
+- `concepts`: enables concept-level analytics and remediation later without a migration.
+
+**Block-level additions (every block type):**
+
+```json
+{
+  "block_id": "blk_x",
+  "faculty_notes": { "rich_text": [] },
+  "objective_ids": ["obj_01"],
+  "concept_ids": ["cpt_01"]
+}
+```
+
+- `faculty_notes`: **never rendered in any player context, in any mode.** Visible only in the editor, in review mode, and in the instructor guide export (P2-20). This is a hard rule — the player's block renderer must not read this field at all.
+- `objective_ids` / `concept_ids`: optional arrays referencing course-level ids.
+
+**Knowledge check answer-level feedback:**
+
+```json
+{
+  "type": "knowledge_check",
+  "content": {
+    "question": { "rich_text": [] },
+    "question_image_id": "ast_x",
+    "options": [
+      {
+        "option_id": "opt_a",
+        "label": { "rich_text": [] },
+        "image_id": null,
+        "correct": false,
+        "feedback": {
+          "rich_text": [ { "t": "text", "v": "ICUS is incorrect because..." } ],
+          "image_id": "ast_y",
+          "reference_ids": []
+        }
+      }
+    ],
+    "correct_feedback": { "rich_text": [], "image_id": null },
+    "incorrect_feedback": { "rich_text": [], "image_id": null }
+  }
+}
+```
+
+Per-option `feedback` is optional and coexists with block-level `correct_feedback` / `incorrect_feedback`. When an option carries its own feedback, the player shows that instead of the generic block-level feedback. This mirrors the CAP HPATH storyboard structure exactly, where each ancillary study option has its own detailed rationale.
+
+**Table caption:**
+
+```json
+{ "type": "table", "content": { "caption": "CBC results with reference ranges", "..." : "" } }
+```
+
+Rendered as a real HTML `<caption>` element inside the `<table>`, programmatically associated for screen readers.
+
+**Reflection block:**
+
+```json
+{
+  "type": "reflection",
+  "include_in_pdf": true,
+  "content": {
+    "prompt": { "rich_text": [ { "t": "text", "v": "What surprised you about this case?" } ] },
+    "storage_mode": "local"
+  }
+}
+```
+
+`storage_mode` is `"local"` and only `"local"` in v1. Learner text lives in browser memory for the session and is never transmitted to the backend, never written to SCORM `suspend_data`, and never persisted server-side. The field exists so the decision is explicit and visible in every course document rather than implicit in code. Any future change to this value is a privacy and legal decision (FERPA/COPPA), not an engineering one — see REQUIREMENTS.md Non-Goals.
+
+In PDF worksheet mode, a reflection block prints its prompt followed by blank ruled lines.
+
+### 3.9 Editor undo/redo (design now, before Phase 4)
+
+Unreliable undo is the single most-cited flaw in dominKnow and a recurring complaint across every authoring tool researched. It cannot be bolted on later — it constrains how editor state is managed, so it is designed in before Phase 4 adds the trigger builder and player chrome.
+
+Design:
+- The editor holds the course document in a single immutable state object. Every mutation produces a new document rather than mutating in place.
+- An undo stack holds the last 50 document snapshots. A redo stack holds forward states, cleared on any new mutation.
+- Every author action that changes the document pushes a snapshot: text edits (debounced to one snapshot per 500ms of continuous typing, so undo steps are meaningful rather than per-keystroke), block add/delete/duplicate/reorder, column split drag (one snapshot on drag end, not during), settings changes, move/copy to page, page add/delete/rename.
+- Cmd+Z / Ctrl+Z undoes, Cmd+Shift+Z / Ctrl+Y redoes. Both also available in the editor top bar.
+- Undo/redo triggers autosave like any other change.
+- Asset uploads are **not** undoable (the file is on disk); removing an image block via undo leaves the asset in the media library. This is correct and expected behaviour.
+- Snapshots are held in memory only, not persisted. Undo history does not survive a page reload; this is an accepted v1 simplification.
+
+### 3.10 Save-before-export pattern
+
+Any operation that reads course content from the server (Word export, PDF preview, publish) must first await a forced save of the current editor state. The client calls saveNow() (which bypasses the 5-second debounce and immediately PATCHes the current course_json to the API) and awaits its promise before triggering the export or publish request. A "Saving..." indicator shows if the save takes more than 500ms. This prevents a race condition where in-flight edits are missing from exported content.
 
 ## 4. Trigger and Variable Engine (player core)
 
@@ -430,7 +608,22 @@ Events stored in xAPI statement format from day one. When an LRS connection is a
 
 ## 15. Dynamic SCORM and Version Control
 
-### 15.1 Publish flow
+### 15.0 Two publish modes
+
+Authors choose at publish. Both produce valid SCORM 2004 3rd Ed packages that pass conformance.
+
+| | Dynamic launcher (default) | Traditional ZIP |
+|---|---|---|
+| Zip contains | Thin launcher + SCORM API + content server URL | Player bundle + course JSON + all assets |
+| Content source at launch | Mnemonify content server | The zip itself |
+| Update a published course | Republish; no LMS action needed | Upload a new zip to the LMS |
+| Version assignment / rollback | Supported | Not supported |
+| Works if LMS blocks external content | No | Yes |
+| Works offline / air-gapped | No | Yes |
+
+Dynamic is the strategic differentiator and the default. Traditional ZIP exists because some institutions block externally loaded content outright, and for those environments a working course beats a clever one. The SCORM tracking path (completion, score, suspend_data) is identical in both modes — it flows directly between the learner's browser and the LMS, and Mnemonify servers are never in that path either way.
+
+### 15.1 Publish flow (dynamic mode)
 
 1. Author clicks Publish
 2. Author chooses: push to all learners OR lock existing learners to current version
@@ -472,7 +665,47 @@ Every non-obvious control in the editor has a tooltip (hover on desktop, long-pr
 
 ## 17. Deployment
 
-### 17.1 One-click deploy
+### 17.0 Hosted production stack (revised — replaces earlier AWS assumption)
+
+```
+User Browser
+  |  app.mnemonify.org
+  v
+Vercel — editor SPA + public site + docs
+  |  REST API calls
+  v
+Railway — Node.js API
+  |  SQL
+  v
+Railway PostgreSQL
+  |  media, assets, PDFs, SCORM packages
+  v
+Cloudflare R2
+```
+
+| Layer | Service | Why |
+|---|---|---|
+| Public site, docs, editor SPA | Vercel | Deploys from GitHub, preview deployments per branch, trivial custom domains, free tier covers early usage |
+| API + database | Railway | Native Node.js and PostgreSQL, simple env var management, deploys from GitHub, keeps API and DB adjacent |
+| Assets, media, PDFs, packages | Cloudflare R2 | **Zero egress fees** — decisive for image-heavy pathology courses. S3-compatible API, so the storage module needs no rewrite and AWS migration stays open |
+
+Rough cost: $20-40/month versus $100-200+ on AWS for equivalent capability, with no infrastructure to operate solo.
+
+Explicitly avoided until real usage pressure justifies them: EC2, ECS, Kubernetes, microservices, self-managed PostgreSQL on a VM, complex CI/CD, multi-cloud.
+
+**Environments:**
+
+| Environment | Purpose | URL |
+|---|---|---|
+| Local | Claude Code development, schema changes, player testing | localhost (Vite dev servers + local Postgres via docker-compose) |
+| Staging | Pre-production, SCORM Cloud testing, Ethos testing, reviewer testing | staging.mnemonify.org |
+| Production | Real hosted users, public demos | mnemonify.org, app.mnemonify.org |
+
+**Domains:** mnemonify.org (project home), app.mnemonify.org (hosted app), docs.mnemonify.org (documentation), staging.mnemonify.org (staging), mnemonify.app (redirect to app subdomain initially; may become a product landing page later).
+
+**Operational baseline required before any real user uploads content:** PostgreSQL backups, R2 replication or backup plan, error logging, uptime monitoring, admin account recovery, rate limiting on login and upload endpoints, file type validation, file size limits, a virus scanning plan for uploads, privacy policy, terms of use, license clarity for uploaded content, and a visible open-source license notice.
+
+### 17.1 One-click deploy (self-hosters)
 
 Railway and Render one-click deploy configs in deploy/ directory. Each config provisions: Node.js server, PostgreSQL database, S3-compatible storage (Railway Volumes or Render Disks), and sets required environment variables via a setup wizard. Non-technical self-hosters can deploy without touching the command line.
 
@@ -484,7 +717,58 @@ Full setup guide (Phase 6 deliverable) covering: Node.js + PostgreSQL install, e
 
 docker-compose.yml in deploy/ starts PostgreSQL and the server locally. Player and editor run via Vite dev server (npm run dev in their respective packages).
 
-## 18. Security and Deployment Baseline
+## 18. Word Importers (Phase 5)
+
+Two importers, one shared pipeline. Both accept a .docx upload, both produce a proposed course JSON plus a flagged-items list, both feed the same pre-import review screen, and both always create a draft rather than publishing. The author chooses which at upload time.
+
+### 18.1 Smart Import (rule-based, free, no API key)
+
+This is the default and the one that must work for every educator, including those who will never configure an API key. Built on mammoth.js, already in the stack.
+
+The parser reads the .docx's semantic structure and applies deterministic rules:
+
+| Word structure | Mnemonify block |
+|---|---|
+| Heading 1 / 2 / 3 styles | heading block at matching level |
+| Normal paragraph | text block |
+| Bulleted list | list block (unordered) |
+| Numbered list | list block (ordered) |
+| Table | table block |
+| Embedded image | image block; binary extracted via mammoth, saved as an asset, referenced in position |
+| 3+ consecutive images | carousel block |
+| Bold/heading paragraph followed by A. B. C. D. options | knowledge_check block |
+| Paragraph after a "Correct answer:" label | correct_feedback on the preceding knowledge_check |
+
+**Explicit author hints.** If the document contains a bracketed marker before a section — `[[Accordion]]`, `[[Tabs]]`, `[[Two Column]]`, `[[Reflection]]` — the parser treats it as authoritative and builds that block type without inference. Authors who learn this convention get materially better imports; authors who don't still get a useful rough draft. The marker is stripped from the output content.
+
+Honest limits, surfaced in the review screen rather than hidden: the parser has no understanding of context. It cannot know that a CAP "Ancillary Studies feedback" section means a per-option accordion. Image placement within flowing text is approximate. Anything ambiguous is flagged for the author rather than guessed at.
+
+### 18.2 AI Import (Claude API, optional, power users)
+
+For documents the rule-based parser cannot handle well: narrative-heavy storyboards, inconsistent formatting, or domain structures like the CAP HPATH format where section meaning matters more than document structure.
+
+Requires an API key configured at organisation level. If no key is configured, the option is hidden and Smart Import is the only choice.
+
+The server extracts the document text and table structure using mammoth.js, then sends it to the Claude API (claude-sonnet-4-6) with a system prompt that instructs it to:
+
+1. Identify which of the two CAP storyboard formats is present (HPATH table format or NP narrative format)
+2. Map each section to a Mnemonify block type using this mapping:
+   - Clinical Information, Specimen Source, Clinical History → text block
+   - Test Results with data table → table block
+   - Whole Slide Image with DigitalScope URL → two_column block (text description left, embed block right)
+   - Ancillary Studies with per-option feedback → accordion block (one item per study option)
+   - Diagnostic List / Questions with A-E options → knowledge_check block
+   - Diagnostic Images with Image Name references → image blocks (filenames flagged for upload)
+   - Discussion, Diagnosis, Take Home Points → text and heading blocks
+   - References → references block
+3. Return a complete Mnemonify course JSON (schema version 1, valid against packages/schema/course.schema.json)
+4. Flag any sections it could not confidently map, with a reason
+
+The server validates the returned JSON against the schema. The editor presents a pre-import review screen showing: mapped blocks (count and types), flagged sections (with Claude's reason), and any image filenames that need to be uploaded separately. Author confirms and the draft course is created. Always produces a draft, never auto-publishes.
+
+The Claude API call uses the standard Anthropic /v1/messages endpoint. The system prompt, mapping rules, and JSON schema are stored in packages/server/src/storyboard-converter/ and are versioned alongside the code so the mapping can be improved over time without touching the server logic.
+
+## 19. Security and Deployment Baseline
 
 - Passwords hashed (argon2). Sessions via httpOnly cookies.
 - All author-supplied text sanitised before render (no raw HTML injection through content fields).
@@ -493,7 +777,7 @@ docker-compose.yml in deploy/ starts PostgreSQL and the server locally. Player a
 - Embed iframes sandboxed with minimal allowances. Domain allowlist enforced server-side.
 - One-click deploy configs use environment variables for all secrets; no secrets in the repository.
 
-## 19. Development Workflow (for Claude Code sessions)
+## 20. Development Workflow (for Claude Code sessions)
 
 1. Every session starts by reading REQUIREMENTS.md, ARCHITECTURE.md, DECISIONS.md.
 2. Work only on the current phase; do not build ahead (see REQUIREMENTS.md Section 10).
@@ -502,7 +786,7 @@ docker-compose.yml in deploy/ starts PostgreSQL and the server locally. Player a
 5. samples/sample-course.json is the living reference. Every new block type or trigger capability is added to it and it must always render clean in the player.
 6. Git commit at every working milestone with plain-language messages so a non-technical owner can roll back safely.
 
-## 20. Deliberate Simplifications (v1)
+## 21. Deliberate Simplifications (v1)
 
 - No microservices, no GraphQL, no state management libraries beyond React built-ins unless a concrete need appears.
 - No CSS frameworks in the player; hand-rolled design tokens keep the SCORM launcher bundle small.

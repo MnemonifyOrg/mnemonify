@@ -1,10 +1,10 @@
 # Product Requirements: Mnemonify
 
-**Version:** 0.3 (In development)
+**Version:** 0.5 (In development)
 **Owner:** Sebastin
-**Status:** Phase 1 complete
+**Status:** Phases 1, 2, 3 complete (brand applied, bug fixes complete)
 **License intent:** AGPL-3.0, open source
-**Last updated:** July 11, 2026
+**Last updated:** July 14, 2026
 
 ---
 
@@ -37,6 +37,9 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 4. **AI content generation in v1.** Valuable later, but it is a separate initiative and must not delay the core authoring engine.
 5. **xAPI LRS connection in v1.** Analytics telemetry is built xAPI-compatible from day one, but the LRS connection is P2. SCORM 2004 3rd Ed is the primary LMS reporting protocol.
 6. **Native mobile apps.** The web app is responsive; that is sufficient.
+7. **LTI 1.3 integration, student rosters, and gradebooks.** These are the K-12 and higher-ed LMS integration path (Canvas, Schoology, Google Classroom). Each is a project, not a feature, and building them means building a sliver of an LMS. Mnemonify is an authoring tool. Anonymous share links (P2-24) serve the classroom use case without this scope.
+8. **Named per-student result storage.** Storing student names alongside their answers is FERPA and COPPA territory in US K-12: data retention policy, parental consent, district procurement review. This is a legal and policy decision, not an engineering one. Analytics stays hashed-learner and aggregate. The reflection block (P1-46) stores nothing at all, by design.
+9. **Teacher-paced live mode / peer instruction.** Requires a real-time synchronous architecture fundamentally different from asynchronous SCORM delivery. Deliberately out of scope.
 
 ## 5. Target Users
 
@@ -103,6 +106,17 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 - As an author, I want the course PDF to be generated and viewable during review so that reviewers can check the summary document before publication.
 - As a reviewer, I want to leave comments pinned to a specific block so that my feedback has clear context.
 - As an author, I want to reply to and resolve comments so that review rounds stay organized.
+
+### Layout and editor (P0/P1)
+- As a pathology educator, I want a two-column layout block so that I can show clinical information on the left and a WSI embed on the right, the same layout I currently build in Storyline.
+- As a pathology educator, I want to resize the two columns by dragging a divider so that I can control the balance between text and image area.
+- As an author, I want the two-column layout to automatically stack on mobile so that the course stays readable on phones with no extra effort.
+- As a pathology educator, I want the left and right slots of a two-column block to accept text, image, or embed blocks so that I can combine clinical narrative with a WSI viewer or static image.
+- As an author, I want a table block for structured data like lab results so that CBC values and reference ranges display correctly.
+- As an author, I want to move or copy a block to a different page so that I can restructure a course without rebuilding blocks from scratch.
+- As an author, I want to save a whole page as a reusable page template so that a standard case page layout can be applied to new pages in one click.
+- As an author, I want to add images to the question stem, answer options, and feedback fields of a knowledge check so that learners can identify pathology in an image as part of a question.
+- As an author, I want superscript and subscript formatting in text blocks so that I can write pathology notation correctly (e.g., 5.2 x 10³, del(5q)).
 
 ### Rich media and specialised content (P1)
 - As an author, I want an embed block for YouTube, Vimeo, web pages, and survey tools so that external content lives inside the course.
@@ -171,6 +185,7 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 | P0-5 | Block editor UI | Add, edit inline, reorder (drag), duplicate, delete blocks; live responsive preview toggle; autosave within 5 seconds of change |
 | P0-6 | Trigger builder UI | Author builds any P0-3 trigger through dropdowns only; invalid combinations are impossible to select; triggers display as readable sentences |
 | P0-7 | Course library with backend persistence | Courses stored in PostgreSQL via API; create, rename, duplicate, delete; every course record carries an organization_id |
+| P0-8 | **Two-column layout block (promoted from P1 after reviewing CAP storyboard format):** A container block with left and right slots. Each slot accepts one inner block: text, heading, image, or embed. Column split ratio stored as a percentage (e.g., 40/60) adjusted by a draggable divider between columns. On mobile (below 768px) columns stack automatically, left first. The right slot is where DigitalScope WSI embeds live next to clinical narrative text. This layout is the primary screen pattern in CAP pathology courses and is required before any CAP course can be authored in Mnemonify | Two-column block renders correctly at 375px (stacked), 768px (side by side at 50/50), and 1280px (at custom split ratio); dragging the divider updates the ratio live; embed block in right slot renders DigitalScope URL inside sandboxed iframe |
 
 ### P1: Should have (fast follows)
 
@@ -203,6 +218,29 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 | P1-25 | Dynamic SCORM: published SCORM zip contains only a thin launcher (HTML + SCORM API communication + Mnemonify content server URL). Course content (JSON, media, player bundle) served from Mnemonify servers. Author chooses at each publish: push to all learners or lock existing learners to current version. Full publish history with rollback. Structural change detection: if a new publish removes pages referenced in a learner's saved progress, player detects mismatch on launch and restarts gracefully with a brief explanation. SCORM tracking data (completion, score, suspend_data) flows directly between learner browser and LMS, unchanged and independent of Mnemonify content server |
 | P1-26 | Translation: course content translatable into any DeepL-supported language. Author selects target language, Mnemonify generates draft via DeepL API. Side-by-side review editor; clinical terminology flagged for human review. Spanish first validated language; all DeepL-supported languages available from launch. Language switcher in player top bar appears only if course has at least one published translation. Falls back to default language gracefully if translation is incomplete. Player chrome UI strings localised for each supported language |
 | P1-27 | Onboarding: guided first-course walkthrough on first login. Starter template library on first login dashboard. Tooltips and plain-language labels throughout editor. No blank-canvas first experience |
+| P1-28 | **Table block:** Author-built data table with configurable rows and columns. Header row optional. Cell content is plain text (no nested blocks). Renders as a responsive HTML table in the player; on narrow screens, scrolls horizontally rather than breaking layout. Required for CBC results, lab value tables, and similar structured data in pathology cases |
+| P1-29 | **Move or copy block between pages:** Author can select any block in the editor and move it to a different page, or copy it to one or more pages. Context menu or drag-to-page-list interaction. Block retains its trigger logic and settings |
+| P1-30 | **Page templates:** Author can save any page as a named page template (personal or org-shared). Applying a page template inserts a copy of that page's block structure (with placeholder content) at the current position. Separate from course templates; a page template is a reusable single-page layout pattern |
+| P1-31 | **Images in knowledge check:** Author can add an image (from media library) to the question stem, to individual answer option labels, and to correct and incorrect feedback sections. Images in answer options render as image + text label pairs. Useful for "what do you see in this image?" diagnostic questions |
+| P1-32 | **Superscript and subscript text formatting:** Available in text blocks, heading blocks, and knowledge check fields. Required for pathology notation (e.g., 5.2 x 10³, del(5q), H₂O). Rendered using HTML sup and sub elements |
+| P1-33 | **AI storyboard converter (Phase 5, optional/power-user):** Author uploads an existing CAP-format Word storyboard (.docx, either HPATH table format or NP narrative format). The server sends it to the Claude API, which reads the content, maps sections to Mnemonify block types, and returns a draft course JSON. Requires an API key configured at org level. Handles ambiguous, complex, or narrative-heavy documents that the rule-based importer (P1-34) cannot. Draft opens in the editor for author review; never auto-publishes |
+| P1-34 | **Smart Import: rule-based Word importer (Phase 5, free for everyone, no API required).** Built into Mnemonify using mammoth.js (already in stack). Parses any uploaded .docx by semantic structure and maps to blocks: Heading 1/2/3 styles → heading blocks at matching level; normal paragraphs → text blocks; bulleted lists → list blocks; numbered lists → ordered list blocks; Word tables → table blocks; embedded images → image blocks extracted and saved as assets in position; 3+ consecutive images → carousel block; a bold or heading paragraph followed by A./B./C./D. lettered options → knowledge check block; paragraphs after a "Correct answer:" label → correct feedback. Optional explicit author hints: if the document contains `[[Accordion]]`, `[[Tabs]]`, `[[Two Column]]` etc. before a section, the parser treats it as authoritative and builds that block type without guessing. Shares the same pre-import review screen and draft-creation flow as P1-33. Author chooses "Smart Import" (free) or "AI Import" (needs API key) at upload |
+| P1-35 | **Answer-level feedback per option (schema now, UI Phase 5):** Every knowledge check answer option supports its own optional feedback object with rich text, an image (asset_id), and reference links, in addition to the block-level correct/incorrect feedback. In medical education the learning happens in the distractors; learners need to know why each attractive alternative is wrong. Matches the CAP HPATH storyboard structure where every ancillary study option carries its own detailed explanation |
+| P1-36 | **Faculty notes (schema now, UI Phase 5/6):** Any block can carry an optional `faculty_notes` rich-text field. Never rendered to learners in any player context. Visible in the editor, in review mode, and included in the instructor guide export. Replaces the common workaround of keeping teaching logic in separate Word docs or email threads |
+| P1-37 | **Course objectives and standards tagging (schema now, UI later):** Course meta carries an `objectives` array. Each objective: `{ objective_id, text, standard_code }`, where `standard_code` is an optional free-text field for Common Core, NGSS, state standards, or CME/accreditation codes. Blocks and knowledge check questions can reference objective_ids. Pre-publish checklist (later phase) can flag objectives with no mapped content and questions with no mapped objective |
+| P1-38 | **Course concepts (schema now, UI later):** Course meta carries a `concepts` array of `{ concept_id, name }`. Blocks, images, questions, and feedback can each carry a `concept_ids` array. Enables concept-level analytics and remediation later without a schema migration |
+| P1-39 | **Version change notes:** The `course_versions` table gains a `change_notes` text field. At publish, the author is prompted for a brief plain-language summary of what changed ("Fixed Case 3 diagnostic criteria"). Displayed in publish history. Required for accreditation audits and reviewer signoff |
+| P1-40 | **Course-wide header and footer:** Course meta carries optional `header` and `footer` rich-text fields. Rendered on every page in the player (footer typically a copyright line, e.g. "© 2026 College of American Pathologists"). Included in PDF export. Among the most repeated unmet requests in the Rise community |
+| P1-41 | **Duplicate knowledge check question:** One-click duplicate of a knowledge check block including all options, feedback, and answer-level feedback, with new block_id and option ids. Long-standing unmet request across Rise and iSpring |
+| P1-42 | **Media library folders and multi-select delete:** Assets can be organised into named folders per course or per organisation. Multi-select checkboxes support bulk delete and bulk move. Cited as a real gap in dominKnow and Rise |
+| P1-43 | **Global find and replace:** Search across all text content in a course (all blocks, all pages, all fields) and optionally replace. Results list shows page, block type, and surrounding context before replacing. A long-standing unmet Storyline request |
+| P1-44 | **Page auto-numbering:** Optional course setting that displays page numbers in the nav drawer and optionally in the player chrome ("Page 3 of 12"). Automatically recalculates on page add, delete, or reorder. Storyline's oldest publicly unfulfilled feature request (10+ years) |
+| P1-45 | **Table captions (accessibility):** Table blocks carry an optional `caption` field, rendered as a proper HTML `<caption>` element programmatically associated with the table so screen reader users navigating by table know what each table contains. Listed as an open accessibility gap in Rise's own published maturity plan |
+| P1-46 | **Reflection block (local storage only):** A learner-response block with a prompt and a free-text textarea. Learner types a reflection; text is held in browser memory for the session only. Never transmitted to the Mnemonify backend, never written to SCORM suspend_data, never stored server-side. This is a deliberate privacy decision: free-text learner input is a different data category from click telemetry, and local-only storage avoids FERPA and COPPA exposure entirely. Author sets the prompt text; no author-visible responses. Learner can copy their own text out if they wish |
+| P1-47 | **Text-to-speech on text blocks:** A speaker button on any text, heading, or list block reads the content aloud using the browser's built-in SpeechSynthesis API. No server call, no API key, no cost. Supports differentiation and accessibility for learners who prefer or need audio |
+| P1-48 | **Worksheet export (print mode):** A third PDF export mode alongside combined and per-page. Worksheet mode strips interactivity and prints knowledge check questions with blank answer lines for handwritten completion, includes reflection prompts with blank space, and omits feedback and answer keys. Reuses the existing Puppeteer pipeline |
+| P1-49 | **Non-drag interaction block types:** Matching (via dropdown selection per item), Ordering (via up/down buttons per item), and Image Hotspot (click regions). These deliver the pedagogy of drag-and-drop interactions while remaining fully keyboard operable and WCAG 2.1 AA conformant, consistent with the permanent exclusion of drag-and-drop interactions (see Non-Goals) |
+| P1-50 | **Traditional SCORM ZIP export mode:** Alongside the dynamic launcher (P1-25), authors can publish a fully self-contained SCORM 2004 3rd Ed package with the player bundle, course JSON, and all assets inside the zip. No dependency on Mnemonify servers at learner launch. Required for locked-down LMS environments that block externally loaded content. Author chooses mode at publish; dynamic remains the default and the strategic differentiator |
 
 ### P2: Future considerations (design for, do not build)
 
@@ -219,6 +257,19 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 | P2-9 | Gamification presets: points, badges, progress unlocking as pre-wired template patterns | Trigger engine and numeric variables already support all mechanics; P2-9 is a template and UI layer only |
 | P2-10 | Google Classroom integration: push course link as assignment via Classroom API | None required now; Mnemonify courses already run in browser without an LMS |
 | P2-11 | Lesson plan, handout, and worksheet generation from course content | Word export pipeline (P1-15) is the foundation; extend to teacher-facing document formats |
+| P2-12 | Reusable learning objects: save block groups as objects reusable across courses, with controlled update propagation | Needs new tables (learning_objects, object_usages). Concepts array (P1-38) and stable block ids are the prerequisite groundwork |
+| P2-13 | "Where is this used?" dependency view for assets, references, questions, and learning objects | Requires a usage-tracking table populated at publish time. Stable asset_ids and block_ids already support this |
+| P2-14 | Question banks: org-level reusable questions with tags, concepts, difficulty, and usage tracking | Needs new tables. Answer-level feedback (P1-35) and concepts (P1-38) are the schema prerequisites |
+| P2-15 | Content aging alerts: review metadata (last_reviewed, next_review, reviewer, status) on courses, assets, references, and learning objects, with a dashboard flagging overdue content | Add review_metadata object to courses and assets schema when convenient; dashboard is the real work |
+| P2-16 | SME review wizard: review links carry a review type (accuracy, image quality, distractor quality, clinical terminology, CME concerns); reviewer sees guided prompts | Extends P1-10 review links with a category field |
+| P2-17 | Accessibility heat map: plain-language accessibility status panel by course, page, and block, with direct links to fix each issue | Extends the P1-11 pre-publish checklist into a persistent visual panel |
+| P2-18 | Decision path visualization: auto-generated map of branching logic, showing unreachable pages, circular paths, and missing completion paths | Reads the Phase 4 trigger JSON; no schema change needed |
+| P2-19 | Learning path templates: pre-wired trigger patterns (case study, remediation path, pre-test to personalized review, confidence-based feedback, video-then-branch) selectable by name | Same mechanism as gamification presets (P2-9); a template and UI layer over the existing trigger engine |
+| P2-20 | Instructor guide PDF: course export including faculty notes, answer keys, mapped objectives, discussion prompts, and timing guide | Faculty notes (P1-36) and objectives (P1-37) are the schema prerequisites; extends the Puppeteer PDF pipeline |
+| P2-21 | CME/CE credit evidence package: structured accreditation documentation bundle (objectives, content, references, assessments, completion rules, version history, accessibility status, review metadata) | Depends on P1-37, P1-39, P2-15. High value for CAP and other accrediting bodies specifically |
+| P2-22 | Concept prerequisite mapping and course memory: concept-level learner history across courses within an organisation, powering recommendations and aggregate remediation reporting | Concepts array (P1-38) and xAPI-structured telemetry (P1-24) are the groundwork. The cross-course intelligence layer is the real work |
+| P2-23 | Full-text search across course content for learners | dominKnow offers this and users praise it; no current schema blocker |
+| P2-24 | Anonymous student links: tokenised no-account share link for classroom use; aggregate results only, no named per-student data | Reuses the P1-10 review-link mechanism and hashed-learner telemetry. Deliberately aggregate-only: named per-student results are a FERPA/COPPA scope decision, not a feature |
 
 ## 8. Success Metrics
 
@@ -240,19 +291,22 @@ During development, the practical metric per phase is: the phase acceptance crit
 - Built and maintained by a non-technical owner using Claude Code; therefore documentation quality and architectural simplicity are hard requirements, not nice-to-haves.
 - Developed on personal time, personal hardware, and a personal GitHub account, with no employer content or work product included. Owner to review employment agreement IP clause before public release.
 - SCORM target is fixed: SCORM 2004 3rd Edition (Ethos requirement).
-- Stack: React + Vite frontend, Node.js backend, PostgreSQL. Runs locally during development; AWS later.
+- Stack: React + Vite frontend, Node.js backend, PostgreSQL. Runs locally during development.
+- Hosting (revised, replaces earlier AWS assumption): Vercel for the public site and editor SPA; Railway for the Node.js API and PostgreSQL; Cloudflare R2 for media, assets, generated PDFs, and published packages. Chosen over AWS deliberately: roughly $20-40/month versus $100-200+, no infrastructure to operate solo, and R2 has zero egress fees which matters materially for image-heavy pathology courses. R2 is S3-compatible, so migration to AWS remains open if usage pressure ever justifies it. Avoid until there is real usage: EC2, ECS, Kubernetes, microservices, self-managed PostgreSQL, multi-cloud.
+- Domains: mnemonify.org (public project home), app.mnemonify.org (hosted authoring app), docs.mnemonify.org (documentation), staging.mnemonify.org (pre-production testing), mnemonify.app (redirect to app subdomain initially).
 - License: AGPL-3.0, added to the repository at project start.
 
 ## 10. Phasing
 
 | Phase | Deliverable | Definition of done |
 |---|---|---|
-| 1 | JSON schema + responsive player | Hand-written sample course renders responsively with 7 core block types (text, heading, image, list, accordion, tabs, knowledge check). Keyboard accessibility verified on Safari and Chrome. Print CSS stub added. **COMPLETE** |
-| 2 | Dynamic SCORM 2004 3rd Ed wrapper | Thin launcher zip passes SCORM Cloud; completion, score, suspend/resume verified; content served from Mnemonify dev server; tested in Ethos |
-| 3 | Block editor + templates + Word import/export + bulk image upload + onboarding | Author builds Phase 1 sample course in UI; saves as template; exports Word .docx; re-imports it; bulk-uploads 30 images into carousel; guided onboarding walkthrough completes without errors |
+| 1 | JSON schema + responsive player | 7 core block types, keyboard accessibility verified. **COMPLETE** |
+| 2 | Dynamic SCORM 2004 3rd Ed wrapper | Thin launcher passes SCORM Cloud; suspend/resume verified; Ethos confirmed working. **COMPLETE** |
+| 3 | Block editor, backend, templates, Word round-trip, bulk upload, onboarding, brand | 16-step integration test passed; brand applied; 3 bug fixes shipped. **COMPLETE** |
+| 3.5 | Two-column block, table block, schema hooks, editor quality fixes | Two-column block renders at all breakpoints with draggable divider; embed block works in right slot (DigitalScope test); table block renders lab results with caption; move/copy block between pages works; page templates work; images in KC work; superscript/subscript work; undo/redo works reliably across all editor actions; schema carries answer-level feedback, faculty_notes, objectives, concepts, header/footer |
 | 4 | Trigger and variable engine + trigger builder UI + player chrome + media manager | Author builds a branching course through dropdowns only; player chrome renders with hybrid drawer, Continue button, linear nav; one-active-media rule verified with two videos in tabs |
-| 5 | States, expanded block types, interactive video, captions, translation, PDF artifact, analytics, in-player containment | All P1-2 through P1-27 complete; 4-case pathology course with interactive video, auto-captions, Spanish translation, and PDF summary on Resources page passes full manual QA |
-| 6 | Accounts, shared library, review and commenting, deployment docs | Team of 5 in shared workspace; reviewer completes comment round; one-click deploy to Railway verified by a non-technical tester; manual self-host guide also tested |
+| 5 | States, expanded block types, interactive video, captions, translation, PDF artifacts, analytics, Word importers | 4-case pathology course with WSI in two-column layout, interactive video, auto-captions, Spanish translation, PDF summary, and worksheet export passes full manual QA. Smart Import (rule-based) produces a usable draft from a real Word document with no API key. AI Import produces a usable draft from a real CAP storyboard. Reflection, matching, ordering, and hotspot blocks work and are keyboard operable. Text-to-speech works on text blocks |
+| 6 | Accounts, shared library, review and commenting, anonymous links, deployment | Team of 5 in shared workspace; reviewer completes comment round; anonymous share link works with aggregate-only results; both SCORM modes (dynamic and traditional ZIP) pass SCORM Cloud; deployed to Vercel + Railway + R2; one-click deploy verified by a non-technical tester |
 | 7 | Pathology signature: deep-zoom whole-slide viewer (P2-8) | Learner pans/zooms tiled slide; annotations reveal at zoom levels; reuses Phase 5 zoom engine |
 
 Accessibility (P1-11) is a build practice, not a phase. Semantic HTML, keyboard operability, and alt text fields are implemented from Phase 1, with a formal WCAG AA audit before public release.
@@ -264,11 +318,13 @@ Phases 5 and 7 form the pathology differentiation wedge. No free tool or AI gene
 1. **(Legal, blocking before public release)** Does Sebastin's employment agreement contain an IP assignment clause covering personal projects? Confirm before open-sourcing.
 2. **(Product) CLOSED.** Project name is Mnemonify. Domains mnemonify.org and mnemonify.app registered. Business email active. GitHub org: MnemonifyOrg.
 3. **(Product) CLOSED.** Phase 1 block set confirmed: text, heading, image, list, accordion, tabs, knowledge check (7 types). All implemented and keyboard-verified.
-4. **(Technical, resolve in Phase 2)** Ethos-specific SCORM quirks and dynamic content serving: verify Ethos allows content loaded from an external URL inside the SCORM launcher. Test with a minimal package early.
+4. **(Technical) PARTIALLY CLOSED.** Ethos dynamic SCORM confirmed working via ngrok in dev. Ethos UAT full test pending (UAT site was down). Retest when UAT is restored and document any Ethos quirks in DECISIONS.md.
 5. **(Product, resolve by Phase 6)** Hosted version pricing model, if any: donations, flat nominal fee, or free with paid support.
 
 ## 12. Out-of-Scope Parking Lot
 
 Ideas raised and deliberately deferred: AI content generation, PowerPoint import, collaborative real-time editing, discussion/social blocks, LTI integration, drag-and-drop interaction blocks (excluded partly for accessibility reasons).
+
+Word template redesign: considered and parked. The current Mnemonify Word template (machine-parseable table format) is retained. Instead of redesigning it to match CAP storyboard format, a storyboard converter (P1-33, Phase 5) will allow authors to upload their existing storyboards and receive a draft Mnemonify course JSON, eliminating the need for SMEs to learn any new template format.
 
 Bigger future bets noted but not scheduled: spaced-repetition of missed concepts across SCORM sessions (courses that remember the learner), content-graph model where a concept updated once propagates to every course referencing it (living courses rather than static documents), deep-zoom whole-slide pathology viewer (scheduled as Phase 7).

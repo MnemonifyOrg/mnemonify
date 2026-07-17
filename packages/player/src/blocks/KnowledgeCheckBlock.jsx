@@ -1,9 +1,25 @@
 import { useState } from 'react';
 
-export default function KnowledgeCheckBlock({ block, onTrigger }) {
+function KcImage({ assetId, assets }) {
+  const asset = (assets || []).find((a) => a.asset_id === assetId);
+  if (!asset) return null;
+  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  return <img className="knowledge-check__image" src={resolvedSrc} alt={asset.alt || ''} />;
+}
+
+export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
   const [selectedId, setSelectedId] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const { question, options, correct_feedback, incorrect_feedback, show_feedback } = block.content;
+  const {
+    question,
+    question_image_id: questionImageId,
+    options,
+    correct_feedback,
+    correct_feedback_image_id: correctFeedbackImageId,
+    incorrect_feedback,
+    incorrect_feedback_image_id: incorrectFeedbackImageId,
+    show_feedback,
+  } = block.content;
 
   function handleSubmit() {
     setSubmitted(true);
@@ -39,6 +55,7 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
 
   return (
     <div className="block block-knowledge-check">
+      <KcImage assetId={questionImageId} assets={assets} />
       <p className="knowledge-check__question">{question}</p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
         <legend className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
@@ -65,7 +82,10 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
                 onChange={() => setSelectedId(option.id)}
                 onKeyDown={(e) => handleOptionKeyDown(e, index)}
               />
-              <label htmlFor={`${block.block_id}-${option.id}`}>{option.text}</label>
+              <label htmlFor={`${block.block_id}-${option.id}`}>
+                <KcImage assetId={option.image_id} assets={assets} />
+                {option.text}
+              </label>
             </li>
           ))}
         </ul>
@@ -86,6 +106,16 @@ export default function KnowledgeCheckBlock({ block, onTrigger }) {
               incorrect_feedback when present, so distractor-specific
               rationale (e.g. "why this option is wrong") can be shown
               instead of the generic message. */}
+          <KcImage
+            assetId={
+              selectedOption?.feedback?.rich_text?.length
+                ? selectedOption.feedback.image_id
+                : selectedOption?.correct
+                  ? correctFeedbackImageId
+                  : incorrectFeedbackImageId
+            }
+            assets={assets}
+          />
           {selectedOption?.feedback?.rich_text?.length
             ? selectedOption.feedback.rich_text.map((segment, i) => <span key={i}>{segment.v}</span>)
             : selectedOption?.correct

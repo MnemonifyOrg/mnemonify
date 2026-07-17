@@ -84,10 +84,13 @@ const ALIGNMENTS = [
   { value: 'right', label: 'Right' },
 ];
 
-export function ImageBlockSettings({ block, assets, onChange, onUpdateCourseAsset }) {
-  const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
-  if (!asset) return <p className="settings-panel__empty">Upload an image first.</p>;
-
+// Shared between the top-level Settings panel (ImageBlockSettings below)
+// and the two-column editor's inline slot controls -- an image block
+// inside a two-column slot has no separate Settings-panel entry of its
+// own (slot blocks are only reachable through the two-column container),
+// so this needs to be usable standalone, not just as part of the bigger
+// settings form.
+export function ImageSizeAlignmentFields({ block, onChange }) {
   const widthPreset = block.content.width_preset || 'medium';
   const alignment = block.content.alignment || 'center';
   const isFull = widthPreset === 'full';
@@ -104,19 +107,6 @@ export function ImageBlockSettings({ block, assets, onChange, onUpdateCourseAsse
 
   return (
     <>
-      <label>Alt text</label>
-      <input
-        className="input"
-        value={asset.alt || ''}
-        onChange={(e) => onUpdateCourseAsset(asset.asset_id, { alt: e.target.value })}
-      />
-      <label>Caption</label>
-      <input
-        className="input"
-        value={asset.caption || ''}
-        onChange={(e) => onUpdateCourseAsset(asset.asset_id, { caption: e.target.value })}
-      />
-
       <label>Size</label>
       <div className="image-block-settings__segmented">
         {SIZE_PRESETS.map((preset) => (
@@ -145,6 +135,30 @@ export function ImageBlockSettings({ block, assets, onChange, onUpdateCourseAsse
           </button>
         ))}
       </div>
+    </>
+  );
+}
+
+export function ImageBlockSettings({ block, assets, onChange, onUpdateCourseAsset }) {
+  const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
+  if (!asset) return <p className="settings-panel__empty">Upload an image first.</p>;
+
+  return (
+    <>
+      <label>Alt text</label>
+      <input
+        className="input"
+        value={asset.alt || ''}
+        onChange={(e) => onUpdateCourseAsset(asset.asset_id, { alt: e.target.value })}
+      />
+      <label>Caption</label>
+      <input
+        className="input"
+        value={asset.caption || ''}
+        onChange={(e) => onUpdateCourseAsset(asset.asset_id, { caption: e.target.value })}
+      />
+
+      <ImageSizeAlignmentFields block={block} onChange={onChange} />
     </>
   );
 }

@@ -1,10 +1,30 @@
 import { useRef, useState } from 'react';
+import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
 const BLUR_HIDE_DELAY_MS = 150;
 
-export default function KnowledgeCheckBlockEditor({ block, onChange }) {
+// Small "add/change/remove image" affordance shared by the question stem,
+// each option, and both feedback fields -- same interaction, four places.
+function KcImageField({ assetId, assets, label, onPick, onRemove }) {
+  const asset = (assets || []).find((a) => a.asset_id === assetId);
+  return (
+    <div className="kc-image-field">
+      {asset && <img className="kc-image-field__thumb" src={`/${asset.src}`} alt={asset.alt || ''} />}
+      <button type="button" className="btn-text" onClick={onPick}>
+        {asset ? `Change ${label}` : `Add ${label}`}
+      </button>
+      {asset && (
+        <button type="button" className="btn-text" onClick={onRemove}>
+          Remove
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset }) {
   const { question = '', options = [] } = block.content;
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
@@ -13,6 +33,9 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
   // as transient editor-only UI state, not persisted to the document, so a
   // collapsed-and-empty feedback field adds no visual clutter by default.
   const [expandedFeedbackIds, setExpandedFeedbackIds] = useState(() => new Set());
+  // Which image slot the media library picker is currently filling --
+  // { kind: 'question' | 'option' | 'optionFeedback' | 'correct' | 'incorrect', optionId? }
+  const [imagePickerTarget, setImagePickerTarget] = useState(null);
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -20,6 +43,39 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
 
   function updateOption(id, patch) {
     setContent({ options: options.map((o) => (o.id === id ? { ...o, ...patch } : o)) });
+  }
+
+  function updateOptionFeedbackImage(id, imageId) {
+    setContent({
+      options: options.map((o) => {
+        if (o.id !== id) return o;
+        const feedback = o.feedback || { rich_text: [], reference_ids: [] };
+        return { ...o, feedback: { ...feedback, image_id: imageId } };
+      }),
+    });
+  }
+
+  function removeOptionFeedbackImage(id) {
+    setContent({
+      options: options.map((o) => {
+        if (o.id !== id || !o.feedback) return o;
+        const { image_id, ...rest } = o.feedback;
+        return { ...o, feedback: rest };
+      }),
+    });
+  }
+
+  function handlePickImage(assetIds) {
+    const assetId = assetIds[0];
+    if (imagePickerTarget && assetId) {
+      const { kind, optionId } = imagePickerTarget;
+      if (kind === 'question') setContent({ question_image_id: assetId });
+      else if (kind === 'option') updateOption(optionId, { image_id: assetId });
+      else if (kind === 'optionFeedback') updateOptionFeedbackImage(optionId, assetId);
+      else if (kind === 'correct') setContent({ correct_feedback_image_id: assetId });
+      else if (kind === 'incorrect') setContent({ incorrect_feedback_image_id: assetId });
+    }
+    setImagePickerTarget(null);
   }
 
   function toggleOptionFeedback(id) {
@@ -40,7 +96,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
           const { feedback, ...rest } = o;
           return rest;
         }
-        return { ...o, feedback: { rich_text: [{ t: 'text', v: text }], image_id: null, reference_ids: [] } };
+        return { ...o, feedback: { rich_text: [{ t: 'text', v: text }], image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
       }),
     });
   }
@@ -100,6 +156,12 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
           <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('underline')}>
             <u>U</u>
           </button>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
+            X<sup>2</sup>
+          </button>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
+            X<sub>2</sub>
+          </button>
         </div>
       )}
 
@@ -117,6 +179,13 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
       >
         {question}
       </div>
+      <KcImageField
+        assetId={block.content.question_image_id}
+        assets={assets}
+        label="question image"
+        onPick={() => setImagePickerTarget({ kind: 'question' })}
+        onRemove={() => setContent({ question_image_id: null })}
+      />
 
       <ul className="knowledge-check-block-editor__options">
         {options.map((option) => {
@@ -145,6 +214,13 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
                   </button>
                 )}
               </div>
+              <KcImageField
+                assetId={option.image_id}
+                assets={assets}
+                label="image"
+                onPick={() => setImagePickerTarget({ kind: 'option', optionId: option.id })}
+                onRemove={() => updateOption(option.id, { image_id: null })}
+              />
               <button
                 type="button"
                 className="btn-text kc-option-feedback-toggle"
@@ -153,19 +229,28 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
                 {option.feedback ? 'Feedback for this option ✓' : 'Add feedback for this option'}
               </button>
               {feedbackExpanded && (
-                <div
-                  className="editable-field kc-option-feedback-field"
-                  contentEditable
-                  suppressContentEditableWarning
-                  data-placeholder="Shown instead of the general feedback when this option is selected..."
-                  onFocus={handleFieldFocus}
-                  onBlur={(e) => {
-                    updateOptionFeedback(option.id, e.currentTarget.textContent);
-                    handleFieldBlur();
-                  }}
-                >
-                  {option.feedback?.rich_text?.[0]?.v || ''}
-                </div>
+                <>
+                  <div
+                    className="editable-field kc-option-feedback-field"
+                    contentEditable
+                    suppressContentEditableWarning
+                    data-placeholder="Shown instead of the general feedback when this option is selected..."
+                    onFocus={handleFieldFocus}
+                    onBlur={(e) => {
+                      updateOptionFeedback(option.id, e.currentTarget.textContent);
+                      handleFieldBlur();
+                    }}
+                  >
+                    {option.feedback?.rich_text?.[0]?.v || ''}
+                  </div>
+                  <KcImageField
+                    assetId={option.feedback?.image_id}
+                    assets={assets}
+                    label="feedback image"
+                    onPick={() => setImagePickerTarget({ kind: 'optionFeedback', optionId: option.id })}
+                    onRemove={() => removeOptionFeedbackImage(option.id)}
+                  />
+                </>
               )}
             </li>
           );
@@ -191,6 +276,13 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
       >
         {block.content.correct_feedback || ''}
       </div>
+      <KcImageField
+        assetId={block.content.correct_feedback_image_id}
+        assets={assets}
+        label="image"
+        onPick={() => setImagePickerTarget({ kind: 'correct' })}
+        onRemove={() => setContent({ correct_feedback_image_id: null })}
+      />
 
       <label className="kc-feedback-label">Incorrect feedback</label>
       <div
@@ -206,6 +298,25 @@ export default function KnowledgeCheckBlockEditor({ block, onChange }) {
       >
         {block.content.incorrect_feedback || ''}
       </div>
+      <KcImageField
+        assetId={block.content.incorrect_feedback_image_id}
+        assets={assets}
+        label="image"
+        onPick={() => setImagePickerTarget({ kind: 'incorrect' })}
+        onRemove={() => setContent({ incorrect_feedback_image_id: null })}
+      />
+
+      {imagePickerTarget && (
+        <MediaLibraryPanel
+          courseId={courseId}
+          courseAssets={assets}
+          onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
+          selectionMode
+          onAddSelected={handlePickImage}
+          onClose={() => setImagePickerTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,7 +3,20 @@ import { genBlockId, genCourseId, genPageId } from './idGen.js';
 // Default content shapes per block type, matching the Phase 1 content
 // model documented in DECISIONS.md (2026-07-11 entry). Used both by the
 // starter templates and by the "Add Block" picker in the editor.
-export const BLOCK_TYPES = ['text', 'heading', 'image', 'list', 'accordion', 'tabs', 'knowledge-check', 'carousel', 'reflection'];
+export const BLOCK_TYPES = [
+  'text',
+  'heading',
+  'image',
+  'list',
+  'accordion',
+  'tabs',
+  'knowledge-check',
+  'carousel',
+  'reflection',
+  'two_column',
+  'table',
+  'embed',
+];
 
 export const BLOCK_LABELS = {
   text: 'Text',
@@ -15,7 +28,16 @@ export const BLOCK_LABELS = {
   'knowledge-check': 'Knowledge Check',
   carousel: 'Image Carousel',
   reflection: 'Reflection',
+  two_column: 'Two Column',
+  table: 'Table',
+  embed: 'Embed',
 };
+
+// Slot types allowed inside a two-column block (ARCHITECTURE.md 3.6) --
+// see DECISIONS.md for why this list is deliberately short.
+export const TWO_COLUMN_SLOT_TYPES = ['text', 'heading', 'image', 'embed'];
+
+export const DEFAULT_EMBED_SANDBOX = 'allow-scripts allow-same-origin allow-popups';
 
 function defaultContent(type) {
   switch (type) {
@@ -47,6 +69,12 @@ function defaultContent(type) {
       // storage_mode is "local" and only "local" -- see ARCHITECTURE.md 3.8
       // and REQUIREMENTS.md P1-46. Do not add a way to change it here.
       return { prompt: { rich_text: [{ t: 'text', v: '' }] }, storage_mode: 'local' };
+    case 'table':
+      return { has_header_row: true, has_header_col: false, caption: '', rows: [['', ''], ['', '']] };
+    case 'embed':
+      return { url: '', label: '', sandbox: DEFAULT_EMBED_SANDBOX };
+    case 'two_column':
+      return {};
     default:
       return {};
   }
@@ -55,7 +83,21 @@ function defaultContent(type) {
 export function createBlock(type) {
   const block = { block_id: genBlockId(), type, content: defaultContent(type), triggers: [] };
   if (type === 'reflection') block.include_in_pdf = true;
+  if (type === 'two_column') {
+    // left/right start omitted (empty slots) rather than null -- the
+    // schema's inner_block definition requires block_id/type/content
+    // when the key is present at all, so an empty slot is represented
+    // by the key's absence, not a null placeholder.
+    block.layout = { split: 50, split_min: 25, split_max: 75 };
+  }
   return block;
+}
+
+// Inner block for a two-column slot. block_id is namespaced under the
+// parent so it's never ambiguous which two-column block a slot's block
+// belongs to (e.g. "blk_col1_left") -- see DECISIONS.md.
+export function createInnerBlock(type, parentBlockId, side) {
+  return { block_id: `${parentBlockId}_${side}`, type, content: defaultContent(type), triggers: [] };
 }
 
 // A schema-valid, empty course document. Blank-course creation and the

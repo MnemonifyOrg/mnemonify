@@ -6,10 +6,28 @@ import { BLOCK_EDITORS } from './blocks/index.js';
 import { BLOCK_LABELS, createBlock } from '../lib/blockDefaults.js';
 import GenericBlockPreview from './GenericBlockPreview.jsx';
 import BlockPickerModal from './BlockPickerModal.jsx';
+import MoveCopyBlockModal from './MoveCopyBlockModal.jsx';
 
-function BlockWrapper({ block, selected, onSelect, onChange, onDuplicate, onDelete, assets, courseId, onAddCourseAsset, onAddCourseAssets }) {
+function BlockWrapper({
+  block,
+  selected,
+  onSelect,
+  onChange,
+  onDuplicate,
+  onDelete,
+  assets,
+  courseId,
+  onAddCourseAsset,
+  onAddCourseAssets,
+  onUpdateCourseAsset,
+  pages,
+  activePageId,
+  onMoveBlockToPage,
+  onCopyBlockToPage,
+}) {
   const Editor = BLOCK_EDITORS[block.type] || GenericBlockPreview;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.block_id });
+  const [moveCopyMode, setMoveCopyMode] = useState(null); // 'move' | 'copy' | null
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -33,6 +51,26 @@ function BlockWrapper({ block, selected, onSelect, onChange, onDuplicate, onDele
         </span>
         <span className="block-wrapper__label">{BLOCK_LABELS[block.type] || block.type}</span>
         <span className="block-wrapper__spacer" />
+        <button
+          className="btn-text"
+          title="Move to page"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMoveCopyMode('move');
+          }}
+        >
+          ⇥
+        </button>
+        <button
+          className="btn-text"
+          title="Copy to page"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMoveCopyMode('copy');
+          }}
+        >
+          ⎘
+        </button>
         <button
           className="btn-text"
           title="Duplicate"
@@ -62,14 +100,29 @@ function BlockWrapper({ block, selected, onSelect, onChange, onDuplicate, onDele
           courseId={courseId}
           onAddCourseAsset={onAddCourseAsset}
           onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
         />
       </div>
+      {moveCopyMode && (
+        <MoveCopyBlockModal
+          mode={moveCopyMode}
+          pages={pages}
+          currentPageId={activePageId}
+          onClose={() => setMoveCopyMode(null)}
+          onConfirm={(targetPageId) => {
+            if (moveCopyMode === 'move') onMoveBlockToPage(block.block_id, targetPageId);
+            else onCopyBlockToPage(block.block_id, targetPageId);
+            setMoveCopyMode(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 export default function BlockCanvas({
   page,
+  pages,
   selectedBlockId,
   onSelectBlock,
   onChangeBlock,
@@ -80,6 +133,9 @@ export default function BlockCanvas({
   assets,
   courseId,
   onAddCourseAsset, onAddCourseAssets,
+  onUpdateCourseAsset,
+  onMoveBlockToPage,
+  onCopyBlockToPage,
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -105,11 +161,16 @@ export default function BlockCanvas({
               courseId={courseId}
               onAddCourseAsset={onAddCourseAsset}
               onAddCourseAssets={onAddCourseAssets}
+              onUpdateCourseAsset={onUpdateCourseAsset}
               selected={block.block_id === selectedBlockId}
               onSelect={onSelectBlock}
-              onChange={(updated) => onChangeBlock(block.block_id, updated)}
+              onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}
               onDuplicate={onDuplicateBlock}
               onDelete={onDeleteBlock}
+              pages={pages}
+              activePageId={page.page_id}
+              onMoveBlockToPage={onMoveBlockToPage}
+              onCopyBlockToPage={onCopyBlockToPage}
             />
           ))}
         </SortableContext>

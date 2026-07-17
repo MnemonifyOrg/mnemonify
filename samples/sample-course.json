@@ -83,6 +83,49 @@
           "triggers": []
         },
         {
+          "block_id": "blk_col1",
+          "type": "two_column",
+          "content": {},
+          "layout": { "split": 40, "split_min": 25, "split_max": 75 },
+          "left": {
+            "block_id": "blk_col1_left",
+            "type": "text",
+            "content": {
+              "rich_text": [
+                { "t": "text", "v": "The whole slide image to the right shows the frozen section at scanning magnification. Correlate the architecture visible here with the gross description above." }
+              ]
+            },
+            "triggers": []
+          },
+          "right": {
+            "block_id": "blk_col1_right",
+            "type": "embed",
+            "content": {
+              "url": "https://www.digitalscope.org",
+              "label": "View Whole Slide Image",
+              "sandbox": "allow-scripts allow-same-origin allow-popups"
+            },
+            "triggers": []
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_tbl1",
+          "type": "table",
+          "include_in_pdf": true,
+          "content": {
+            "caption": "CBC results with reference ranges",
+            "has_header_row": true,
+            "has_header_col": true,
+            "rows": [
+              ["", "WBC", "RBC", "HGB"],
+              ["Result", "5.2 x 10³", "2.7 x 10³", "9.9 g/dL"],
+              ["Range", "4.0-10.0", "3.7-5.3", "11.7-16.0"]
+            ]
+          },
+          "triggers": []
+        },
+        {
           "block_id": "blk_carousel1",
           "type": "carousel",
           "content": {

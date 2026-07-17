@@ -8,6 +8,7 @@ import coursesRouter from './routes/courses.js';
 import assetsRouter from './routes/assets.js';
 import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
+import pageTemplatesRouter from './routes/pageTemplates.js';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api', coursesRouter);
 app.use('/api', assetsRouter);
 app.use('/api', usersRouter);
 app.use('/api', wordRouter);
+app.use('/api', pageTemplatesRouter);
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.get('/content/:courseId', (req, res) => {

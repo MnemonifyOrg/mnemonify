@@ -33,6 +33,10 @@ export const api = {
   // Users
   getMe: () => client.get('/api/users/me').then((r) => r.data),
   updateMe: (payload) => client.patch('/api/users/me', payload).then((r) => r.data),
+
+  // Page templates
+  listPageTemplates: () => client.get('/api/page-templates').then((r) => r.data),
+  createPageTemplate: (payload) => client.post('/api/page-templates', payload).then((r) => r.data),
 };
 
 export default api;

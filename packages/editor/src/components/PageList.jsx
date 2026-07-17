@@ -1,6 +1,15 @@
 import { useState } from 'react';
 
-export default function PageList({ pages, activePageId, onSelectPage, onAddPage, onRenamePage, onDeletePage }) {
+export default function PageList({
+  pages,
+  activePageId,
+  onSelectPage,
+  onAddPage,
+  onRenamePage,
+  onDeletePage,
+  onSaveAsPageTemplate,
+  onInsertFromTemplate,
+}) {
   const [renamingId, setRenamingId] = useState(null);
   const [draftTitle, setDraftTitle] = useState('');
 
@@ -45,6 +54,9 @@ export default function PageList({ pages, activePageId, onSelectPage, onAddPage,
               <button className="btn-text" title="Rename" onClick={() => startRename(page)}>
                 ✎
               </button>
+              <button className="btn-text" title="Save as Page Template" onClick={() => onSaveAsPageTemplate(page)}>
+                ▤
+              </button>
               {pages.length > 1 && (
                 <button className="btn-text" title="Delete page" onClick={() => onDeletePage(page.page_id)}>
                   ✕
@@ -54,9 +66,14 @@ export default function PageList({ pages, activePageId, onSelectPage, onAddPage,
           </li>
         ))}
       </ul>
-      <button className="btn page-list__add" onClick={onAddPage}>
-        + Add Page
-      </button>
+      <div className="page-list__add-row">
+        <button className="btn page-list__add" onClick={onAddPage}>
+          + Add Page
+        </button>
+        <button className="btn page-list__add" onClick={onInsertFromTemplate}>
+          + From Template
+        </button>
+      </div>
     </div>
   );
 }

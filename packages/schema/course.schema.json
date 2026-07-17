@@ -217,6 +217,51 @@
         "concept_ids": {
           "type": "array",
           "items": { "type": "string" }
+        },
+        "layout": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "split": { "type": "integer", "minimum": 25, "maximum": 75 },
+            "split_min": { "type": "integer" },
+            "split_max": { "type": "integer" }
+          }
+        },
+        "left": { "$ref": "#/definitions/inner_block" },
+        "right": { "$ref": "#/definitions/inner_block" }
+      }
+    },
+    "inner_block": {
+      "type": "object",
+      "required": ["block_id", "type", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "string",
+          "pattern": "^blk_[a-zA-Z0-9_]+$"
+        },
+        "type": {
+          "enum": ["text", "heading", "image", "embed"]
+        },
+        "content": {
+          "type": "object"
+        },
+        "visibility": { "$ref": "#/definitions/visibility" },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/trigger" }
+        },
+        "include_in_pdf": {
+          "type": "boolean"
+        },
+        "faculty_notes": { "$ref": "#/definitions/rich_text_field" },
+        "objective_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "concept_ids": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     },

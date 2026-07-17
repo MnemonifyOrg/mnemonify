@@ -38,6 +38,12 @@ export default function TextBlockEditor({ block, onChange }) {
         <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('underline')}>
           <u>U</u>
         </button>
+        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
+          X<sup>2</sup>
+        </button>
+        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
+          X<sub>2</sub>
+        </button>
       </div>
       <div
         ref={ref}

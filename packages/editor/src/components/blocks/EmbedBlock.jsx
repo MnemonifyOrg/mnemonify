@@ -1,0 +1,64 @@
+import { DEFAULT_EMBED_SANDBOX } from '../../lib/blockDefaults.js';
+
+// Domains known to work well embedded (DigitalScope for pathology WSI
+// viewers, plus the common video hosts). Not an enforced restriction --
+// just a warning, since an author may have a legitimate reason to embed
+// something else -- the player only ever loads the iframe with the
+// author-configured sandbox regardless of domain.
+const ALLOWED_DOMAINS = ['digitalscope.org', 'youtube.com', 'youtu.be', 'vimeo.com'];
+
+function isAllowedDomain(url) {
+  try {
+    const { hostname } = new URL(url);
+    return ALLOWED_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch {
+    return true; // incomplete/invalid URL still being typed -- don't warn yet
+  }
+}
+
+export default function EmbedBlockEditor({ block, onChange }) {
+  const { url = '', label = '', sandbox } = block.content;
+  const showWarning = url.trim() && !isAllowedDomain(url);
+
+  function setContent(patch) {
+    onChange({ ...block, content: { ...block.content, ...patch } });
+  }
+
+  return (
+    <div className="embed-block-editor">
+      <label>Label</label>
+      <input
+        className="input"
+        value={label}
+        onChange={(e) => setContent({ label: e.target.value })}
+        placeholder="e.g. View Whole Slide Image"
+      />
+
+      <label>URL</label>
+      <input
+        className="input"
+        value={url}
+        onChange={(e) => setContent({ url: e.target.value })}
+        placeholder="https://..."
+      />
+
+      {showWarning && (
+        <p className="embed-block-editor__warning">
+          This domain isn't on the known-good list ({ALLOWED_DOMAINS.join(', ')}) and may not embed reliably for
+          all learners.
+        </p>
+      )}
+
+      {url.trim() && (
+        // Same sandbox rules as the player -- an author previewing here
+        // sees exactly the containment the learner will get.
+        <iframe
+          className="embed-block-editor__preview"
+          src={url}
+          title={label || 'Embed preview'}
+          sandbox={sandbox || DEFAULT_EMBED_SANDBOX}
+        />
+      )}
+    </div>
+  );
+}

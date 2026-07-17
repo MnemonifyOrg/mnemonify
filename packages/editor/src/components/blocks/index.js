@@ -7,6 +7,9 @@ import TabsBlockEditor from './TabsBlock.jsx';
 import KnowledgeCheckBlockEditor from './KnowledgeCheckBlock.jsx';
 import CarouselBlockEditor from './CarouselBlock.jsx';
 import ReflectionBlockEditor from './ReflectionBlock.jsx';
+import TwoColumnBlockEditor from './TwoColumnBlock.jsx';
+import TableBlockEditor from './TableBlock.jsx';
+import EmbedBlockEditor from './EmbedBlock.jsx';
 
 // block-type -> editor component. Any type not listed here falls back to a
 // generic read-only preview in BlockCanvas.
@@ -20,4 +23,7 @@ export const BLOCK_EDITORS = {
   'knowledge-check': KnowledgeCheckBlockEditor,
   carousel: CarouselBlockEditor,
   reflection: ReflectionBlockEditor,
+  two_column: TwoColumnBlockEditor,
+  table: TableBlockEditor,
+  embed: EmbedBlockEditor,
 };

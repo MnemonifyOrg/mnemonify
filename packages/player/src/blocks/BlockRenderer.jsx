@@ -6,6 +6,9 @@ import AccordionBlock from './AccordionBlock.jsx';
 import TabsBlock from './TabsBlock.jsx';
 import KnowledgeCheckBlock from './KnowledgeCheckBlock.jsx';
 import ReflectionBlock from './ReflectionBlock.jsx';
+import TwoColumnBlock from './TwoColumnBlock.jsx';
+import TableBlock from './TableBlock.jsx';
+import EmbedBlock from './EmbedBlock.jsx';
 
 const REGISTRY = {
   heading: HeadingBlock,
@@ -16,6 +19,9 @@ const REGISTRY = {
   tabs: TabsBlock,
   'knowledge-check': KnowledgeCheckBlock,
   reflection: ReflectionBlock,
+  two_column: TwoColumnBlock,
+  table: TableBlock,
+  embed: EmbedBlock,
 };
 
 export default function BlockRenderer({ block, assets, onTrigger, isPreview }) {

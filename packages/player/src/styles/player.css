@@ -317,6 +317,16 @@ input:focus-visible {
   flex: 1;
   cursor: pointer;
 }
+.knowledge-check__image {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+}
+.knowledge-check__option label .knowledge-check__image {
+  max-height: 120px;
+}
 .knowledge-check__submit {
   align-self: flex-start;
   background: var(--color-primary);
@@ -365,4 +375,100 @@ input:focus-visible {
 }
 .player-continue-button:hover {
   background: var(--color-primary-hover);
+}
+
+/* Two-column block (ARCHITECTURE.md 3.6) */
+.block-two-column {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .block-two-column {
+    grid-template-columns: var(--two-column-split, 50%) var(--two-column-split-complement, 50%);
+    align-items: start;
+  }
+}
+.block-two-column__slot {
+  min-width: 0;
+}
+@media print {
+  .block-two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Table block (ARCHITECTURE.md 3.7) */
+.block-table {
+  width: 100%;
+}
+.block-table__scroll {
+  overflow-x: auto;
+}
+.block-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+.block-table caption {
+  caption-side: top;
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+.block-table th,
+.block-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+}
+.block-table th {
+  background: var(--color-bg-secondary);
+  font-weight: 600;
+}
+@media print {
+  .block-table__scroll {
+    overflow-x: visible;
+  }
+  .block-table table {
+    width: 100%;
+  }
+}
+
+/* Embed block (ARCHITECTURE.md 5.2 in-player containment) */
+.block-embed {
+  width: 100%;
+}
+.block-embed__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+.block-embed__iframe {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 767px) {
+  .block-embed__iframe {
+    height: 400px;
+  }
+}
+.block-embed__print-link {
+  display: none;
+}
+@media print {
+  .block-embed__iframe {
+    display: none;
+  }
+  .block-embed__print-link {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
 }

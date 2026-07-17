@@ -6,6 +6,8 @@ import PageList from '../components/PageList.jsx';
 import BlockCanvas from '../components/BlockCanvas.jsx';
 import SettingsPanel from '../components/SettingsPanel.jsx';
 import SaveAsTemplateModal from '../components/SaveAsTemplateModal.jsx';
+import SavePageAsTemplateModal from '../components/SavePageAsTemplateModal.jsx';
+import PageTemplateGalleryModal from '../components/PageTemplateGalleryModal.jsx';
 import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import '../styles/courseEditor.css';
@@ -26,6 +28,27 @@ function isEditableElement(el) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 }
 
+// Standard circular-arrow undo/redo convention (Google Docs, Word, most
+// design tools) -- inline SVG rather than a new icon-library dependency,
+// since none is installed in this package (see DECISIONS.md). The prior
+// hook-curl glyphs (↶/↷) tested as unrecognizable to non-technical users.
+function UndoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+function RedoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
 export default function CourseEditor() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -41,6 +64,8 @@ export default function CourseEditor() {
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showTour, setShowTour] = useState(searchParams.get('tour') === '1');
   const [showExportSaving, setShowExportSaving] = useState(false);
+  const [pageToSaveAsTemplate, setPageToSaveAsTemplate] = useState(null);
+  const [showInsertFromTemplate, setShowInsertFromTemplate] = useState(false);
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -291,6 +316,23 @@ export default function CourseEditor() {
     );
   }
 
+  // Inserts a copy of a saved page template right after the current page.
+  // Structural, so it forces its own undo/redo snapshot like Add Page does.
+  function handleInsertPageFromTemplate(template) {
+    const newPage = regeneratePageIds(template.page_json);
+    updateCourseJson(
+      (json) => {
+        const index = json.pages.findIndex((p) => p.page_id === activePageId);
+        const pages = [...json.pages];
+        pages.splice(index === -1 ? pages.length : index + 1, 0, newPage);
+        return { ...json, pages };
+      },
+      { forceSnapshot: true }
+    );
+    setActivePageId(newPage.page_id);
+    setShowInsertFromTemplate(false);
+  }
+
   function handleDeletePage(pageId) {
     if (!window.confirm('Delete this page and all its blocks?')) return;
     updateCourseJson(
@@ -312,6 +354,120 @@ export default function CourseEditor() {
         ),
       }),
       options
+    );
+  }
+
+  function genId(prefix) {
+    return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  // Shared by "Copy to page" (single block) and "Insert from template"
+  // (a whole page's worth of blocks): walks one block's own subtree,
+  // minting a new block_id for everything found (two-column slots keep the
+  // parent-namespaced convention, e.g. "blk_xyz_left" -- see DECISIONS.md).
+  // Kept separate from rebuildBlockWithIds below so a whole-page insert can
+  // assign ids for every block on the page into ONE shared map before
+  // rebuilding any of them -- necessary because a trigger on one block can
+  // target another block on the same page, not just itself.
+  function assignBlockIds(b, idMap) {
+    const newId = genId('blk');
+    idMap.set(b.block_id, newId);
+    if (b.type === 'two_column') {
+      if (b.left) idMap.set(b.left.block_id, `${newId}_left`);
+      if (b.right) idMap.set(b.right.block_id, `${newId}_right`);
+    }
+    if (b.content?.items) {
+      b.content.items.forEach((item) => {
+        if (item && typeof item === 'object' && item.body_blocks) {
+          item.body_blocks.forEach((child) => assignBlockIds(child, idMap));
+        }
+      });
+    }
+  }
+
+  // Rebuilds a block using a previously-populated idMap: applies the new
+  // block_id, regenerates trigger_ids, and rewrites any action target that
+  // matches an old id in idMap. Targets not in idMap (another block that
+  // isn't part of this copy) are left alone -- there is no copy of that
+  // block to point to instead.
+  function rebuildBlockWithIds(b, idMap) {
+    const next = { ...b, block_id: idMap.get(b.block_id) };
+    if (next.triggers) {
+      next.triggers = next.triggers.map((t) => ({
+        ...t,
+        trigger_id: genId('trg'),
+        actions: t.actions.map((a) => (a.target && idMap.has(a.target) ? { ...a, target: idMap.get(a.target) } : a)),
+      }));
+    }
+    if (next.left) next.left = rebuildBlockWithIds(next.left, idMap);
+    if (next.right) next.right = rebuildBlockWithIds(next.right, idMap);
+    if (next.content?.items) {
+      next.content = {
+        ...next.content,
+        items: next.content.items.map((item) =>
+          item && typeof item === 'object' && item.body_blocks
+            ? { ...item, body_blocks: item.body_blocks.map((child) => rebuildBlockWithIds(child, idMap)) }
+            : item
+        ),
+      };
+    }
+    return next;
+  }
+
+  function deepCopyBlock(block) {
+    const idMap = new Map();
+    assignBlockIds(block, idMap);
+    return rebuildBlockWithIds(block, idMap);
+  }
+
+  // Regenerates every block_id (and trigger_id) on a page-template's
+  // blocks in one shared idMap, plus a fresh page_id -- used by "Insert
+  // from template" so an inserted copy never collides with ids already
+  // present in the course (including a second insert of the same
+  // template).
+  function regeneratePageIds(pageShape) {
+    const idMap = new Map();
+    pageShape.blocks.forEach((b) => assignBlockIds(b, idMap));
+    return {
+      ...pageShape,
+      page_id: genPageId(),
+      blocks: pageShape.blocks.map((b) => rebuildBlockWithIds(b, idMap)),
+    };
+  }
+
+  function handleMoveBlockToPage(blockId, targetPageId) {
+    updateCourseJson(
+      (json) => {
+        let movedBlock = null;
+        const pages = json.pages.map((p) => {
+          if (p.page_id !== activePageId) return p;
+          movedBlock = p.blocks.find((b) => b.block_id === blockId);
+          return { ...p, blocks: p.blocks.filter((b) => b.block_id !== blockId) };
+        });
+        if (!movedBlock) return json;
+        return {
+          ...json,
+          pages: pages.map((p) => (p.page_id !== targetPageId ? p : { ...p, blocks: [...p.blocks, movedBlock] })),
+        };
+      },
+      { forceSnapshot: true }
+    );
+    setSelectedBlockId(null);
+  }
+
+  function handleCopyBlockToPage(blockId, targetPageId) {
+    updateCourseJson(
+      (json) => {
+        const sourcePage = json.pages.find((p) => p.page_id === activePageId);
+        const original = sourcePage?.blocks.find((b) => b.block_id === blockId);
+        if (!original) return json;
+        const copy = deepCopyBlock(original);
+        return {
+          ...json,
+          pages: json.pages.map((p) => (p.page_id !== targetPageId ? p : { ...p, blocks: [...p.blocks, copy] })),
+        };
+      },
+      { forceSnapshot: true }
     );
   }
 
@@ -424,7 +580,7 @@ export default function CourseEditor() {
             aria-label="Undo"
             title="Undo (Cmd+Z)"
           >
-            ↶
+            <UndoIcon />
           </button>
           <button
             className="btn-text"
@@ -433,7 +589,7 @@ export default function CourseEditor() {
             aria-label="Redo"
             title="Redo (Cmd+Shift+Z)"
           >
-            ↷
+            <RedoIcon />
           </button>
         </div>
 
@@ -476,6 +632,17 @@ export default function CourseEditor() {
         <SaveAsTemplateModal courseTitle={json.meta?.title || course.title} courseId={course.id} onClose={() => setShowSaveTemplate(false)} />
       )}
 
+      {pageToSaveAsTemplate && (
+        <SavePageAsTemplateModal page={pageToSaveAsTemplate} onClose={() => setPageToSaveAsTemplate(null)} />
+      )}
+
+      {showInsertFromTemplate && (
+        <PageTemplateGalleryModal
+          onInsert={handleInsertPageFromTemplate}
+          onClose={() => setShowInsertFromTemplate(false)}
+        />
+      )}
+
       {showMediaLibrary && (
         <MediaLibraryPanel
           courseId={course.id}
@@ -495,6 +662,8 @@ export default function CourseEditor() {
             onAddPage={handleAddPage}
             onRenamePage={handleRenamePage}
             onDeletePage={handleDeletePage}
+            onSaveAsPageTemplate={setPageToSaveAsTemplate}
+            onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
           />
         </nav>
 
@@ -516,10 +685,12 @@ export default function CourseEditor() {
             page && (
               <BlockCanvas
                 page={page}
+                pages={json.pages}
                 assets={json.assets}
                 courseId={course.id}
                 onAddCourseAsset={handleAddCourseAsset}
                 onAddCourseAssets={handleAddCourseAssets}
+                onUpdateCourseAsset={handleUpdateCourseAsset}
                 selectedBlockId={selectedBlockId}
                 onSelectBlock={setSelectedBlockId}
                 onChangeBlock={handleChangeBlock}
@@ -527,6 +698,8 @@ export default function CourseEditor() {
                 onDeleteBlock={handleDeleteBlock}
                 onAddBlock={handleAddBlock}
                 onReorderBlocks={handleReorderBlocks}
+                onMoveBlockToPage={handleMoveBlockToPage}
+                onCopyBlockToPage={handleCopyBlockToPage}
               />
             )
           )}

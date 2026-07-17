@@ -20,7 +20,7 @@ function CarouselThumb({ assetId, asset, onRemove }) {
   );
 }
 
-export default function CarouselBlockEditor({ block, assets, onChange, courseId, onAddCourseAssets }) {
+export default function CarouselBlockEditor({ block, assets, onChange, courseId, onAddCourseAssets, onUpdateCourseAsset }) {
   const [showLibrary, setShowLibrary] = useState(false);
   const assetIds = block.content.asset_ids || [];
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -76,7 +76,7 @@ export default function CarouselBlockEditor({ block, assets, onChange, courseId,
           courseId={courseId}
           courseAssets={assets}
           onAddCourseAssets={onAddCourseAssets}
-          onUpdateCourseAsset={() => {}}
+          onUpdateCourseAsset={onUpdateCourseAsset}
           onClose={() => setShowLibrary(false)}
           selectionMode
           onAddSelected={handleAddSelected}

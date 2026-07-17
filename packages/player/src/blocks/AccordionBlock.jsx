@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
+import RichText from './RichText.jsx';
 
 export default function AccordionBlock({ block, assets, onTrigger }) {
   const [openIndex, setOpenIndex] = useState(null);
@@ -32,7 +33,7 @@ export default function AccordionBlock({ block, assets, onTrigger }) {
                 aria-controls={panelId}
                 onClick={() => toggle(index)}
               >
-                <span>{item.title}</span>
+                <span><RichText value={item.title} /></span>
                 <span className="accordion-item__icon" aria-hidden="true">▾</span>
               </button>
             </h3>

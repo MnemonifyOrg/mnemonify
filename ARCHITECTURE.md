@@ -210,7 +210,7 @@ Rules:
 - rows is a 2D array of strings. All rows must have the same column count.
 - has_header_row: first row renders as th elements.
 - has_header_col: first cell of each row renders as th.
-- Cell content is plain text only. No rich text, no nested blocks.
+- Cell content is plain text only. No rich text, no nested blocks. One narrow, deliberate exception (Phase 3.5 QA fix): a cell string may contain inline `<sup>`/`<sub>` tags and nothing else -- no bold/italic/underline, no line breaks -- for pathology lab notation like 10³. Authored via the same X²/X₂ toolbar as text blocks, sanitized to that two-tag allowlist on every save and re-sanitized defensively on every render (`packages/{editor,player}/src/lib/richText.js`, `SUP_SUB_TAGS`). See DECISIONS.md.
 - Player renders as a standard HTML table with overflow-x: auto wrapper for narrow screens.
 - Editor: add/remove row, add/remove column, each cell is a contentEditable field.
 

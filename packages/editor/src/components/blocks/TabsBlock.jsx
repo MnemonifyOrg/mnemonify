@@ -1,18 +1,19 @@
 import { useState } from 'react';
+import EditableRichField from './EditableRichField.jsx';
 
 const MAX_TABS = 6;
 
-function bodyText(item) {
+function bodyHtml(item) {
   const textBlock = item.body_blocks?.find((b) => b.type === 'text');
   return textBlock?.content.rich_text?.[0]?.v || '';
 }
 
-function withBodyText(item, text) {
+function withBodyHtml(item, html) {
   const existing = item.body_blocks?.find((b) => b.type === 'text');
   const textBlock = existing || { block_id: `blk_${Math.random().toString(36).slice(2, 8)}`, type: 'text', content: {}, triggers: [] };
   return {
     ...item,
-    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'text', v: text }] } }],
+    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'html', v: html }] } }],
   };
 }
 
@@ -45,16 +46,13 @@ export default function TabsBlockEditor({ block, onChange }) {
       <div className="tabs-block-editor__bar">
         {items.map((item, index) => (
           <div key={index} className={index === safeActive ? 'tabs-block-editor__tab tabs-block-editor__tab--active' : 'tabs-block-editor__tab'}>
-            <div
+            <EditableRichField
               className="editable-field"
-              contentEditable
-              suppressContentEditableWarning
-              data-placeholder="Tab title..."
+              placeholder="Tab title..."
+              value={item.label}
               onClick={() => setActiveIndex(index)}
-              onBlur={(e) => updateItem(index, { label: e.currentTarget.textContent })}
-            >
-              {item.label}
-            </div>
+              onCommit={(html) => updateItem(index, { label: html })}
+            />
             {items.length > 1 && (
               <button className="btn-text" onClick={() => deleteTab(index)}>
                 ✕
@@ -69,15 +67,12 @@ export default function TabsBlockEditor({ block, onChange }) {
         )}
       </div>
       {items[safeActive] && (
-        <div
+        <EditableRichField
           className="editable-field tabs-block-editor__body"
-          contentEditable
-          suppressContentEditableWarning
-          data-placeholder="Click to add tab content..."
-          onBlur={(e) => updateItem(safeActive, withBodyText(items[safeActive], e.currentTarget.textContent))}
-        >
-          {bodyText(items[safeActive])}
-        </div>
+          placeholder="Click to add tab content..."
+          value={bodyHtml(items[safeActive])}
+          onCommit={(html) => updateItem(safeActive, withBodyHtml(items[safeActive], html))}
+        />
       )}
     </div>
   );

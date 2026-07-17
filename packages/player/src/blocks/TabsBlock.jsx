@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
+import RichText from './RichText.jsx';
 
 export default function TabsBlock({ block, assets, onTrigger }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -34,7 +35,7 @@ export default function TabsBlock({ block, assets, onTrigger }) {
               onClick={() => setActiveIndex(index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
             >
-              {item.label}
+              <RichText value={item.label} />
             </button>
           );
         })}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import RichText from './RichText.jsx';
 
 function KcImage({ assetId, assets }) {
   const asset = (assets || []).find((a) => a.asset_id === assetId);
@@ -56,7 +57,9 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
   return (
     <div className="block block-knowledge-check">
       <KcImage assetId={questionImageId} assets={assets} />
-      <p className="knowledge-check__question">{question}</p>
+      <p className="knowledge-check__question">
+        <RichText value={question} />
+      </p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
         <legend className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
           {question}
@@ -84,7 +87,7 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
               />
               <label htmlFor={`${block.block_id}-${option.id}`}>
                 <KcImage assetId={option.image_id} assets={assets} />
-                {option.text}
+                <RichText value={option.text} />
               </label>
             </li>
           ))}
@@ -116,11 +119,17 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
             }
             assets={assets}
           />
-          {selectedOption?.feedback?.rich_text?.length
-            ? selectedOption.feedback.rich_text.map((segment, i) => <span key={i}>{segment.v}</span>)
-            : selectedOption?.correct
-              ? correct_feedback || 'Correct.'
-              : incorrect_feedback || 'Not quite — review the case findings and try again.'}
+          {selectedOption?.feedback?.rich_text?.length ? (
+            selectedOption.feedback.rich_text.map((segment, i) =>
+              segment.t === 'html' ? <RichText key={i} value={segment.v} /> : <span key={i}>{segment.v}</span>
+            )
+          ) : selectedOption?.correct ? (
+            correct_feedback ? <RichText value={correct_feedback} /> : 'Correct.'
+          ) : incorrect_feedback ? (
+            <RichText value={incorrect_feedback} />
+          ) : (
+            'Not quite — review the case findings and try again.'
+          )}
         </div>
       )}
     </div>

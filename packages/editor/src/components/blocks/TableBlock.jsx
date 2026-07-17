@@ -1,20 +1,64 @@
-// contentEditable table cells sit in normal DOM/tab order, so Tab and
-// Shift+Tab move between cells using the browser's native focus order --
-// no custom key handling needed for that.
+import { useRef, useState } from 'react';
+import EditableRichField from './EditableRichField.jsx';
+import { SUP_SUB_TAGS } from '../../lib/richText.js';
+
+const BLUR_HIDE_DELAY_MS = 150;
+
+// Table cells stay plain text by design (ARCHITECTURE.md 3.7: "Cell
+// content is plain text only. No rich text, no nested blocks.") with one
+// narrow, deliberate exception: superscript/subscript, since pathology lab
+// data needs notation like 10³ and del(5q). Cells reuse the same sanitized-
+// HTML infra as every other contentEditable field, but with a restricted
+// SUP_SUB_TAGS allowlist (no bold/italic/underline/line-breaks) -- see
+// DECISIONS.md for why this was chosen over inserting literal Unicode
+// superscript/subscript characters (the simpler-looking option, but one
+// that can't represent every needed character -- there is no Unicode
+// subscript "q", which "del(5q)" requires).
 export default function TableBlockEditor({ block, onChange }) {
   const { caption = '', has_header_row: hasHeaderRow, has_header_col: hasHeaderCol, rows = [] } = block.content;
+  const containerRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
+  const [toolbarPos, setToolbarPos] = useState(null);
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
   }
 
-  function updateCell(rowIndex, colIndex, text) {
-    const newRows = rows.map((row, r) => (r === rowIndex ? row.map((cell, c) => (c === colIndex ? text : cell)) : row));
+  function updateCell(rowIndex, colIndex, html) {
+    const newRows = rows.map((row, r) => (r === rowIndex ? row.map((cell, c) => (c === colIndex ? html : cell)) : row));
     setContent({ rows: newRows });
   }
 
+  function handleFieldFocus(e) {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    const fieldRect = e.currentTarget.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    setToolbarPos({ top: fieldRect.top - containerRect.top, left: fieldRect.left - containerRect.left });
+  }
+
+  function handleFieldBlur() {
+    blurTimeoutRef.current = setTimeout(() => setToolbarPos(null), BLUR_HIDE_DELAY_MS);
+  }
+
+  function format(command) {
+    document.execCommand(command);
+  }
+
   return (
-    <div className="table-block-editor">
+    <div className="table-block-editor" ref={containerRef} style={{ position: 'relative' }}>
+      {toolbarPos && (
+        <div className="rich-text-toolbar table-block-editor__toolbar" style={{ top: toolbarPos.top, left: toolbarPos.left }}>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
+            X<sup>2</sup>
+          </button>
+          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
+            X<sub>2</sub>
+          </button>
+        </div>
+      )}
       <input
         className="input table-block-editor__caption"
         placeholder="Table caption (optional)"
@@ -31,22 +75,21 @@ export default function TableBlockEditor({ block, onChange }) {
                   const isHeaderCol = hasHeaderCol && colIndex === 0;
                   const Tag = isHeaderRow || isHeaderCol ? 'th' : 'td';
                   return (
-                    <Tag
+                    <EditableRichField
                       key={colIndex}
+                      Tag={Tag}
+                      allowedTags={SUP_SUB_TAGS}
                       className={
                         isHeaderRow || isHeaderCol
                           ? 'table-block-editor__cell table-block-editor__cell--header'
                           : 'table-block-editor__cell'
                       }
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) => {
-                        const text = e.currentTarget.textContent;
-                        if (text !== cell) updateCell(rowIndex, colIndex, text);
-                      }}
-                    >
-                      {cell}
-                    </Tag>
+                      value={cell}
+                      onFocus={handleFieldFocus}
+                      onBlur={handleFieldBlur}
+                      onCommit={(html) => updateCell(rowIndex, colIndex, html)}
+                      onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                    />
                   );
                 })}
               </tr>

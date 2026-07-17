@@ -1,3 +1,5 @@
+import RichText from './RichText.jsx';
+
 function RichTextSegment({ segment, assets, onOpenLightbox }) {
   if (segment.t === 'asset_link') {
     const asset = assets.find((a) => a.asset_id === segment.asset_id);
@@ -12,6 +14,11 @@ function RichTextSegment({ segment, assets, onOpenLightbox }) {
       </button>
     );
   }
+  if (segment.t === 'html') {
+    return <RichText value={segment.v} />;
+  }
+  // Legacy plain-text segment saved before the rich-text fix -- no
+  // formatting to interpret, rendered as-is.
   return <>{segment.v}</>;
 }
 

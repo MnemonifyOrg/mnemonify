@@ -1,14 +1,16 @@
-function bodyText(item) {
+import EditableRichField from './EditableRichField.jsx';
+
+function bodyHtml(item) {
   const textBlock = item.body_blocks?.find((b) => b.type === 'text');
   return textBlock?.content.rich_text?.[0]?.v || '';
 }
 
-function withBodyText(item, text) {
+function withBodyHtml(item, html) {
   const existing = item.body_blocks?.find((b) => b.type === 'text');
   const textBlock = existing || { block_id: `blk_${Math.random().toString(36).slice(2, 8)}`, type: 'text', content: {}, triggers: [] };
   return {
     ...item,
-    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'text', v: text }] } }],
+    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'html', v: html }] } }],
   };
 }
 
@@ -36,28 +38,22 @@ export default function AccordionBlockEditor({ block, onChange }) {
       {items.map((item, index) => (
         <div className="accordion-block-editor__item card" key={index}>
           <div className="accordion-block-editor__item-header">
-            <div
+            <EditableRichField
               className="editable-field"
-              contentEditable
-              suppressContentEditableWarning
-              data-placeholder="Click to add accordion title..."
-              onBlur={(e) => updateItem(index, { title: e.currentTarget.textContent })}
-            >
-              {item.title}
-            </div>
+              placeholder="Click to add accordion title..."
+              value={item.title}
+              onCommit={(html) => updateItem(index, { title: html })}
+            />
             <button className="btn-text" onClick={() => deleteItem(index)}>
               ✕
             </button>
           </div>
-          <div
+          <EditableRichField
             className="editable-field accordion-block-editor__body"
-            contentEditable
-            suppressContentEditableWarning
-            data-placeholder="Click to add content..."
-            onBlur={(e) => updateItem(index, withBodyText(item, e.currentTarget.textContent))}
-          >
-            {bodyText(item)}
-          </div>
+            placeholder="Click to add content..."
+            value={bodyHtml(item)}
+            onCommit={(html) => updateItem(index, withBodyHtml(item, html))}
+          />
         </div>
       ))}
       <button className="btn" onClick={addItem}>

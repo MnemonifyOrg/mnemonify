@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import EditableRichField from './EditableRichField.jsx';
 
 export default function ListBlockEditor({ block, onChange }) {
   const items = block.content.items || [''];
@@ -8,10 +9,10 @@ export default function ListBlockEditor({ block, onChange }) {
     onChange({ ...block, content: { ...block.content, items: newItems } });
   }
 
-  function handleBlurRow(index, text) {
-    if (items[index] !== text) {
+  function handleCommitRow(index, html) {
+    if (items[index] !== html) {
       const next = [...items];
-      next[index] = text;
+      next[index] = html;
       setItems(next);
     }
   }
@@ -35,17 +36,14 @@ export default function ListBlockEditor({ block, onChange }) {
     <ul className="list-block-editor">
       {items.map((item, index) => (
         <li key={index}>
-          <div
-            ref={(el) => (rowRefs.current[index] = el)}
+          <EditableRichField
+            fieldRef={(el) => (rowRefs.current[index] = el)}
             className="editable-field"
-            contentEditable
-            suppressContentEditableWarning
-            data-placeholder="Click to add list item..."
-            onBlur={(e) => handleBlurRow(index, e.currentTarget.textContent)}
+            placeholder="Click to add list item..."
+            value={item}
+            onCommit={(html) => handleCommitRow(index, html)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-          >
-            {item}
-          </div>
+          />
         </li>
       ))}
     </ul>

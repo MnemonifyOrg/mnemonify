@@ -854,6 +854,18 @@
   background: var(--color-bg-secondary);
   font-weight: 600;
 }
+.table-block-editor__toolbar {
+  position: absolute;
+  transform: translateY(calc(-100% - 4px));
+  z-index: 5;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+  display: flex;
+  gap: var(--space-1);
+}
 .table-block-settings__toolbar {
   display: flex;
   flex-wrap: wrap;

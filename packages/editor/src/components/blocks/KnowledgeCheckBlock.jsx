@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
+import EditableRichField from './EditableRichField.jsx';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -87,16 +88,15 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
     });
   }
 
-  function updateOptionFeedback(id, text) {
-    const trimmed = text.trim();
+  function updateOptionFeedback(id, html) {
     setContent({
       options: options.map((o) => {
         if (o.id !== id) return o;
-        if (!trimmed) {
+        if (!html || !html.replace(/<br>/g, '').trim()) {
           const { feedback, ...rest } = o;
           return rest;
         }
-        return { ...o, feedback: { rich_text: [{ t: 'text', v: text }], image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
+        return { ...o, feedback: { rich_text: [{ t: 'html', v: html }], image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
       }),
     });
   }
@@ -165,20 +165,14 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
         </div>
       )}
 
-      <div
+      <EditableRichField
         className="editable-field knowledge-check-block-editor__question"
-        contentEditable
-        suppressContentEditableWarning
-        data-placeholder="Click to add your question..."
+        placeholder="Click to add your question..."
+        value={question}
         onFocus={handleFieldFocus}
-        onBlur={(e) => {
-          const text = e.currentTarget.textContent;
-          if (text !== question) setContent({ question: text });
-          handleFieldBlur();
-        }}
-      >
-        {question}
-      </div>
+        onBlur={handleFieldBlur}
+        onCommit={(html) => setContent({ question: html })}
+      />
       <KcImageField
         assetId={block.content.question_image_id}
         assets={assets}
@@ -194,20 +188,14 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
             <li key={option.id}>
               <div className="kc-option-row">
                 <input type="radio" checked={!!option.correct} onChange={() => markCorrect(option.id)} title="Mark as correct answer" />
-                <div
+                <EditableRichField
                   className="editable-field"
-                  contentEditable
-                  suppressContentEditableWarning
-                  data-placeholder="Click to add answer option..."
+                  placeholder="Click to add answer option..."
+                  value={option.text}
                   onFocus={handleFieldFocus}
-                  onBlur={(e) => {
-                    const text = e.currentTarget.textContent;
-                    if (text !== option.text) updateOption(option.id, { text });
-                    handleFieldBlur();
-                  }}
-                >
-                  {option.text}
-                </div>
+                  onBlur={handleFieldBlur}
+                  onCommit={(html) => updateOption(option.id, { text: html })}
+                />
                 {options.length > MIN_OPTIONS && (
                   <button className="btn-text" onClick={() => deleteOption(option.id)}>
                     ✕
@@ -230,19 +218,14 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
               </button>
               {feedbackExpanded && (
                 <>
-                  <div
+                  <EditableRichField
                     className="editable-field kc-option-feedback-field"
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-placeholder="Shown instead of the general feedback when this option is selected..."
+                    placeholder="Shown instead of the general feedback when this option is selected..."
+                    value={option.feedback?.rich_text?.[0]?.v || ''}
                     onFocus={handleFieldFocus}
-                    onBlur={(e) => {
-                      updateOptionFeedback(option.id, e.currentTarget.textContent);
-                      handleFieldBlur();
-                    }}
-                  >
-                    {option.feedback?.rich_text?.[0]?.v || ''}
-                  </div>
+                    onBlur={handleFieldBlur}
+                    onCommit={(html) => updateOptionFeedback(option.id, html)}
+                  />
                   <KcImageField
                     assetId={option.feedback?.image_id}
                     assets={assets}
@@ -263,19 +246,13 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       )}
 
       <label className="kc-feedback-label">Correct feedback</label>
-      <div
+      <EditableRichField
         className="editable-field"
-        contentEditable
-        suppressContentEditableWarning
+        value={block.content.correct_feedback || ''}
         onFocus={handleFieldFocus}
-        onBlur={(e) => {
-          const text = e.currentTarget.textContent;
-          if (text !== (block.content.correct_feedback || '')) setContent({ correct_feedback: text });
-          handleFieldBlur();
-        }}
-      >
-        {block.content.correct_feedback || ''}
-      </div>
+        onBlur={handleFieldBlur}
+        onCommit={(html) => setContent({ correct_feedback: html })}
+      />
       <KcImageField
         assetId={block.content.correct_feedback_image_id}
         assets={assets}
@@ -285,19 +262,13 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       />
 
       <label className="kc-feedback-label">Incorrect feedback</label>
-      <div
+      <EditableRichField
         className="editable-field"
-        contentEditable
-        suppressContentEditableWarning
+        value={block.content.incorrect_feedback || ''}
         onFocus={handleFieldFocus}
-        onBlur={(e) => {
-          const text = e.currentTarget.textContent;
-          if (text !== (block.content.incorrect_feedback || '')) setContent({ incorrect_feedback: text });
-          handleFieldBlur();
-        }}
-      >
-        {block.content.incorrect_feedback || ''}
-      </div>
+        onBlur={handleFieldBlur}
+        onCommit={(html) => setContent({ incorrect_feedback: html })}
+      />
       <KcImageField
         assetId={block.content.incorrect_feedback_image_id}
         assets={assets}

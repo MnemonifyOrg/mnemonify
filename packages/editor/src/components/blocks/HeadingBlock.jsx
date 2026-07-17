@@ -1,30 +1,13 @@
-import { useEffect, useRef } from 'react';
+import EditableRichField from './EditableRichField.jsx';
 
 export default function HeadingBlockEditor({ block, onChange }) {
-  const ref = useRef(null);
-  const initialText = block.content.text || '';
-
-  useEffect(() => {
-    if (ref.current) ref.current.textContent = initialText;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [block.block_id]);
-
-  function handleBlur() {
-    const newText = ref.current.textContent;
-    if (newText !== initialText) {
-      onChange({ ...block, content: { ...block.content, text: newText } });
-    }
-  }
-
   return (
-    <div
-      ref={ref}
+    <EditableRichField
       className="editable-field heading-block-editor"
       data-level={block.content.level || 2}
-      contentEditable
-      suppressContentEditableWarning
-      data-placeholder="Click to add heading..."
-      onBlur={handleBlur}
+      placeholder="Click to add heading..."
+      value={block.content.text || ''}
+      onCommit={(html) => onChange({ ...block, content: { ...block.content, text: html } })}
       onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
     />
   );

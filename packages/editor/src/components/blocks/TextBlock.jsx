@@ -1,29 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import EditableRichField from './EditableRichField.jsx';
 
-// Phase 3 limitation: the rich_text content model (DECISIONS.md 2026-07-11)
-// stores each segment as plain { t, v } text -- there is no field to persist
-// bold/italic/underline. The toolbar below still uses execCommand for an
-// in-the-moment WYSIWYG feel, but only plain text (textContent) is saved on
-// blur, so formatting does not survive a reload. See DECISIONS.md 2026-07-12.
 export default function TextBlockEditor({ block, onChange }) {
   const ref = useRef(null);
-  const initialText = block.content.rich_text?.[0]?.v || '';
-
-  useEffect(() => {
-    if (ref.current) ref.current.textContent = initialText;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [block.block_id]);
-
-  function handleBlur() {
-    const newText = ref.current.textContent;
-    if (newText !== initialText) {
-      onChange({ ...block, content: { ...block.content, rich_text: [{ t: 'text', v: newText }] } });
-    }
-  }
 
   function format(command) {
     document.execCommand(command);
-    ref.current.focus();
+    ref.current?.focus();
   }
 
   return (
@@ -45,13 +28,12 @@ export default function TextBlockEditor({ block, onChange }) {
           X<sub>2</sub>
         </button>
       </div>
-      <div
-        ref={ref}
+      <EditableRichField
+        fieldRef={ref}
         className="editable-field text-block-editor__body"
-        contentEditable
-        suppressContentEditableWarning
-        data-placeholder="Click to add text..."
-        onBlur={handleBlur}
+        placeholder="Click to add text..."
+        value={block.content.rich_text?.[0]?.v || ''}
+        onCommit={(html) => onChange({ ...block, content: { ...block.content, rich_text: [{ t: 'html', v: html }] } })}
       />
     </div>
   );

@@ -14,12 +14,27 @@ const MAX_SPLIT = 75;
 const SLOT_PICKER_TYPES = ['text', 'image', 'embed'];
 const SLOT_PICKER_LABELS = { text: 'Add Text', image: 'Add Image', embed: 'Add Embed' };
 
-function SlotContent({ slotBlock, onChangeSlot }) {
+// `assets`/`courseId`/`onAddCourseAsset`/`onAddCourseAssets`/`onUpdateCourseAsset`
+// are forwarded all the way from BlockCanvas.jsx's BlockWrapper down to
+// whichever slot editor is rendered here -- an image block in a slot needs
+// them exactly like a standalone image block does (courseId for the upload
+// request, onAddCourseAsset to register the uploaded asset). See
+// DECISIONS.md for the bug this fixes: image upload inside a two-column
+// slot silently failed because these props were previously dropped here.
+function SlotContent({ slotBlock, onChangeSlot, assets, courseId, onAddCourseAsset, onAddCourseAssets, onUpdateCourseAsset }) {
   const Editor = BLOCK_EDITORS[slotBlock.type];
   if (!Editor) return null;
   return (
     <>
-      <Editor block={slotBlock} onChange={onChangeSlot} />
+      <Editor
+        block={slotBlock}
+        onChange={onChangeSlot}
+        assets={assets}
+        courseId={courseId}
+        onAddCourseAsset={onAddCourseAsset}
+        onAddCourseAssets={onAddCourseAssets}
+        onUpdateCourseAsset={onUpdateCourseAsset}
+      />
       {/* An image inside a slot has no separate Settings-panel entry of
           its own (slot blocks are only reachable through the two-column
           container), so its Size/Alignment controls live here inline
@@ -29,7 +44,7 @@ function SlotContent({ slotBlock, onChangeSlot }) {
   );
 }
 
-function Slot({ side, slotBlock, parentBlockId, onSetSlot, onClearSlot, onChangeSlot }) {
+function Slot({ side, slotBlock, parentBlockId, onSetSlot, onClearSlot, onChangeSlot, assets, courseId, onAddCourseAsset, onAddCourseAssets, onUpdateCourseAsset }) {
   if (!slotBlock) {
     return (
       <div className="two-column-block-editor__empty-slot">
@@ -54,12 +69,20 @@ function Slot({ side, slotBlock, parentBlockId, onSetSlot, onClearSlot, onChange
           ✕
         </button>
       </div>
-      <SlotContent slotBlock={slotBlock} onChangeSlot={onChangeSlot} />
+      <SlotContent
+        slotBlock={slotBlock}
+        onChangeSlot={onChangeSlot}
+        assets={assets}
+        courseId={courseId}
+        onAddCourseAsset={onAddCourseAsset}
+        onAddCourseAssets={onAddCourseAssets}
+        onUpdateCourseAsset={onUpdateCourseAsset}
+      />
     </div>
   );
 }
 
-export default function TwoColumnBlockEditor({ block, onChange }) {
+export default function TwoColumnBlockEditor({ block, onChange, assets, courseId, onAddCourseAsset, onAddCourseAssets, onUpdateCourseAsset }) {
   const containerRef = useRef(null);
   const [dragSplit, setDragSplit] = useState(null);
   const split = dragSplit ?? block.layout?.split ?? 50;
@@ -124,6 +147,11 @@ export default function TwoColumnBlockEditor({ block, onChange }) {
           onSetSlot={(b) => commitSlot('left', b)}
           onClearSlot={() => commitSlot('left', null)}
           onChangeSlot={(updated, options) => changeSlotContent('left', updated, options)}
+          assets={assets}
+          courseId={courseId}
+          onAddCourseAsset={onAddCourseAsset}
+          onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
         />
       </div>
       <div
@@ -139,6 +167,11 @@ export default function TwoColumnBlockEditor({ block, onChange }) {
           onSetSlot={(b) => commitSlot('right', b)}
           onClearSlot={() => commitSlot('right', null)}
           onChangeSlot={(updated, options) => changeSlotContent('right', updated, options)}
+          assets={assets}
+          courseId={courseId}
+          onAddCourseAsset={onAddCourseAsset}
+          onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
         />
       </div>
     </div>

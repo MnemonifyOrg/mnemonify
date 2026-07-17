@@ -1,6 +1,6 @@
 import RichText from './RichText.jsx';
 
-function RichTextSegment({ segment, assets, onOpenLightbox }) {
+function RichTextSegment({ segment, assets, onOpenModal }) {
   if (segment.t === 'asset_link') {
     const asset = assets.find((a) => a.asset_id === segment.asset_id);
     return (
@@ -8,7 +8,7 @@ function RichTextSegment({ segment, assets, onOpenLightbox }) {
         type="button"
         className="block-text__asset-link"
         tabIndex={0}
-        onClick={() => onOpenLightbox && onOpenLightbox(asset)}
+        onClick={() => asset && onOpenModal?.({ type: 'image', asset, ariaLabel: asset.alt || asset.caption || 'Image' })}
       >
         {segment.v}
       </button>
@@ -22,12 +22,12 @@ function RichTextSegment({ segment, assets, onOpenLightbox }) {
   return <>{segment.v}</>;
 }
 
-export default function TextBlock({ block, assets }) {
+export default function TextBlock({ block, assets, onOpenModal }) {
   return (
     <div className="block block-text">
       <p>
         {block.content.rich_text.map((segment, i) => (
-          <RichTextSegment key={i} segment={segment} assets={assets} />
+          <RichTextSegment key={i} segment={segment} assets={assets} onOpenModal={onOpenModal} />
         ))}
       </p>
     </div>

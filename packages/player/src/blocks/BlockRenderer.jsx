@@ -9,6 +9,7 @@ import ReflectionBlock from './ReflectionBlock.jsx';
 import TwoColumnBlock from './TwoColumnBlock.jsx';
 import TableBlock from './TableBlock.jsx';
 import EmbedBlock from './EmbedBlock.jsx';
+import CarouselBlock from './CarouselBlock.jsx';
 
 const REGISTRY = {
   heading: HeadingBlock,
@@ -22,30 +23,18 @@ const REGISTRY = {
   two_column: TwoColumnBlock,
   table: TableBlock,
   embed: EmbedBlock,
+  carousel: CarouselBlock,
 };
 
-export default function BlockRenderer({ block, assets, onTrigger, isPreview }) {
+export default function BlockRenderer({ block, assets, onTrigger, isPreview, onOpenModal }) {
   // block.faculty_notes is intentionally never passed to any block
   // component below, in any context (SCORM, standalone, preview, review).
   // It is editor/instructor-only content (ARCHITECTURE.md 3.8) -- the
   // player must not read this field at all, not just avoid displaying it.
   const Component = REGISTRY[block.type];
   if (!Component) {
-    // Carousel rendering is Phase 5 scope (not implemented yet). In editor
-    // preview, tell the author explicitly rather than silently dropping
-    // the block, so it doesn't look broken/missing. Outside preview
-    // (real learner/SCORM context) that reassurance would be false today,
-    // so fall through to the generic silent-skip used for any other
-    // not-yet-implemented block type. See DECISIONS.md.
-    if (block.type === 'carousel' && isPreview) {
-      return (
-        <div className="block block-unavailable-preview">
-          Carousel preview not available — renders correctly in published course
-        </div>
-      );
-    }
     console.warn(`[player] Unknown block type "${block.type}" (block_id: ${block.block_id})`);
     return null;
   }
-  return <Component block={block} assets={assets} onTrigger={onTrigger} />;
+  return <Component block={block} assets={assets} onTrigger={onTrigger} isPreview={isPreview} onOpenModal={onOpenModal} />;
 }

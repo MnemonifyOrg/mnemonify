@@ -158,18 +158,18 @@ input:focus-visible {
   text-align: center;
   font-size: var(--text-sm);
 }
-
-/* Not-yet-implemented block type, shown only in editor preview */
-.block-unavailable-preview {
-  width: 100%;
-  padding: var(--space-5) var(--space-4);
-  border: 1px dashed var(--color-border);
+/* Shrink-wraps to the img's own preset width (not stretched to fill the
+   figure) so the figure's existing align-items (left/center/right) still
+   positions it exactly like the bare <img> did before this button wrapper
+   was added; the img itself keeps its original --image-width-pct sizing
+   and mobile floor rules unchanged, just one element deeper in the DOM. */
+.block-image__open-button {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
   border-radius: var(--radius-md);
-  background: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
-  text-align: center;
-  font-size: var(--text-sm);
-  font-style: italic;
 }
 
 /* List block */
@@ -470,5 +470,286 @@ input:focus-visible {
     display: block;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+  }
+}
+
+/* Carousel block */
+.block-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+.block-carousel__placeholder {
+  width: 100%;
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+.block-carousel__viewport {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.block-carousel__image-button {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  border-radius: var(--radius-md);
+}
+.block-carousel__image-button img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.block-carousel__nav {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.block-carousel__nav:hover {
+  background: var(--color-bg-secondary);
+}
+.block-carousel__caption {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0;
+}
+.block-carousel__dots {
+  display: flex;
+  gap: var(--space-2);
+}
+.block-carousel__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--color-border);
+  cursor: pointer;
+}
+.block-carousel__dot[data-active="true"] {
+  background: var(--color-primary);
+}
+
+/* Unified modal layer (ARCHITECTURE.md 5.3) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 1000;
+}
+.modal-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-lg);
+}
+.modal-dialog:focus-visible {
+  outline: none;
+}
+.modal-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  cursor: pointer;
+  z-index: 2;
+}
+.modal-close:hover {
+  background: var(--color-bg-secondary);
+}
+.modal-payload__placeholder {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* iframe / pdf / email payloads (no real caller yet -- see
+   ARCHITECTURE.md 5.3 and DECISIONS.md) */
+.modal-payload--iframe .modal-payload__iframe,
+.modal-payload--pdf .modal-payload__pdf-frame {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.modal-payload__pdf-download {
+  display: inline-block;
+  margin-top: var(--space-3);
+  color: var(--color-primary);
+}
+.modal-payload--email {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-5);
+}
+.modal-payload__email-label {
+  font-weight: 600;
+}
+.modal-payload__email-textarea {
+  width: 100%;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  resize: vertical;
+}
+.modal-payload__email-send {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  text-decoration: none;
+}
+
+/* Image lightbox payload: pan/zoom on a static image via CSS transform
+   only (scale()/translate()) -- no canvas, no tile loading. This is a
+   lightweight zoom for a single-resolution image, not the Phase 7
+   deep-zoom tiled viewer; see DECISIONS.md. */
+.lightbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+.lightbox__stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lightbox__viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  touch-action: none;
+  cursor: zoom-in;
+}
+.lightbox__viewport[data-zoomed="true"] {
+  cursor: grab;
+}
+.lightbox__viewport[data-panning="true"] {
+  cursor: grabbing;
+}
+.lightbox__image {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.05s linear;
+  user-select: none;
+}
+.lightbox__nav {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-2xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.lightbox__nav:hover {
+  background: var(--color-bg-secondary);
+}
+.lightbox__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.lightbox__zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+.lightbox__zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.lightbox__zoom-level {
+  min-width: 48px;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.lightbox__reset {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.lightbox__reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.lightbox__caption {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.lightbox__counter {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  margin: 0;
+}
+@media (max-width: 767px) {
+  .lightbox__stage {
+    flex-wrap: wrap;
+  }
+  .lightbox__nav {
+    order: 1;
   }
 }

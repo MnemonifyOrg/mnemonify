@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import bundledCourse from '../../../samples/sample-course.json';
 import BlockRenderer from './blocks/BlockRenderer.jsx';
+import Modal from './components/Modal.jsx';
 import { runTriggers } from './engine/triggerEngine.js';
 import scorm2004 from './lms/scorm2004.js';
 
@@ -31,6 +32,7 @@ export default function App() {
   const [course, setCourse] = useState(null);
   const [variables, setVariables] = useState({});
   const [isScorm, setIsScorm] = useState(false);
+  const [modalPayload, setModalPayload] = useState(null);
   const answeredRef = useRef({ total: 0, correct: 0, answeredCount: 0 });
   const completedRef = useRef(false);
 
@@ -153,6 +155,14 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [course, variables]);
 
+  function handleOpenModal(payload) {
+    setModalPayload(payload);
+  }
+
+  function handleCloseModal() {
+    setModalPayload(null);
+  }
+
   function handleTrigger(block, eventName) {
     setVariables((current) => runTriggers(current, block.triggers, eventName));
 
@@ -196,6 +206,7 @@ export default function App() {
             assets={course.assets}
             onTrigger={handleTrigger}
             isPreview={isPreview}
+            onOpenModal={handleOpenModal}
           />
         ))}
         {course.meta.footer && (
@@ -204,6 +215,7 @@ export default function App() {
           </div>
         )}
       </main>
+      <Modal payload={modalPayload} onClose={handleCloseModal} />
     </div>
   );
 }

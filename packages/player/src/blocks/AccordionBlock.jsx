@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function AccordionBlock({ block, assets, onTrigger }) {
+export default function AccordionBlock({ block, assets, onTrigger, onOpenModal }) {
   const [openIndex, setOpenIndex] = useState(null);
 
   function toggle(index) {
@@ -40,7 +40,7 @@ export default function AccordionBlock({ block, assets, onTrigger }) {
             {isOpen && (
               <div className="accordion-item__panel" id={panelId} role="region" aria-labelledby={triggerId}>
                 {(item.body_blocks || []).map((childBlock) => (
-                  <BlockRenderer key={childBlock.block_id} block={childBlock} assets={assets} onTrigger={onTrigger} />
+                  <BlockRenderer key={childBlock.block_id} block={childBlock} assets={assets} onTrigger={onTrigger} onOpenModal={onOpenModal} />
                 ))}
               </div>
             )}

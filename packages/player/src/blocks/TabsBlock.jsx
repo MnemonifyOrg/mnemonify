@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function TabsBlock({ block, assets, onTrigger }) {
+export default function TabsBlock({ block, assets, onTrigger, onOpenModal }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const items = block.content.items;
 
@@ -47,7 +47,7 @@ export default function TabsBlock({ block, assets, onTrigger }) {
         return (
           <div key={index} className="tabs__panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
             {(item.body_blocks || []).map((childBlock) => (
-              <BlockRenderer key={childBlock.block_id} block={childBlock} assets={assets} onTrigger={onTrigger} />
+              <BlockRenderer key={childBlock.block_id} block={childBlock} assets={assets} onTrigger={onTrigger} onOpenModal={onOpenModal} />
             ))}
           </div>
         );

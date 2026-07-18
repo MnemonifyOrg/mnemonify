@@ -1,43 +1,44 @@
 import { useState } from 'react';
 import EditableRichField from './EditableRichField.jsx';
+import ItemBlockStack from './ItemBlockStack.jsx';
 
 const MAX_TABS = 6;
 
-function bodyHtml(item) {
-  const textBlock = item.body_blocks?.find((b) => b.type === 'text');
-  return textBlock?.content.rich_text?.[0]?.v || '';
-}
-
-function withBodyHtml(item, html) {
-  const existing = item.body_blocks?.find((b) => b.type === 'text');
-  const textBlock = existing || { block_id: `blk_${Math.random().toString(36).slice(2, 8)}`, type: 'text', content: {}, triggers: [] };
-  return {
-    ...item,
-    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'html', v: html }] } }],
-  };
-}
-
-export default function TabsBlockEditor({ block, onChange }) {
+export default function TabsBlockEditor({
+  block,
+  onChange,
+  assets,
+  courseId,
+  onAddCourseAsset,
+  onAddCourseAssets,
+  onUpdateCourseAsset,
+}) {
   const items = block.content.items || [];
   const [activeIndex, setActiveIndex] = useState(0);
   const safeActive = Math.min(activeIndex, items.length - 1);
 
-  function setItems(newItems) {
-    onChange({ ...block, content: { ...block.content, items: newItems } });
+  function setItems(newItems, options) {
+    onChange({ ...block, content: { ...block.content, items: newItems } }, options);
   }
 
-  function updateItem(index, patch) {
-    setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  function updateItem(index, patch, options) {
+    setItems(
+      items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+      options
+    );
   }
 
   function addTab() {
     if (items.length >= MAX_TABS) return;
-    setItems([...items, { label: `Tab ${items.length + 1}`, body_blocks: [] }]);
+    setItems([...items, { label: `Tab ${items.length + 1}`, body_blocks: [] }], { forceSnapshot: true });
     setActiveIndex(items.length);
   }
 
   function deleteTab(index) {
-    setItems(items.filter((_, i) => i !== index));
+    setItems(
+      items.filter((_, i) => i !== index),
+      { forceSnapshot: true }
+    );
     setActiveIndex(0);
   }
 
@@ -67,11 +68,16 @@ export default function TabsBlockEditor({ block, onChange }) {
         )}
       </div>
       {items[safeActive] && (
-        <EditableRichField
-          className="editable-field tabs-block-editor__body"
-          placeholder="Click to add tab content..."
-          value={bodyHtml(items[safeActive])}
-          onCommit={(html) => updateItem(safeActive, withBodyHtml(items[safeActive], html))}
+        <ItemBlockStack
+          blocks={items[safeActive].body_blocks}
+          parentBlockId={block.block_id}
+          itemIndex={safeActive}
+          onChangeBlocks={(newBlocks, options) => updateItem(safeActive, { body_blocks: newBlocks }, options)}
+          assets={assets}
+          courseId={courseId}
+          onAddCourseAsset={onAddCourseAsset}
+          onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
         />
       )}
     </div>

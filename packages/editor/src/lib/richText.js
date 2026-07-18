@@ -13,11 +13,47 @@
 // import), since neither package depends on the other and this file has
 // zero dependencies of its own (pure DOM API, no React).
 
-export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR']);
+export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN']);
+// Curated text-color palette (item 8) -- deliberately NOT an open color
+// picker, a fixed set applied via document.execCommand('foreColor', ...).
+// Each non-null value is pre-verified against the light default background
+// (#FFFFFF); two (Emerald, Coral) are darkened from their raw --mn-* brand
+// token because the token itself falls short of 4.5:1 on white -- see
+// DECISIONS.md for the exact measured ratios, including why a single fixed
+// hex cannot also clear 4.5:1 against a dark-navy background (mathematically
+// impossible for these two background extremes at once; DECISIONS.md has
+// the proof) and why that's acceptable given headings/text never actually
+// render against a dark-navy background anywhere in this app today.
+export const TEXT_COLORS = [
+  { name: 'Default', value: null },
+  { name: 'Primary Blue', value: '#2563EB' },
+  { name: 'Violet', value: '#6D28D9' },
+  { name: 'Emerald', value: '#127D59' },
+  { name: 'Coral', value: '#A82424' },
+  { name: 'Deep Navy', value: '#0A1020' },
+];
+const TEXT_COLOR_VALUES = new Set(TEXT_COLORS.map((c) => c.value?.toLowerCase()).filter(Boolean));
+
+// DOM-normalizes an inline color (the browser reports `node.style.color` as
+// `rgb(r, g, b)` even when the HTML source said `#rrggbb`) back to lowercase
+// hex so it can be checked against TEXT_COLOR_VALUES.
+function normalizeColorToHex(colorStr) {
+  if (!colorStr) return null;
+  const trimmed = colorStr.trim();
+  const hexMatch = /^#([0-9a-f]{6})$/i.exec(trimmed);
+  if (hexMatch) return `#${hexMatch[1].toLowerCase()}`;
+  const rgbMatch = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/i.exec(trimmed);
+  if (!rgbMatch) return null;
+  const toHex = (n) => Number(n).toString(16).padStart(2, '0');
+  return `#${toHex(rgbMatch[1])}${toHex(rgbMatch[2])}${toHex(rgbMatch[3])}`;
+}
 // Narrower allowlist for table cells (ARCHITECTURE.md 3.7: "Cell content is
-// plain text only" -- sup/sub is the one deliberate, narrow exception; see
-// DECISIONS.md for why bold/italic/underline/line-breaks stay excluded).
-export const SUP_SUB_TAGS = new Set(['SUP', 'SUB']);
+// plain text only" -- sup/sub is the original deliberate, narrow exception;
+// bold/italic were added on top of that per an author request for
+// pathology content (italicizing organism/gene names) -- see DECISIONS.md.
+// Underline and line-breaks stay excluded to keep cells lighter-weight than
+// full text-editable blocks.
+export const CELL_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'SUP', 'SUB']);
 
 function nodeToAst(node, allowedTags) {
   if (node.nodeType === Node.TEXT_NODE) {
@@ -25,8 +61,28 @@ function nodeToAst(node, allowedTags) {
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return [];
 
-  const children = [...node.childNodes].flatMap((child) => nodeToAst(child, allowedTags));
+  let children = [...node.childNodes].flatMap((child) => nodeToAst(child, allowedTags));
   const tag = node.tagName;
+
+  // A `color` can land as an inline style on ANY element, not just a fresh
+  // <span>: when a selection sits fully inside an existing inline element
+  // (e.g. bolded text), execCommand('foreColor', ...) with styleWithCSS
+  // attaches the style directly to that element (a <b style="color:...">)
+  // rather than wrapping a new span around it -- checked and confirmed by
+  // hand, not assumed. So every element is checked for a valid palette
+  // color here, before the tag-specific handling below, and its children
+  // wrapped in a color node regardless of which tag actually carried the
+  // style. Validated against the fixed TEXT_COLOR_VALUES allowlist rather
+  // than copied through, so this doesn't reopen the "no attribute is ever
+  // copied" invariant to arbitrary style/injection payloads: an element
+  // with no color, or a color outside the curated palette (e.g. from a
+  // paste), contributes nothing extra here.
+  if (allowedTags.has('SPAN')) {
+    const hex = normalizeColorToHex(node.style?.color || '');
+    if (hex && TEXT_COLOR_VALUES.has(hex)) {
+      children = [{ type: 'span', color: hex, children }];
+    }
+  }
 
   if (tag === 'BR') return allowedTags.has('BR') ? [{ type: 'br' }] : [];
   // A block-level line container (DIV/P) is what most browsers insert on
@@ -38,7 +94,11 @@ function nodeToAst(node, allowedTags) {
   if (tag === 'DIV' || tag === 'P') {
     return allowedTags.has('BR') ? [{ type: 'br' }, ...children] : children;
   }
-  if (allowedTags.has(tag)) {
+  // SPAN itself carries no semantics beyond the color it may have
+  // contributed above -- it's never in `allowedTags` as a real tag type
+  // (RICH_TEXT_TAGS includes it only to gate the color check), so it always
+  // falls through to "unwrap to children" like any other disallowed tag.
+  if (allowedTags.has(tag) && tag !== 'SPAN') {
     return [{ type: tag.toLowerCase(), children }];
   }
   // Disallowed tag (span, a, img, script, style, or anything a paste
@@ -67,7 +127,7 @@ export function htmlToRichAst(html, allowedTags = RICH_TEXT_TAGS) {
   return trimBreaks([...scratch.childNodes].flatMap((node) => nodeToAst(node, allowedTags)));
 }
 
-function escapeHtml(str) {
+export function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -76,6 +136,7 @@ function astToHtml(ast) {
     .map((node) => {
       if (node.type === 'text') return escapeHtml(node.value);
       if (node.type === 'br') return '<br>';
+      if (node.type === 'span') return `<span style="color:${node.color}">${astToHtml(node.children)}</span>`;
       return `<${node.type}>${astToHtml(node.children)}</${node.type}>`;
     })
     .join('');

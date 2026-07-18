@@ -139,6 +139,33 @@ export default function App() {
 
   useEffect(() => {
     if (!course) return;
+    // Embed blocks (e.g. a DigitalScope WSI iframe) trigger the browser's
+    // default iframe-focus-on-load behavior once their remote content
+    // finishes loading -- some browsers resolve that focus shift by
+    // scrolling the newly-focused iframe into view, jumping the page down
+    // to wherever the embed sits even though nothing the course itself
+    // asked for that. window.scrollTo here targets this document's own
+    // scroll position (this player may itself be running inside the
+    // editor's preview iframe, in which case `window` is that iframe's
+    // own window, not the outer editor page -- exactly the container that
+    // needs resetting). Reset once immediately, then again after every
+    // embed iframe on the page finishes loading, since the load event is
+    // the actual moment a browser's default focus-shift can occur, which
+    // happens well after this effect's initial run (the embed's own
+    // remote content takes real network time to load).
+    window.scrollTo(0, 0);
+    const iframes = Array.from(document.querySelectorAll('.block-embed__iframe'));
+    function resetScroll() {
+      window.scrollTo(0, 0);
+    }
+    iframes.forEach((iframe) => iframe.addEventListener('load', resetScroll));
+    return () => {
+      iframes.forEach((iframe) => iframe.removeEventListener('load', resetScroll));
+    };
+  }, [course]);
+
+  useEffect(() => {
+    if (!course) return;
     console.log('[player] variable state:', variables);
     if (isScorm) {
       scorm2004.setSuspendData({ variables, pageId: course.pages[0].page_id });

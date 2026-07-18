@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import EditableRichField from './EditableRichField.jsx';
+import TextColorPicker from './TextColorPicker.jsx';
 
 export default function TextBlockEditor({ block, onChange }) {
   const ref = useRef(null);
@@ -27,6 +28,7 @@ export default function TextBlockEditor({ block, onChange }) {
         <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
           X<sub>2</sub>
         </button>
+        <TextColorPicker />
       </div>
       <EditableRichField
         fieldRef={ref}

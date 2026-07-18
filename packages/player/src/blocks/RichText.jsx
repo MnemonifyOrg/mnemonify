@@ -6,6 +6,13 @@ function renderNodes(nodes) {
   return nodes.map((node, i) => {
     if (node.type === 'text') return node.value;
     if (node.type === 'br') return <br key={i} />;
+    if (node.type === 'span') {
+      return (
+        <span key={i} style={{ color: node.color }}>
+          {renderNodes(node.children)}
+        </span>
+      );
+    }
     const Tag = TAG_MAP[node.type] || 'span';
     return <Tag key={i}>{renderNodes(node.children)}</Tag>;
   });

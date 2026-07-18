@@ -1,36 +1,37 @@
 import EditableRichField from './EditableRichField.jsx';
+import ItemBlockStack from './ItemBlockStack.jsx';
 
-function bodyHtml(item) {
-  const textBlock = item.body_blocks?.find((b) => b.type === 'text');
-  return textBlock?.content.rich_text?.[0]?.v || '';
-}
-
-function withBodyHtml(item, html) {
-  const existing = item.body_blocks?.find((b) => b.type === 'text');
-  const textBlock = existing || { block_id: `blk_${Math.random().toString(36).slice(2, 8)}`, type: 'text', content: {}, triggers: [] };
-  return {
-    ...item,
-    body_blocks: [{ ...textBlock, content: { rich_text: [{ t: 'html', v: html }] } }],
-  };
-}
-
-export default function AccordionBlockEditor({ block, onChange }) {
+export default function AccordionBlockEditor({
+  block,
+  onChange,
+  assets,
+  courseId,
+  onAddCourseAsset,
+  onAddCourseAssets,
+  onUpdateCourseAsset,
+}) {
   const items = block.content.items || [];
 
-  function setItems(newItems) {
-    onChange({ ...block, content: { ...block.content, items: newItems } });
+  function setItems(newItems, options) {
+    onChange({ ...block, content: { ...block.content, items: newItems } }, options);
   }
 
-  function updateItem(index, patch) {
-    setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  function updateItem(index, patch, options) {
+    setItems(
+      items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+      options
+    );
   }
 
   function addItem() {
-    setItems([...items, { title: '', body_blocks: [] }]);
+    setItems([...items, { title: '', body_blocks: [] }], { forceSnapshot: true });
   }
 
   function deleteItem(index) {
-    setItems(items.filter((_, i) => i !== index));
+    setItems(
+      items.filter((_, i) => i !== index),
+      { forceSnapshot: true }
+    );
   }
 
   return (
@@ -48,11 +49,16 @@ export default function AccordionBlockEditor({ block, onChange }) {
               ✕
             </button>
           </div>
-          <EditableRichField
-            className="editable-field accordion-block-editor__body"
-            placeholder="Click to add content..."
-            value={bodyHtml(item)}
-            onCommit={(html) => updateItem(index, withBodyHtml(item, html))}
+          <ItemBlockStack
+            blocks={item.body_blocks}
+            parentBlockId={block.block_id}
+            itemIndex={index}
+            onChangeBlocks={(newBlocks, options) => updateItem(index, { body_blocks: newBlocks }, options)}
+            assets={assets}
+            courseId={courseId}
+            onAddCourseAsset={onAddCourseAsset}
+            onAddCourseAssets={onAddCourseAssets}
+            onUpdateCourseAsset={onUpdateCourseAsset}
           />
         </div>
       ))}

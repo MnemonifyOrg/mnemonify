@@ -1,14 +1,28 @@
 import { useState } from 'react';
 import RichText from './RichText.jsx';
 
-function KcImage({ assetId, assets }) {
+// Click-to-zoom like a standalone image block (Modal.jsx / imageZoom.js),
+// but never as part of a set -- no images/index passed, so the lightbox
+// renders without carousel-style Previous/Next controls, matching each
+// KC image being independent (question stem, option, feedback are never
+// "the same set" the way carousel images are).
+function KcImage({ assetId, assets, onOpenModal }) {
   const asset = (assets || []).find((a) => a.asset_id === assetId);
   if (!asset) return null;
   const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
-  return <img className="knowledge-check__image" src={resolvedSrc} alt={asset.alt || ''} />;
+  return (
+    <button
+      type="button"
+      className="knowledge-check__image-button"
+      onClick={() => onOpenModal?.({ type: 'image', asset, ariaLabel: asset.alt || asset.caption || 'Image' })}
+      aria-label={`Open ${asset.alt || 'image'} enlarged`}
+    >
+      <img className="knowledge-check__image" src={resolvedSrc} alt={asset.alt || ''} />
+    </button>
+  );
 }
 
-export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
+export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal }) {
   const [selectedId, setSelectedId] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const {
@@ -56,7 +70,7 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
 
   return (
     <div className="block block-knowledge-check">
-      <KcImage assetId={questionImageId} assets={assets} />
+      <KcImage assetId={questionImageId} assets={assets} onOpenModal={onOpenModal} />
       <p className="knowledge-check__question">
         <RichText value={question} />
       </p>
@@ -86,7 +100,7 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
                 onKeyDown={(e) => handleOptionKeyDown(e, index)}
               />
               <label htmlFor={`${block.block_id}-${option.id}`}>
-                <KcImage assetId={option.image_id} assets={assets} />
+                <KcImage assetId={option.image_id} assets={assets} onOpenModal={onOpenModal} />
                 <RichText value={option.text} />
               </label>
             </li>
@@ -118,6 +132,7 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger }) {
                   : incorrectFeedbackImageId
             }
             assets={assets}
+            onOpenModal={onOpenModal}
           />
           {selectedOption?.feedback?.rich_text?.length ? (
             selectedOption.feedback.rich_text.map((segment, i) =>

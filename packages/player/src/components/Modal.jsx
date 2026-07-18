@@ -75,6 +75,7 @@ export default function Modal({ payload, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-dialog"
+        data-payload-type={payload.type}
         role="dialog"
         aria-modal="true"
         aria-label={payload.ariaLabel || 'Content viewer'}

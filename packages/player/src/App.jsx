@@ -139,27 +139,101 @@ export default function App() {
 
   useEffect(() => {
     if (!course) return;
-    // Embed blocks (e.g. a DigitalScope WSI iframe) trigger the browser's
-    // default iframe-focus-on-load behavior once their remote content
-    // finishes loading -- some browsers resolve that focus shift by
-    // scrolling the newly-focused iframe into view, jumping the page down
-    // to wherever the embed sits even though nothing the course itself
-    // asked for that. window.scrollTo here targets this document's own
-    // scroll position (this player may itself be running inside the
-    // editor's preview iframe, in which case `window` is that iframe's
-    // own window, not the outer editor page -- exactly the container that
-    // needs resetting). Reset once immediately, then again after every
-    // embed iframe on the page finishes loading, since the load event is
-    // the actual moment a browser's default focus-shift can occur, which
-    // happens well after this effect's initial run (the embed's own
-    // remote content takes real network time to load).
+    // Embed blocks (e.g. a DigitalScope WSI iframe) can trigger the
+    // browser's default iframe-focus auto-scroll behavior -- some browsers
+    // resolve an iframe gaining focus by scrolling it into view, jumping
+    // the page down to wherever the embed sits even though nothing the
+    // course itself asked for that. window.scrollTo here targets this
+    // document's own scroll position (this player may itself be running
+    // inside the editor's preview iframe, in which case `window` is that
+    // iframe's own window, not the outer editor page -- exactly the
+    // container that needs resetting).
+    //
+    // The original version of this fix only corrected at mount and at each
+    // embed iframe's own `load` event, on the assumption that focus-steal
+    // happens right when the iframe finishes loading. That's true for a
+    // simple embed, but QA reproduced the jump again with a real
+    // deep-zoom/WSI viewer: those load a shell fast (firing `load`
+    // immediately), then spend real time afterward asynchronously fetching
+    // and rendering tiled image content -- and it's common for a viewer
+    // like that to call focus() on its own canvas once THAT finishes, so
+    // learners can immediately pan/zoom with the keyboard. That happens
+    // seconds after `load`, well after the original fix had already
+    // stopped watching.
+    //
+    // Rather than guess at a timeout long enough to cover every viewer's
+    // load time, this needs to detect the actual signal: the iframe
+    // becoming the parent document's focused element, whenever that
+    // happens. The obvious approach -- a `focusin` listener on the iframe
+    // -- was tried and empirically disproven here: confirmed by hand that
+    // when a cross-origin (or opaque-origin, e.g. a data: URL) iframe
+    // gains focus, `document.activeElement` DOES update to reference it,
+    // but the `focus`/`focusin` EVENT never fires in the parent document
+    // at all -- browsers deliberately suppress it as a cross-origin
+    // information leak (it would otherwise let a parent page fingerprint
+    // focus timing inside content it doesn't control). Since a real
+    // DigitalScope-style WSI embed IS cross-origin, an event-based
+    // approach silently never fires for the exact case this fix exists
+    // for. `document.activeElement` itself has no such restriction, so
+    // this polls it instead of listening for an event that won't come.
+    //
+    // This must NOT fight a learner who deliberately clicks into the embed
+    // to use it -- that's a real, wanted focus change, not a bug. A real
+    // click on the iframe fires `pointerdown` on it, in the parent
+    // document, before focus ever transfers into its (possibly
+    // cross-origin) content, so a `pointerdown` on an iframe immediately
+    // before it becomes the active element distinguishes "the learner
+    // clicked this" from "something inside silently grabbed focus on its
+    // own." And once the learner has interacted with the page AT ALL
+    // (scrolled, typed, clicked anything), this stops correcting
+    // permanently for this page view -- the bug is specifically about the
+    // page's initial top-of-load state being hijacked before the learner
+    // has done anything themselves, not about pinning scroll to the top
+    // forever.
     window.scrollTo(0, 0);
-    const iframes = Array.from(document.querySelectorAll('.block-embed__iframe'));
-    function resetScroll() {
-      window.scrollTo(0, 0);
+
+    let userHasInteracted = false;
+    function markInteracted() {
+      userHasInteracted = true;
     }
+    window.addEventListener('wheel', markInteracted, { passive: true });
+    window.addEventListener('touchstart', markInteracted, { passive: true });
+    window.addEventListener('keydown', markInteracted);
+
+    const iframes = Array.from(document.querySelectorAll('.block-embed__iframe'));
+    const clickedIframes = new WeakSet();
+
+    function handlePointerDown(e) {
+      const iframe = e.target?.closest?.('.block-embed__iframe');
+      if (iframe) {
+        clickedIframes.add(iframe);
+        userHasInteracted = true;
+      }
+    }
+
+    function resetScroll() {
+      if (!userHasInteracted) window.scrollTo(0, 0);
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
     iframes.forEach((iframe) => iframe.addEventListener('load', resetScroll));
+
+    let lastActive = document.activeElement;
+    const pollId = window.setInterval(() => {
+      const active = document.activeElement;
+      if (active === lastActive) return;
+      lastActive = active;
+      if (iframes.includes(active) && !clickedIframes.has(active)) {
+        resetScroll();
+      }
+    }, 200);
+
     return () => {
+      window.clearInterval(pollId);
+      window.removeEventListener('wheel', markInteracted);
+      window.removeEventListener('touchstart', markInteracted);
+      window.removeEventListener('keydown', markInteracted);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
       iframes.forEach((iframe) => iframe.removeEventListener('load', resetScroll));
     };
   }, [course]);

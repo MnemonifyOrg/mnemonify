@@ -419,6 +419,31 @@ input:focus-visible {
 .block-table__scroll {
   overflow-x: auto;
   max-width: 100%;
+  /* Explicit, always-visible scrollbar. Without this, the wrapper is
+     genuinely scrollable (overflow-x: auto correctly triggers whenever
+     the table's min-content width exceeds it) but paints NO visible
+     scrollbar on macOS/iOS-style overlay-scrollbar setups until a scroll
+     gesture is already underway -- so a table cut off at the right edge
+     looks indistinguishable from broken, with no affordance telling the
+     author more content exists. Styling ::-webkit-scrollbar explicitly
+     opts Chromium/Safari out of the OS overlay style into a persistent
+     classic scrollbar for this element specifically; scrollbar-width/
+     scrollbar-color cover Firefox the same way. See DECISIONS.md.  */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.block-table__scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.block-table__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.block-table__scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.block-table__scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
 .block-table table {
   /* width:100% alone means the table can never exceed its own scroll
@@ -451,6 +476,12 @@ input:focus-visible {
   background: var(--color-bg-secondary);
   font-weight: 600;
 }
+.block-table__scroll-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: right;
+}
 @media print {
   .block-table__scroll {
     overflow-x: visible;
@@ -458,6 +489,9 @@ input:focus-visible {
   .block-table table {
     width: 100%;
     min-width: 0;
+  }
+  .block-table__scroll-hint {
+    display: none;
   }
 }
 

@@ -10,24 +10,71 @@
     "completion_rule": "viewed_all_pages",
     "header": {
       "rich_text": [
-        { "t": "text", "v": "CAP Pathology Education Series" }
+        {
+          "t": "text",
+          "v": "CAP Pathology Education Series"
+        }
       ]
     },
     "footer": {
       "rich_text": [
-        { "t": "text", "v": "© 2026 College of American Pathologists" }
+        {
+          "t": "text",
+          "v": "\u00a9 2026 College of American Pathologists"
+        }
       ]
     },
     "page_numbering": false,
     "objectives": [
-      { "objective_id": "obj_01", "text": "Identify margin involvement on intraoperative frozen section", "standard_code": "" }
+      {
+        "objective_id": "obj_01",
+        "text": "Identify margin involvement on intraoperative frozen section",
+        "standard_code": ""
+      }
     ],
     "concepts": [
-      { "concept_id": "cpt_01", "name": "Frozen section margin assessment" }
-    ]
+      {
+        "concept_id": "cpt_01",
+        "name": "Frozen section margin assessment"
+      }
+    ],
+    "nav_mode": "linear",
+    "page_display": "grouped",
+    "page_groups": [
+      {
+        "group_id": "grp_case1",
+        "title": "Case 1: Breast Margin Frozen Section",
+        "page_ids": [
+          "pg_case1",
+          "pg_case1_supporting"
+        ]
+      },
+      {
+        "group_id": "grp_assessment",
+        "title": "Assessment",
+        "page_ids": [
+          "pg_case1_assessment"
+        ]
+      }
+    ],
+    "utility_bar": {
+      "contact": {
+        "enabled": true,
+        "email": "education@example.org",
+        "subject_prefix": "[Course Help]"
+      },
+      "resources": {
+        "enabled": true
+      },
+      "custom": []
+    }
   },
   "variables": [
-    { "name": "readDiagnosis", "type": "boolean", "default": false }
+    {
+      "name": "readDiagnosis",
+      "type": "boolean",
+      "default": false
+    }
   ],
   "assets": [
     {
@@ -53,11 +100,18 @@
           "triggers": [],
           "faculty_notes": {
             "rich_text": [
-              { "t": "text", "v": "Ask learners to state the distance to margin in mm before revealing the diagnosis -- this is the detail students most often skip." }
+              {
+                "t": "text",
+                "v": "Ask learners to state the distance to margin in mm before revealing the diagnosis -- this is the detail students most often skip."
+              }
             ]
           },
-          "objective_ids": ["obj_01"],
-          "concept_ids": ["cpt_01"]
+          "objective_ids": [
+            "obj_01"
+          ],
+          "concept_ids": [
+            "cpt_01"
+          ]
         },
         {
           "block_id": "blk_text1",
@@ -86,13 +140,20 @@
           "block_id": "blk_col1",
           "type": "two_column",
           "content": {},
-          "layout": { "split": 40, "split_min": 25, "split_max": 75 },
+          "layout": {
+            "split": 40,
+            "split_min": 25,
+            "split_max": 75
+          },
           "left": {
             "block_id": "blk_col1_left",
             "type": "text",
             "content": {
               "rich_text": [
-                { "t": "text", "v": "The whole slide image to the right shows the frozen section at scanning magnification. Correlate the architecture visible here with the gross description above." }
+                {
+                  "t": "text",
+                  "v": "The whole slide image to the right shows the frozen section at scanning magnification. Correlate the architecture visible here with the gross description above."
+                }
               ]
             },
             "triggers": []
@@ -118,13 +179,34 @@
             "has_header_row": true,
             "has_header_col": true,
             "rows": [
-              ["", "WBC", "RBC", "HGB"],
-              ["Result", "5.2 x 10³", "2.7 x 10³", "9.9 g/dL"],
-              ["Range", "4.0-10.0", "3.7-5.3", "11.7-16.0"]
+              [
+                "",
+                "WBC",
+                "RBC",
+                "HGB"
+              ],
+              [
+                "Result",
+                "5.2 x 10\u00b3",
+                "2.7 x 10\u00b3",
+                "9.9 g/dL"
+              ],
+              [
+                "Range",
+                "4.0-10.0",
+                "3.7-5.3",
+                "11.7-16.0"
+              ]
             ]
           },
           "triggers": []
-        },
+        }
+      ]
+    },
+    {
+      "page_id": "pg_case1_supporting",
+      "title": "Supporting Findings",
+      "blocks": [
         {
           "block_id": "blk_carousel1",
           "type": "carousel",
@@ -176,7 +258,11 @@
               "trigger_id": "trg_acc1_open",
               "event": "onOpen",
               "actions": [
-                { "action": "SET_VAR", "var": "readDiagnosis", "value": true }
+                {
+                  "action": "SET_VAR",
+                  "var": "readDiagnosis",
+                  "value": true
+                }
               ]
             }
           ]
@@ -225,7 +311,13 @@
             ]
           },
           "triggers": []
-        },
+        }
+      ]
+    },
+    {
+      "page_id": "pg_case1_assessment",
+      "title": "Knowledge Check & Reflection",
+      "blocks": [
         {
           "block_id": "blk_kc1",
           "type": "knowledge-check",
@@ -243,7 +335,10 @@
                 "correct": true,
                 "feedback": {
                   "rich_text": [
-                    { "t": "text", "v": "Correct. Tumor at the inked margin means residual disease is presumed to remain in the patient; re-excision is the standard intraoperative response." }
+                    {
+                      "t": "text",
+                      "v": "Correct. Tumor at the inked margin means residual disease is presumed to remain in the patient; re-excision is the standard intraoperative response."
+                    }
                   ],
                   "image_id": null,
                   "reference_ids": []
@@ -270,7 +365,10 @@
           "content": {
             "prompt": {
               "rich_text": [
-                { "t": "text", "v": "What would you want to know from the surgeon before finalizing this frozen section report?" }
+                {
+                  "t": "text",
+                  "v": "What would you want to know from the surgeon before finalizing this frozen section report?"
+                }
               ]
             },
             "storage_mode": "local"

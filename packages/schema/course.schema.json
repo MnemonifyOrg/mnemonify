@@ -68,7 +68,20 @@
         "concepts": {
           "type": "array",
           "items": { "$ref": "#/definitions/concept" }
-        }
+        },
+        "nav_mode": {
+          "enum": ["linear", "free"],
+          "default": "free"
+        },
+        "page_display": {
+          "enum": ["flat", "grouped"],
+          "default": "flat"
+        },
+        "page_groups": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/page_group" }
+        },
+        "utility_bar": { "$ref": "#/definitions/utility_bar" }
       }
     },
     "rich_text_field": {
@@ -109,6 +122,61 @@
       "properties": {
         "concept_id": { "type": "string" },
         "name": { "type": "string" }
+      }
+    },
+    "page_group": {
+      "type": "object",
+      "required": ["group_id", "title", "page_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "group_id": {
+          "type": "string",
+          "pattern": "^grp_[a-zA-Z0-9_]+$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "page_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^pg_[a-zA-Z0-9_]+$" }
+        }
+      }
+    },
+    "utility_bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contact": {
+          "type": "object",
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "email": { "type": "string" },
+            "subject_prefix": { "type": "string" }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "custom": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/utility_bar_custom_item" }
+        }
+      }
+    },
+    "utility_bar_custom_item": {
+      "type": "object",
+      "required": ["id", "label", "action", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 },
+        "action": { "enum": ["modal", "jump_page"] },
+        "target": { "type": "string" }
       }
     },
     "variable": {
@@ -182,6 +250,13 @@
         "blocks": {
           "type": "array",
           "items": { "$ref": "#/definitions/block" }
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/trigger" }
+        },
+        "continue_gate": {
+          "$ref": "#/definitions/condition"
         }
       }
     },

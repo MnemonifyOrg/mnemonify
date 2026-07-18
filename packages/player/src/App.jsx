@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import bundledCourse from '../../../samples/sample-course.json';
 import BlockRenderer from './blocks/BlockRenderer.jsx';
 import Modal from './components/Modal.jsx';
-import { runTriggers } from './engine/triggerEngine.js';
+import TopBar from './chrome/TopBar.jsx';
+import ProgressBar from './chrome/ProgressBar.jsx';
+import NavDrawer from './chrome/NavDrawer.jsx';
+import ContinueButton from './chrome/ContinueButton.jsx';
+import UtilityBar from './chrome/UtilityBar.jsx';
+import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import scorm2004 from './lms/scorm2004.js';
 
 function RichTextPreview({ field }) {
@@ -24,8 +29,15 @@ function initialVariables(course) {
   return vars;
 }
 
-function countKnowledgeChecks(page) {
-  return page.blocks.filter((b) => b.type === 'knowledge-check').length;
+// Total knowledge checks across every page, not just the current one --
+// used for the 'passed_final_quiz' completion rule and SCORM scoring,
+// both of which are course-wide, not page-scoped.
+function countKnowledgeChecks(course) {
+  return course.pages.reduce((sum, page) => sum + page.blocks.filter((b) => b.type === 'knowledge-check').length, 0);
+}
+
+function isDesktopViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches;
 }
 
 export default function App() {
@@ -33,17 +45,46 @@ export default function App() {
   const [variables, setVariables] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
+  const [currentPageId, setCurrentPageId] = useState(null);
+  // Runtime learner state (ARCHITECTURE.md 5.1/5.6) -- never stored in the
+  // course JSON itself, only in-memory here and mirrored into SCORM
+  // suspend_data when a SCORM context is active, exactly like `variables`.
+  const [completedPageIds, setCompletedPageIds] = useState([]);
+  const [visitedPageIds, setVisitedPageIds] = useState([]);
+  // Starts closed and corrects itself in a mount effect below rather than
+  // via a lazy useState initializer -- window.innerWidth/matchMedia can
+  // read stale or zeroed values during the synchronous first-render pass,
+  // before the browser has finished its own initial layout in some
+  // embedding contexts (observed directly: matchMedia('(min-width:
+  // 1280px)') read false on a genuinely 1280px-wide viewport when measured
+  // synchronously at first render, then correctly read true once measured
+  // from an effect after mount). A `useEffect` runs after paint, when the
+  // viewport is guaranteed settled in every real browser.
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const answeredRef = useRef({ total: 0, correct: 0, answeredCount: 0 });
   const completedRef = useRef(false);
 
-  async function evaluateCompletion(courseArg, variablesArg) {
+  async function evaluateCourseCompletion(courseArg, variablesArg, completedPageIdsArg, currentPageIdArg) {
     if (completedRef.current || !courseArg) return;
-    const { total, correct, answeredCount } = answeredRef.current;
-    const pageViewed = answeredCount >= total;
-    if (!pageViewed) return;
+    const rule = courseArg.meta.completion_rule || 'viewed_all_pages';
+    const { total, answeredCount, correct } = answeredRef.current;
+    // 'passed_final_quiz': driven by knowledge-check answers, course-wide --
+    // preserves the Phase 2 behavior this rule already had, just no longer
+    // scoped to a single hardcoded page. 'viewed_all_pages' (the default,
+    // and the sample course's own setting): driven purely by Continue-button
+    // page completion, independent of whether any page has a quiz at all.
+    const isComplete =
+      rule === 'passed_final_quiz' && total > 0
+        ? answeredCount >= total
+        : completedPageIdsArg.length >= courseArg.pages.length;
+    if (!isComplete) return;
 
     completedRef.current = true;
-    await scorm2004.setSuspendData({ variables: variablesArg, pageId: courseArg.pages[0].page_id });
+    await scorm2004.setSuspendData({
+      variables: variablesArg,
+      pageId: currentPageIdArg,
+      completedPageIds: completedPageIdsArg,
+    });
     await scorm2004.setCompletion('completed');
     if (total > 0) {
       await scorm2004.setScore(correct, 0, total, correct / total);
@@ -64,6 +105,7 @@ export default function App() {
       let loadedCourse = bundledCourse;
       let restoredVariables = initialVariables(bundledCourse);
       let restoredPageId = bundledCourse.pages[0].page_id;
+      let restoredCompletedPageIds = [];
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -95,9 +137,14 @@ export default function App() {
             const suspend = await scorm2004.getSuspendData();
             restoredVariables = suspend.variables || initialVariables(loadedCourse);
             restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
+            restoredCompletedPageIds = suspend.completedPageIds || [];
 
             await scorm2004.setLocation(restoredPageId);
-            await scorm2004.setSuspendData({ variables: restoredVariables, pageId: restoredPageId });
+            await scorm2004.setSuspendData({
+              variables: restoredVariables,
+              pageId: restoredPageId,
+              completedPageIds: restoredCompletedPageIds,
+            });
           }
         }
       } catch (err) {
@@ -109,17 +156,27 @@ export default function App() {
         loadedCourse = bundledCourse;
         restoredVariables = initialVariables(bundledCourse);
         restoredPageId = bundledCourse.pages[0].page_id;
+        restoredCompletedPageIds = [];
+      }
+
+      // Defensive fallback if a prior save references a page_id that no
+      // longer exists in this version of the course (e.g. the author
+      // deleted a page) -- restart at the first page rather than crash on
+      // a missing page lookup. Full structural-change-detection UX
+      // (ARCHITECTURE.md P1-25) is later-phase scope; this is just the
+      // "don't throw" floor for it.
+      if (!loadedCourse.pages.some((p) => p.page_id === restoredPageId)) {
+        restoredPageId = loadedCourse.pages[0].page_id;
       }
 
       if (cancelled) return;
       setIsScorm(scormAvailable);
-      answeredRef.current = { total: countKnowledgeChecks(loadedCourse.pages[0]), correct: 0, answeredCount: 0 };
+      answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
       setVariables(restoredVariables);
       setCourse(loadedCourse);
-
-      if (answeredRef.current.total === 0) {
-        evaluateCompletion(loadedCourse, restoredVariables);
-      }
+      setCurrentPageId(restoredPageId);
+      setCompletedPageIds(restoredCompletedPageIds);
+      setVisitedPageIds(restoredCompletedPageIds.includes(restoredPageId) ? restoredCompletedPageIds : [...restoredCompletedPageIds, restoredPageId]);
     }
 
     boot();
@@ -138,6 +195,26 @@ export default function App() {
   }, [course]);
 
   useEffect(() => {
+    // A live MediaQueryList rather than a one-time measurement -- besides
+    // handling real window resizes (a genuine gap otherwise: resizing from
+    // mobile to desktop mid-session should reasonably open the persistent
+    // sidebar), this also covers an environment quirk observed directly
+    // during testing: window.innerWidth/matchMedia can still read a stale
+    // pre-layout value for a brief window even after mount, past the point
+    // a one-shot effect measurement already ran and captured the wrong
+    // answer. The 'change' listener catches the correction whenever the
+    // browser's matched state actually flips, instead of trusting a single
+    // snapshot at an arbitrary point in time.
+    const mql = window.matchMedia('(min-width: 1280px)');
+    setNavDrawerOpen(mql.matches);
+    function handleChange(e) {
+      setNavDrawerOpen(e.matches);
+    }
+    mql.addEventListener('change', handleChange);
+    return () => mql.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
     if (!course) return;
     // Embed blocks (e.g. a DigitalScope WSI iframe) can trigger the
     // browser's default iframe-focus auto-scroll behavior -- some browsers
@@ -149,47 +226,17 @@ export default function App() {
     // iframe's own window, not the outer editor page -- exactly the
     // container that needs resetting).
     //
-    // The original version of this fix only corrected at mount and at each
-    // embed iframe's own `load` event, on the assumption that focus-steal
-    // happens right when the iframe finishes loading. That's true for a
-    // simple embed, but QA reproduced the jump again with a real
-    // deep-zoom/WSI viewer: those load a shell fast (firing `load`
-    // immediately), then spend real time afterward asynchronously fetching
-    // and rendering tiled image content -- and it's common for a viewer
-    // like that to call focus() on its own canvas once THAT finishes, so
-    // learners can immediately pan/zoom with the keyboard. That happens
-    // seconds after `load`, well after the original fix had already
-    // stopped watching.
-    //
     // Rather than guess at a timeout long enough to cover every viewer's
     // load time, this needs to detect the actual signal: the iframe
     // becoming the parent document's focused element, whenever that
-    // happens. The obvious approach -- a `focusin` listener on the iframe
-    // -- was tried and empirically disproven here: confirmed by hand that
-    // when a cross-origin (or opaque-origin, e.g. a data: URL) iframe
-    // gains focus, `document.activeElement` DOES update to reference it,
-    // but the `focus`/`focusin` EVENT never fires in the parent document
-    // at all -- browsers deliberately suppress it as a cross-origin
-    // information leak (it would otherwise let a parent page fingerprint
-    // focus timing inside content it doesn't control). Since a real
-    // DigitalScope-style WSI embed IS cross-origin, an event-based
-    // approach silently never fires for the exact case this fix exists
-    // for. `document.activeElement` itself has no such restriction, so
-    // this polls it instead of listening for an event that won't come.
+    // happens. `document.activeElement` is polled (not a `focusin`
+    // listener -- confirmed by hand that browsers deliberately suppress
+    // that event across a cross-origin boundary, so it would silently
+    // never fire for a real cross-origin WSI embed).
     //
     // This must NOT fight a learner who deliberately clicks into the embed
-    // to use it -- that's a real, wanted focus change, not a bug. A real
-    // click on the iframe fires `pointerdown` on it, in the parent
-    // document, before focus ever transfers into its (possibly
-    // cross-origin) content, so a `pointerdown` on an iframe immediately
-    // before it becomes the active element distinguishes "the learner
-    // clicked this" from "something inside silently grabbed focus on its
-    // own." And once the learner has interacted with the page AT ALL
-    // (scrolled, typed, clicked anything), this stops correcting
-    // permanently for this page view -- the bug is specifically about the
-    // page's initial top-of-load state being hijacked before the learner
-    // has done anything themselves, not about pinning scroll to the top
-    // forever.
+    // to use it, or who has started scrolling/interacting with the page at
+    // all -- see DECISIONS.md for the full reasoning.
     window.scrollTo(0, 0);
 
     let userHasInteracted = false;
@@ -238,23 +285,36 @@ export default function App() {
     };
   }, [course]);
 
+  // Fires onPageEnter and marks the page visited whenever currentPageId
+  // changes -- including the very first time it's set on boot, so the
+  // initial page gets the same lifecycle treatment as every page navigated
+  // to afterward, with no separate "first page" special case.
+  useEffect(() => {
+    if (!course || !currentPageId) return;
+    const page = course.pages.find((p) => p.page_id === currentPageId);
+    if (!page) return;
+    setVariables((current) => runTriggers(current, page.triggers, 'onPageEnter'));
+    setVisitedPageIds((prev) => (prev.includes(currentPageId) ? prev : [...prev, currentPageId]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPageId, course]);
+
   useEffect(() => {
     if (!course) return;
     console.log('[player] variable state:', variables);
     if (isScorm) {
-      scorm2004.setSuspendData({ variables, pageId: course.pages[0].page_id });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds });
     }
-  }, [variables, course, isScorm]);
+  }, [variables, course, isScorm, currentPageId, completedPageIds]);
 
   useEffect(() => {
     function handleBeforeUnload() {
       if (!course || completedRef.current) return;
-      scorm2004.setSuspendData({ variables, pageId: course.pages[0].page_id });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds });
       scorm2004.terminate('suspend');
     }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [course, variables]);
+  }, [course, variables, currentPageId, completedPageIds]);
 
   function handleOpenModal(payload) {
     setModalPayload(payload);
@@ -270,11 +330,85 @@ export default function App() {
     if (block.type === 'knowledge-check' && (eventName === 'onCorrect' || eventName === 'onIncorrect')) {
       answeredRef.current.answeredCount += 1;
       if (eventName === 'onCorrect') answeredRef.current.correct += 1;
-      evaluateCompletion(course, variables);
+      evaluateCourseCompletion(course, variables, completedPageIds, currentPageId);
     }
   }
 
-  if (!course) {
+  // Pure navigation -- sets the current page and, on mobile/tablet, closes
+  // the drawer (ARCHITECTURE.md 5.1: "closes on: clicking a page" -- a
+  // desktop persistent sidebar doesn't get this, it isn't a temporary
+  // overlay). Does not itself fire onPageExit/onPageEnter: onPageExit
+  // needs the OLD page reference and is fired by callers before switching;
+  // onPageEnter fires uniformly for every navigation (including the very
+  // first page) via the useEffect above, keyed on currentPageId.
+  function goToPage(pageId) {
+    if (!isDesktopViewport()) setNavDrawerOpen(false);
+    setCurrentPageId(pageId);
+  }
+
+  function getPageStatus(pageId) {
+    if (completedPageIds.includes(pageId)) return 'completed';
+    if (visitedPageIds.includes(pageId)) return 'in-progress';
+    const navMode = course.meta.nav_mode || 'free';
+    if (navMode === 'linear') {
+      const targetIndex = course.pages.findIndex((p) => p.page_id === pageId);
+      const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
+      const completedIndices = completedPageIds.map((id) => course.pages.findIndex((p) => p.page_id === id));
+      const furthestUnlockedIndex = Math.max(currentIndex, ...completedIndices, 0);
+      if (targetIndex > furthestUnlockedIndex) return 'locked';
+    }
+    return 'not-visited';
+  }
+
+  function handleDrawerNavigate(pageId) {
+    if (getPageStatus(pageId) === 'locked') return;
+    const currentPage = course.pages.find((p) => p.page_id === currentPageId);
+    if (pageId !== currentPageId) {
+      setVariables((current) => runTriggers(current, currentPage?.triggers, 'onPageExit'));
+    }
+    goToPage(pageId);
+  }
+
+  // Utility-bar custom items with a JUMP_TO_PAGE-style action are an
+  // author-configured escape hatch (e.g. "back to overview," a glossary
+  // cross-reference) -- deliberately NOT gated by linear-mode page
+  // locking the way drawer browsing is. This matches how JUMP_TO_PAGE
+  // behaves everywhere else in the trigger vocabulary (ARCHITECTURE.md 4):
+  // nav_mode governs whether the learner can freely browse the page list,
+  // not whether a specific, author-placed navigation action can fire.
+  function handleJumpToPage(pageId) {
+    const targetPage = course.pages.find((p) => p.page_id === pageId);
+    if (!targetPage) return;
+    const currentPage = course.pages.find((p) => p.page_id === currentPageId);
+    if (pageId !== currentPageId) {
+      setVariables((current) => runTriggers(current, currentPage?.triggers, 'onPageExit'));
+    }
+    goToPage(pageId);
+  }
+
+  function handleContinue() {
+    const currentPage = course.pages.find((p) => p.page_id === currentPageId);
+    if (!currentPage) return;
+    const nextCompletedPageIds = completedPageIds.includes(currentPageId)
+      ? completedPageIds
+      : [...completedPageIds, currentPageId];
+    setCompletedPageIds(nextCompletedPageIds);
+    setVariables((current) => runTriggers(current, currentPage.triggers, 'onPageExit'));
+
+    const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
+    const nextPage = course.pages[currentIndex + 1];
+    if (nextPage) {
+      goToPage(nextPage.page_id);
+    } else {
+      evaluateCourseCompletion(course, variables, nextCompletedPageIds, currentPageId);
+    }
+  }
+
+  function handleToggleDrawer() {
+    setNavDrawerOpen((open) => !open);
+  }
+
+  if (!course || !currentPageId) {
     return (
       <div className="player">
         <main className="player__page">
@@ -284,38 +418,73 @@ export default function App() {
     );
   }
 
-  const page = course.pages[0];
+  const page = course.pages.find((p) => p.page_id === currentPageId);
   const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
+  const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
+  const isLastPage = currentIndex === course.pages.length - 1;
+  const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, variables) : false;
 
   return (
-    <div className="player">
-      <main className="player__page">
-        {/* Course-wide header, rendered above the content on every page. Once
-            Phase 4 adds real multi-page navigation this moves into shared
-            chrome above the page outlet rather than living inside
-            player__page; for now there is only ever one page (course.pages[0]). */}
-        {course.meta.header && (
-          <div className="player__course-header">
-            <RichTextPreview field={course.meta.header} />
+    <div className="player-shell">
+      <TopBar
+        courseTitle={course.meta.title}
+        onToggleDrawer={handleToggleDrawer}
+        drawerOpen={navDrawerOpen}
+        utilityBar={course.meta.utility_bar}
+        onOpenModal={handleOpenModal}
+        onJumpToPage={handleJumpToPage}
+      />
+      <ProgressBar completedCount={completedPageIds.length} totalCount={course.pages.length} />
+      <div className="player-shell__body">
+        <NavDrawer
+          pages={course.pages}
+          pageDisplay={course.meta.page_display || 'flat'}
+          pageGroups={course.meta.page_groups}
+          currentPageId={currentPageId}
+          getStatus={getPageStatus}
+          onNavigate={handleDrawerNavigate}
+          open={navDrawerOpen}
+          onClose={() => setNavDrawerOpen(false)}
+        />
+        <main className="player">
+          <div className="player__page">
+            {/* Course-wide header, rendered above the content on every page. */}
+            {course.meta.header && (
+              <div className="player__course-header">
+                <RichTextPreview field={course.meta.header} />
+              </div>
+            )}
+            <h1 className="player__page-title">{page.title}</h1>
+            {page.blocks.map((block) => (
+              <BlockRenderer
+                key={block.block_id}
+                block={block}
+                assets={course.assets}
+                onTrigger={handleTrigger}
+                isPreview={isPreview}
+                onOpenModal={handleOpenModal}
+              />
+            ))}
+            <ContinueButton
+              label={isLastPage ? 'Finish' : 'Continue'}
+              disabled={continueDisabled}
+              onClick={handleContinue}
+            />
+            {course.meta.footer && (
+              <div className="player__course-footer">
+                <RichTextPreview field={course.meta.footer} />
+              </div>
+            )}
           </div>
-        )}
-        <h1 className="player__page-title">{page.title}</h1>
-        {page.blocks.map((block) => (
-          <BlockRenderer
-            key={block.block_id}
-            block={block}
-            assets={course.assets}
-            onTrigger={handleTrigger}
-            isPreview={isPreview}
-            onOpenModal={handleOpenModal}
-          />
-        ))}
-        {course.meta.footer && (
-          <div className="player__course-footer">
-            <RichTextPreview field={course.meta.footer} />
-          </div>
-        )}
-      </main>
+        </main>
+      </div>
+      <UtilityBar
+        utilityBar={course.meta.utility_bar}
+        courseTitle={course.meta.title}
+        onOpenModal={handleOpenModal}
+        onJumpToPage={handleJumpToPage}
+        layout="bottom"
+      />
       <Modal payload={modalPayload} onClose={handleCloseModal} />
     </div>
   );

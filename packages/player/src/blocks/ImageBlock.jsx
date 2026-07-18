@@ -4,7 +4,7 @@
 const WIDTH_PRESET_PCT = { small: 25, medium: 50, large: 75, full: 100 };
 const ALIGN_ITEMS = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
-export default function ImageBlock({ block, assets, onOpenModal }) {
+export default function ImageBlock({ block, assets, onOpenModal, onTrigger }) {
   const asset = assets.find((a) => a.asset_id === block.content.asset_id);
   // Renders a placeholder rather than nothing (or crashing) when
   // asset_id is null/missing/unresolved -- e.g. an image block whose
@@ -24,6 +24,12 @@ export default function ImageBlock({ block, assets, onOpenModal }) {
 
   function openLightbox() {
     onOpenModal?.({ type: 'image', asset, ariaLabel: asset.alt || asset.caption || 'Image' });
+    // onClick (Phase 4 Part 2 Step 3): the lightbox already opens
+    // automatically on click; this exposes the same moment as a trigger
+    // hook so an author can chain additional logic (e.g. a variable set)
+    // to "learner opened this image," without a second, redundant onOpen
+    // event firing at the identical instant.
+    onTrigger?.(block, 'onClick');
   }
 
   return (

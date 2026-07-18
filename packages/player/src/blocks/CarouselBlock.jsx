@@ -7,7 +7,7 @@ import { useState } from 'react';
 // the editor's CarouselBlockEditor exactly: `{ asset_ids: [...] }`,
 // resolved against the course's shared `assets` array (captions live on
 // the asset itself, same as a standalone image block).
-export default function CarouselBlock({ block, assets, onOpenModal }) {
+export default function CarouselBlock({ block, assets, onOpenModal, onTrigger }) {
   const assetIds = block.content.asset_ids || [];
   const images = assetIds.map((id) => assets.find((a) => a.asset_id === id)).filter(Boolean);
   const [index, setIndex] = useState(0);
@@ -35,6 +35,9 @@ export default function CarouselBlock({ block, assets, onOpenModal }) {
       index,
       ariaLabel: current.alt || current.caption || 'Image',
     });
+    // onClick (Phase 4 Part 2 Step 3) -- same rationale as ImageBlock's
+    // onClick: exposes the moment the lightbox opens as a trigger hook.
+    onTrigger?.(block, 'onClick');
   }
 
   return (

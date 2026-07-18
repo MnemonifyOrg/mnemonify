@@ -66,6 +66,7 @@ export default function CourseEditor() {
   const [showExportSaving, setShowExportSaving] = useState(false);
   const [pageToSaveAsTemplate, setPageToSaveAsTemplate] = useState(null);
   const [showInsertFromTemplate, setShowInsertFromTemplate] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('Course');
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -262,6 +263,28 @@ export default function CourseEditor() {
 
   function handleChangeMeta(newMeta) {
     updateCourseJson((json) => ({ ...json, meta: newMeta }));
+  }
+
+  function handleChangeVariables(newVariables, options) {
+    updateCourseJson((json) => ({ ...json, variables: newVariables }), options);
+  }
+
+  function handleChangePage(updatedPage, options) {
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        pages: json.pages.map((p) => (p.page_id === updatedPage.page_id ? updatedPage : p)),
+      }),
+      options
+    );
+  }
+
+  // Deselects any selected block and jumps to the Variables tab -- used by
+  // the "Open Variable Manager" shortcut link shown wherever a condition or
+  // SET_VAR/ADJUST_VAR action has no variables to offer yet (Step 4).
+  function openVariableManager() {
+    setSelectedBlockId(null);
+    setSettingsTab('Variables');
   }
 
   function handleAddCourseAsset(assetEntry) {
@@ -708,10 +731,18 @@ export default function CourseEditor() {
         <SettingsPanel
           selectedBlock={selectedBlock}
           meta={json.meta}
+          page={page}
+          pages={json.pages}
+          variables={json.variables || []}
           assets={json.assets}
           onChangeMeta={handleChangeMeta}
+          onChangePage={handleChangePage}
+          onChangeVariables={handleChangeVariables}
           onUpdateCourseAsset={handleUpdateCourseAsset}
           onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
+          activeTab={settingsTab}
+          onChangeTab={setSettingsTab}
+          onOpenVariableManager={openVariableManager}
         />
       </div>
     </div>

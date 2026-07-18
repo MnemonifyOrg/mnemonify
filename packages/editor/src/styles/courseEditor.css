@@ -965,3 +965,213 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* Settings panel tabs (Phase 4 Part 2: Course / Page / Variables) */
+.settings-panel__tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.settings-panel__tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.settings-panel__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.settings-panel__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin: var(--space-1) 0 var(--space-3);
+}
+.settings-panel__section h4 {
+  font-size: var(--text-sm);
+  margin: var(--space-4) 0 var(--space-1);
+}
+
+.settings-panel__visibility-toggle {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
+}
+
+/* Block-level Triggers section */
+.settings-panel__triggers {
+  margin-top: var(--space-4);
+}
+.settings-panel__triggers-toggle {
+  width: 100%;
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.settings-panel__triggers-body {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settings-panel__trigger-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.settings-panel__trigger-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+}
+.settings-panel__trigger-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Condition builder (shared: trigger "if", page Continue gate) */
+.condition-builder {
+  margin: var(--space-2) 0;
+}
+.condition-builder__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+.condition-builder__row .input {
+  width: auto;
+  flex: 1 1 120px;
+}
+.condition-builder__operator {
+  display: flex;
+  gap: var(--space-1);
+  width: 100%;
+}
+.condition-builder__operator .btn {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+}
+.condition-builder__empty {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Trigger builder modal */
+.trigger-builder {
+  width: min(640px, 92vw);
+}
+.trigger-builder__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.trigger-builder__inline-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.trigger-builder__actions {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.trigger-builder__actions h3 {
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-2);
+}
+.trigger-builder__action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.trigger-builder__action-row .input {
+  width: auto;
+  flex: 1 1 130px;
+}
+.trigger-builder__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* Variable Manager */
+.variable-manager__list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.variable-manager__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  flex-wrap: wrap;
+}
+.variable-manager__name {
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+}
+.variable-manager__type {
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+.variable-manager__default {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}
+.variable-manager__item-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+.variable-manager__form {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.variable-manager__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.variable-manager__error {
+  color: var(--color-error, #EF4444);
+  font-size: var(--text-xs);
+  margin: 0 0 var(--space-2);
+}
+.variable-manager__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-2);
+}

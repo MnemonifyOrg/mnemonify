@@ -2,17 +2,29 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function TabsBlock({ block, assets, onTrigger, onOpenModal }) {
+export default function TabsBlock({ block, assets, onTrigger, onOpenModal, blockVisibility }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const items = block.content.items;
+
+  // onOpen/onClose (ARCHITECTURE.md 4; Phase 4 Part 2 Step 3: "tabs: onOpen
+  // (per tab), onClose") -- fires onClose for the tab being left and onOpen
+  // for the tab being switched to, same pair-per-switch shape as accordion's
+  // toggle. Not fired on initial mount (tab 0 starts active with no author
+  // action having opened it, matching accordion's all-closed initial state).
+  function switchTo(index) {
+    if (index === activeIndex) return;
+    onTrigger(block, 'onClose');
+    setActiveIndex(index);
+    onTrigger(block, 'onOpen');
+  }
 
   function handleKeyDown(e, index) {
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      setActiveIndex((index + 1) % items.length);
+      switchTo((index + 1) % items.length);
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      setActiveIndex((index - 1 + items.length) % items.length);
+      switchTo((index - 1 + items.length) % items.length);
     }
   }
 
@@ -32,7 +44,7 @@ export default function TabsBlock({ block, assets, onTrigger, onOpenModal }) {
               aria-selected={activeIndex === index}
               aria-controls={panelId}
               tabIndex={activeIndex === index ? 0 : -1}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => switchTo(index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
             >
               <RichText value={item.label} />
@@ -47,7 +59,14 @@ export default function TabsBlock({ block, assets, onTrigger, onOpenModal }) {
         return (
           <div key={index} className="tabs__panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
             {(item.body_blocks || []).map((childBlock) => (
-              <BlockRenderer key={childBlock.block_id} block={childBlock} assets={assets} onTrigger={onTrigger} onOpenModal={onOpenModal} />
+              <BlockRenderer
+                key={childBlock.block_id}
+                block={childBlock}
+                assets={assets}
+                onTrigger={onTrigger}
+                onOpenModal={onOpenModal}
+                blockVisibility={blockVisibility}
+              />
             ))}
           </div>
         );

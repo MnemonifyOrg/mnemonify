@@ -51,6 +51,12 @@ export default function App() {
   // suspend_data when a SCORM context is active, exactly like `variables`.
   const [completedPageIds, setCompletedPageIds] = useState([]);
   const [visitedPageIds, setVisitedPageIds] = useState([]);
+  // Runtime block show/hide state (Phase 4 Part 2), keyed by block_id.
+  // Sparse -- only ever gains an entry when a SHOW_BLOCK/HIDE_BLOCK trigger
+  // effect actually fires; a block with no entry here falls back to its own
+  // `block.visibility.initial` (BlockRenderer.jsx). Session-only, not
+  // persisted to SCORM suspend_data -- see DECISIONS.md.
+  const [blockVisibility, setBlockVisibility] = useState({});
   // Starts closed and corrects itself in a mount effect below rather than
   // via a lazy useState initializer -- window.innerWidth/matchMedia can
   // read stale or zeroed values during the synchronous first-render pass,
@@ -293,10 +299,31 @@ export default function App() {
     if (!course || !currentPageId) return;
     const page = course.pages.find((p) => p.page_id === currentPageId);
     if (!page) return;
-    setVariables((current) => runTriggers(current, page.triggers, 'onPageEnter'));
+    const result = runTriggers(variables, page.triggers, 'onPageEnter');
+    setVariables(result.variables);
+    applyEffects(result.effects);
     setVisitedPageIds((prev) => (prev.includes(currentPageId) ? prev : [...prev, currentPageId]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPageId, course]);
+
+  // Applies the non-variable side effects a trigger's actions can produce
+  // (ARCHITECTURE.md 4 / triggerEngine.js header comment). SHOW_BLOCK/
+  // HIDE_BLOCK update the block-visibility map that BlockRenderer reads;
+  // JUMP_TO_PAGE navigates directly (it does not re-fire onPageExit on the
+  // page being left -- that page is already mid-handling the event that
+  // produced this effect, so re-entering the exit lifecycle from inside it
+  // would be circular).
+  function applyEffects(effects) {
+    effects.forEach((effect) => {
+      if (effect.action === 'SHOW_BLOCK') {
+        setBlockVisibility((v) => ({ ...v, [effect.target]: true }));
+      } else if (effect.action === 'HIDE_BLOCK') {
+        setBlockVisibility((v) => ({ ...v, [effect.target]: false }));
+      } else if (effect.action === 'JUMP_TO_PAGE') {
+        goToPage(effect.target);
+      }
+    });
+  }
 
   useEffect(() => {
     if (!course) return;
@@ -325,12 +352,14 @@ export default function App() {
   }
 
   function handleTrigger(block, eventName) {
-    setVariables((current) => runTriggers(current, block.triggers, eventName));
+    const result = runTriggers(variables, block.triggers, eventName);
+    setVariables(result.variables);
+    applyEffects(result.effects);
 
     if (block.type === 'knowledge-check' && (eventName === 'onCorrect' || eventName === 'onIncorrect')) {
       answeredRef.current.answeredCount += 1;
       if (eventName === 'onCorrect') answeredRef.current.correct += 1;
-      evaluateCourseCompletion(course, variables, completedPageIds, currentPageId);
+      evaluateCourseCompletion(course, result.variables, completedPageIds, currentPageId);
     }
   }
 
@@ -364,7 +393,9 @@ export default function App() {
     if (getPageStatus(pageId) === 'locked') return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
-      setVariables((current) => runTriggers(current, currentPage?.triggers, 'onPageExit'));
+      const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
+      setVariables(result.variables);
+      applyEffects(result.effects);
     }
     goToPage(pageId);
   }
@@ -381,7 +412,9 @@ export default function App() {
     if (!targetPage) return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
-      setVariables((current) => runTriggers(current, currentPage?.triggers, 'onPageExit'));
+      const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
+      setVariables(result.variables);
+      applyEffects(result.effects);
     }
     goToPage(pageId);
   }
@@ -393,14 +426,16 @@ export default function App() {
       ? completedPageIds
       : [...completedPageIds, currentPageId];
     setCompletedPageIds(nextCompletedPageIds);
-    setVariables((current) => runTriggers(current, currentPage.triggers, 'onPageExit'));
+    const result = runTriggers(variables, currentPage.triggers, 'onPageExit');
+    setVariables(result.variables);
+    applyEffects(result.effects);
 
     const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
     const nextPage = course.pages[currentIndex + 1];
     if (nextPage) {
       goToPage(nextPage.page_id);
     } else {
-      evaluateCourseCompletion(course, variables, nextCompletedPageIds, currentPageId);
+      evaluateCourseCompletion(course, result.variables, nextCompletedPageIds, currentPageId);
     }
   }
 
@@ -463,6 +498,7 @@ export default function App() {
                 onTrigger={handleTrigger}
                 isPreview={isPreview}
                 onOpenModal={handleOpenModal}
+                blockVisibility={blockVisibility}
               />
             ))}
             <ContinueButton

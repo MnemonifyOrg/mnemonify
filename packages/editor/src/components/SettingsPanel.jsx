@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { BLOCK_SETTINGS } from './blocks/settingsIndex.js';
 import { BLOCK_LABELS } from '../lib/blockDefaults.js';
+import VariableManagerPanel from './VariableManagerPanel.jsx';
+import PageSettingsPanel from './PageSettingsPanel.jsx';
+import TriggersSection from './TriggersSection.jsx';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -121,11 +124,86 @@ function FacultyNotesField({ block, onChange }) {
   );
 }
 
-export default function SettingsPanel({ selectedBlock, meta, onChangeMeta, onChangeBlock, assets, onUpdateCourseAsset }) {
+// Any block can be the target of another block's or page's SHOW_BLOCK/
+// HIDE_BLOCK/trigger, regardless of whether it can fire triggers of its
+// own (Step 8's own test case hides a plain text block, which has no
+// Triggers section of its own -- see TriggersSection.jsx) -- so this is
+// rendered unconditionally, not folded into TriggersSection. Writes
+// block.visibility.initial (course.schema.json, already defined ahead of
+// this UI, same pattern as continue_gate in Part 1).
+function BlockVisibilityToggle({ block, onChange }) {
+  const isHidden = block.visibility?.initial === 'hidden';
+
+  function toggle(checked) {
+    if (checked) {
+      onChange({ ...block, visibility: { ...block.visibility, initial: 'hidden' } });
+    } else {
+      const { visibility, ...rest } = block;
+      onChange(rest);
+    }
+  }
+
+  return (
+    <label className="settings-panel__checkbox-row settings-panel__visibility-toggle">
+      <input type="checkbox" checked={isHidden} onChange={(e) => toggle(e.target.checked)} />
+      Hidden until shown by a trigger
+    </label>
+  );
+}
+
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Variables'];
+
+// Course-level settings area (Step 1: "accessible from the course-level
+// settings area (alongside where Course Settings, header/footer, etc.
+// already live -- add a new tab or section)") -- turned the previously
+// single-purpose panel into three tabs rather than stacking Variables
+// below Course Settings, since Page Settings (Step 5's Continue gate) also
+// needed a home and three unrelated always-visible sections would crowd
+// the panel more than a tab switcher does.
+export default function SettingsPanel({
+  selectedBlock,
+  meta,
+  page,
+  pages,
+  variables,
+  onChangeMeta,
+  onChangePage,
+  onChangeVariables,
+  onChangeBlock,
+  assets,
+  onUpdateCourseAsset,
+  activeTab,
+  onChangeTab,
+  onOpenVariableManager,
+}) {
   if (!selectedBlock) {
     return (
       <aside className="settings-panel">
-        <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />
+        <div className="settings-panel__tabs">
+          {COURSE_LEVEL_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={activeTab === tab ? 'settings-panel__tab settings-panel__tab--active' : 'settings-panel__tab'}
+              onClick={() => onChangeTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        {activeTab === 'Page' && page ? (
+          <PageSettingsPanel
+            page={page}
+            pages={pages}
+            variables={variables}
+            onChangePage={onChangePage}
+            onOpenVariableManager={onOpenVariableManager}
+          />
+        ) : activeTab === 'Variables' ? (
+          <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} />
+        ) : (
+          <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />
+        )}
       </aside>
     );
   }
@@ -142,6 +220,15 @@ export default function SettingsPanel({ selectedBlock, meta, onChangeMeta, onCha
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}
       </div>
+      <BlockVisibilityToggle block={selectedBlock} onChange={onChangeBlock} />
+      <TriggersSection
+        block={selectedBlock}
+        pageBlocks={page?.blocks || []}
+        pages={pages}
+        variables={variables}
+        onChangeBlock={onChangeBlock}
+        onOpenVariableManager={onOpenVariableManager}
+      />
       <FacultyNotesField block={selectedBlock} onChange={onChangeBlock} />
     </aside>
   );

@@ -40,6 +40,11 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     setSubmitted(true);
     const selected = options.find((o) => o.id === selectedId);
     onTrigger(block, selected && selected.correct ? 'onCorrect' : 'onIncorrect');
+    // onComplete (Phase 4 Part 2 Step 3): "any answer submitted," fired in
+    // addition to onCorrect/onIncorrect, not instead of -- an author who
+    // only cares "did they answer at all" (e.g. to reveal a Continue gate)
+    // shouldn't have to attach two triggers covering both outcomes.
+    onTrigger(block, 'onComplete');
   }
 
   const selectedOption = options.find((o) => o.id === selectedId);

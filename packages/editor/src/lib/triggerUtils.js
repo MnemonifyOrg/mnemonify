@@ -13,14 +13,20 @@ import { BLOCK_LABELS } from './blockDefaults.js';
 // schema already has a dedicated page.triggers array (added in Part 1 for
 // the same reason) and a single "this page was entered/exited" concept is
 // clearer than the same event duplicated on every block on the page. See
-// DECISIONS.md. video/audio/button block types don't exist in this
-// codebase yet (Phase 5+), so their events are not represented here either.
+// DECISIONS.md. `button` doesn't exist in this codebase yet (Phase 5+), so
+// its events are not represented here. video/audio (Phase 4 Part 3) get
+// only `onComplete` ("this finishes playing") -- onPlay/onPause exist in
+// ARCHITECTURE.md 4's event list but have no author-facing use case in
+// Part 3's minimal media block scope (no interactive-video/timeline work),
+// so they're deliberately left out here, same as onTimeReached.
 export const EVENTS_BY_BLOCK_TYPE = {
   accordion: ['onOpen', 'onClose'],
   tabs: ['onOpen', 'onClose'],
   'knowledge-check': ['onCorrect', 'onIncorrect', 'onComplete'],
   image: ['onClick'],
   carousel: ['onClick'],
+  video: ['onComplete'],
+  audio: ['onComplete'],
 };
 
 export const PAGE_EVENTS = ['onPageEnter', 'onPageExit'];
@@ -30,11 +36,22 @@ export const EVENT_LABELS = {
   onClose: 'this closes',
   onCorrect: 'answered correctly',
   onIncorrect: 'answered incorrectly',
-  onComplete: 'an answer is submitted',
   onClick: 'this is clicked',
   onPageEnter: 'the learner enters this page',
   onPageExit: 'the learner leaves this page',
 };
+
+// onComplete means something different depending on which block type owns
+// it (knowledge-check: "an answer is submitted"; video/audio: "playback
+// finishes") -- a flat EVENT_LABELS lookup can't express that, so this is
+// the one event that needs the owning block's type to render correctly.
+// Every other event's label is unambiguous regardless of block type.
+export function eventLabelFor(event, blockType) {
+  if (event === 'onComplete') {
+    return blockType === 'video' || blockType === 'audio' ? 'this finishes playing' : 'an answer is submitted';
+  }
+  return EVENT_LABELS[event] || event;
+}
 
 // Action types with Part 2 authoring UI. OPEN_MODAL, ENABLE_BLOCK,
 // DISABLE_BLOCK, SET_STATE, SCORM_COMPLETE, SCORM_SET_SCORE are valid per
@@ -211,8 +228,8 @@ function describeAction(action, { pageBlocks, pages }) {
 
 // Renders a full trigger as a plain sentence (Step 5), e.g.:
 // "When this accordion opens, if readIntro is true, show Text: 'Great...'"
-export function describeTrigger(trigger, { pageBlocks, pages, variables }) {
-  const eventLabel = EVENT_LABELS[trigger.event] || trigger.event;
+export function describeTrigger(trigger, { pageBlocks, pages, variables, blockType }) {
+  const eventLabel = eventLabelFor(trigger.event, blockType);
   const conditionText = trigger.condition ? describeCondition(trigger.condition, variables) : '';
   const actionsText = (trigger.actions || [])
     .map((a) => describeAction(a, { pageBlocks, pages }))

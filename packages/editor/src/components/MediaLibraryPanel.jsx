@@ -24,7 +24,14 @@ export default function MediaLibraryPanel({
   const zipInputRef = useRef(null);
 
   async function refresh() {
-    setDbAssets(await api.listAssets(courseId));
+    const all = await api.listAssets(courseId);
+    // This panel is image-only end to end (bulk/ZIP upload, <img> thumbnail
+    // grid, "Add to carousel"/KC-image pickers) -- video/audio assets now
+    // share the same DB assets table (Phase 4 Part 3) but are uploaded and
+    // managed through VideoBlock/AudioBlock's own upload zones instead, so
+    // they're filtered out here rather than rendering a broken <img> for a
+    // video/audio file.
+    setDbAssets(all.filter((a) => a.kind === 'image'));
     setLoading(false);
   }
 

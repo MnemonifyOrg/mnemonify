@@ -16,6 +16,8 @@ export const BLOCK_TYPES = [
   'two_column',
   'table',
   'embed',
+  'video',
+  'audio',
 ];
 
 export const BLOCK_LABELS = {
@@ -31,6 +33,8 @@ export const BLOCK_LABELS = {
   two_column: 'Two Column',
   table: 'Table',
   embed: 'Embed',
+  video: 'Video',
+  audio: 'Audio',
 };
 
 // Slot types allowed inside a two-column block (ARCHITECTURE.md 3.6) --
@@ -73,6 +77,11 @@ function defaultContent(type) {
       return { has_header_row: true, has_header_col: false, caption: '', rows: [['', ''], ['', '']] };
     case 'embed':
       return { url: '', label: '', sandbox: DEFAULT_EMBED_SANDBOX };
+    case 'video':
+    case 'audio':
+      // Minimal media block content (Phase 4 Part 3) -- no captions/
+      // transcript/timeline fields, those are Phase 5. See DECISIONS.md.
+      return { asset_id: null, autoplay: false, loop: false };
     case 'two_column':
       return {};
     default:

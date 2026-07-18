@@ -10,6 +10,8 @@ import TwoColumnBlock from './TwoColumnBlock.jsx';
 import TableBlock from './TableBlock.jsx';
 import EmbedBlock from './EmbedBlock.jsx';
 import CarouselBlock from './CarouselBlock.jsx';
+import VideoBlock from './VideoBlock.jsx';
+import AudioBlock from './AudioBlock.jsx';
 
 const REGISTRY = {
   heading: HeadingBlock,
@@ -24,6 +26,8 @@ const REGISTRY = {
   table: TableBlock,
   embed: EmbedBlock,
   carousel: CarouselBlock,
+  video: VideoBlock,
+  audio: AudioBlock,
 };
 
 export default function BlockRenderer({ block, assets, onTrigger, isPreview, onOpenModal, blockVisibility }) {

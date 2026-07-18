@@ -20,7 +20,7 @@
       "rich_text": [
         {
           "t": "text",
-          "v": "\u00a9 2026 College of American Pathologists"
+          "v": "© 2026 College of American Pathologists"
         }
       ]
     },
@@ -83,6 +83,18 @@
       "src": "assets/slide01.jpg",
       "alt": "H&E stained frozen section showing glandular epithelium with focal nuclear atypia at the inked margin",
       "caption": "Figure 1. Frozen section, H&E, 20x."
+    },
+    {
+      "asset_id": "ast_video01",
+      "kind": "video",
+      "src": "assets/sample-video.mp4",
+      "alt": "Sample video walkthrough of frozen section grossing technique"
+    },
+    {
+      "asset_id": "ast_audio01",
+      "kind": "audio",
+      "src": "assets/sample-audio.mp3",
+      "alt": "Sample narrated audio summary of the case"
     }
   ],
   "pages": [
@@ -187,8 +199,8 @@
               ],
               [
                 "Result",
-                "5.2 x 10\u00b3",
-                "2.7 x 10\u00b3",
+                "5.2 x 10³",
+                "2.7 x 10³",
                 "9.9 g/dL"
               ],
               [
@@ -246,6 +258,16 @@
                           "v": "Invasive ductal carcinoma present at the inked margin. Re-excision of the margin is recommended."
                         }
                       ]
+                    },
+                    "triggers": []
+                  },
+                  {
+                    "block_id": "blk_acc1_video1",
+                    "type": "video",
+                    "content": {
+                      "asset_id": "ast_video01",
+                      "autoplay": false,
+                      "loop": false
                     },
                     "triggers": []
                   }
@@ -309,6 +331,53 @@
                 ]
               }
             ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_video01",
+          "type": "video",
+          "content": {
+            "asset_id": "ast_video01",
+            "autoplay": false,
+            "loop": false
+          },
+          "triggers": [
+            {
+              "trigger_id": "trg_video01_complete",
+              "event": "onComplete",
+              "actions": [
+                {
+                  "action": "SHOW_BLOCK",
+                  "target": "blk_video01_complete_msg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "block_id": "blk_audio01",
+          "type": "audio",
+          "content": {
+            "asset_id": "ast_audio01",
+            "autoplay": false,
+            "loop": false
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_video01_complete_msg",
+          "type": "text",
+          "content": {
+            "rich_text": [
+              {
+                "t": "text",
+                "v": "You've finished the video walkthrough — see the narrated audio summary above for a recap."
+              }
+            ]
+          },
+          "visibility": {
+            "initial": "hidden"
           },
           "triggers": []
         }

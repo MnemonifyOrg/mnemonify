@@ -44,7 +44,7 @@ export default function TriggersSection({ block, pageBlocks, pages, variables, o
           <ul className="settings-panel__trigger-list">
             {triggers.map((trigger) => (
               <li key={trigger.trigger_id} className="settings-panel__trigger-item">
-                <span>{describeTrigger(trigger, { pageBlocks, pages, variables })}</span>
+                <span>{describeTrigger(trigger, { pageBlocks, pages, variables, blockType: block.type })}</span>
                 <div className="settings-panel__trigger-actions">
                   <button type="button" className="btn-text" onClick={() => setBuilderState({ trigger })}>
                     Edit
@@ -66,6 +66,7 @@ export default function TriggersSection({ block, pageBlocks, pages, variables, o
       {builderState && (
         <TriggerBuilderModal
           validEvents={validEvents}
+          blockType={block.type}
           excludeBlockId={block.block_id}
           pageBlocks={pageBlocks}
           pages={pages}

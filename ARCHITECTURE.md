@@ -530,7 +530,7 @@ Carousel block builder shows media library picker with checkboxes. Multi-select 
 | Block type | Default |
 |---|---|
 | text, heading, image, list, accordion, tabs, carousel, references | true |
-| knowledge_check, embed, button, interactive_video overlays | false |
+| knowledge_check, embed, video, audio, button, interactive_video overlays | false |
 
 ## 12. PDF as Publish-Time Build Artifact
 

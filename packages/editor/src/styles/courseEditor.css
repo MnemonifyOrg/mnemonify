@@ -590,6 +590,34 @@
   margin-top: var(--space-2);
 }
 
+/* Video/audio block editors (Phase 4 Part 3) -- same upload-zone visual
+   pattern as ImageBlockEditor above, shared here since Video/AudioBlock
+   editors are otherwise identical apart from which native element previews
+   the uploaded file. */
+.media-block-editor__upload-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.media-block-editor__upload-zone:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.media-block-editor__preview {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+  margin-bottom: var(--space-2);
+  background: #000;
+}
+.media-block-editor__preview--audio {
+  background: none;
+  border-radius: var(--radius-full);
+}
+
 /* Live preview */
 .preview-frame-container {
   height: 100%;

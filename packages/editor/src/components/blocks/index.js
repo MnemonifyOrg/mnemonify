@@ -10,6 +10,8 @@ import ReflectionBlockEditor from './ReflectionBlock.jsx';
 import TwoColumnBlockEditor from './TwoColumnBlock.jsx';
 import TableBlockEditor from './TableBlock.jsx';
 import EmbedBlockEditor from './EmbedBlock.jsx';
+import VideoBlockEditor from './VideoBlock.jsx';
+import AudioBlockEditor from './AudioBlock.jsx';
 
 // block-type -> editor component. Any type not listed here falls back to a
 // generic read-only preview in BlockCanvas.
@@ -26,4 +28,6 @@ export const BLOCK_EDITORS = {
   two_column: TwoColumnBlockEditor,
   table: TableBlockEditor,
   embed: EmbedBlockEditor,
+  video: VideoBlockEditor,
+  audio: AudioBlockEditor,
 };

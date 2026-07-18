@@ -9,10 +9,30 @@ import { DEV_ORG_ID } from '../lib/devUser.js';
 
 const router = express.Router();
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB per file
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB per file (images, via bulk upload -- unchanged, P1-17)
 const MAX_ZIP_BYTES = 500 * 1024 * 1024; // 500MB per ZIP
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']);
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']);
+// Phase 4 Part 3: minimal video/audio blocks. The single-file /assets/upload
+// endpoint (used by ImageBlock/VideoBlock/AudioBlock's own upload zones, not
+// the bulk/ZIP path above which stays image-only for the media library) now
+// accepts these too, each with its own size ceiling -- video files are
+// legitimately much larger than images or audio, so a single flat limit
+// would either be too strict for video or too permissive for images.
+const VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/webm']);
+const AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/mp4']);
+const MAX_BYTES_BY_KIND = {
+  image: MAX_FILE_BYTES,
+  audio: 50 * 1024 * 1024, // 50MB
+  video: 200 * 1024 * 1024, // 200MB
+};
+
+function detectKind(mimetype) {
+  if (IMAGE_MIME_TYPES.has(mimetype)) return 'image';
+  if (VIDEO_MIME_TYPES.has(mimetype)) return 'video';
+  if (AUDIO_MIME_TYPES.has(mimetype)) return 'audio';
+  return null;
+}
 
 function courseUploadsDir(courseId) {
   return path.join(UPLOADS_DIR, courseId);
@@ -46,7 +66,11 @@ async function insertAsset({ courseId, kind, filename, filePath, alt, caption })
 
 const singleUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_FILE_BYTES },
+  // Set to the largest per-kind ceiling (video) so multer itself never
+  // rejects a legitimately-sized video before the per-kind check below can
+  // run and produce a proper error message with the right ceiling for the
+  // file's actual kind.
+  limits: { fileSize: MAX_BYTES_BY_KIND.video },
 });
 
 router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
@@ -60,8 +84,14 @@ router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
       res.status(400).json({ error: 'file and course_id are required' });
       return;
     }
-    if (!IMAGE_MIME_TYPES.has(req.file.mimetype)) {
+    const kind = detectKind(req.file.mimetype);
+    if (!kind) {
       res.status(400).json({ error: `Unsupported file type: ${req.file.mimetype}` });
+      return;
+    }
+    const maxBytes = MAX_BYTES_BY_KIND[kind];
+    if (req.file.size > maxBytes) {
+      res.status(400).json({ error: `File exceeds the ${Math.round(maxBytes / (1024 * 1024))}MB limit for ${kind} files.` });
       return;
     }
 
@@ -72,7 +102,7 @@ router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
 
     const asset = await insertAsset({
       courseId: course_id,
-      kind: 'image',
+      kind,
       filename,
       filePath: `${course_id}/${filename}`,
       alt,

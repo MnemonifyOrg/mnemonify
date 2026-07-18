@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ConditionBuilder, { ValueInput } from './ConditionBuilder.jsx';
-import { ACTION_LABELS, ACTION_TYPES, blockLabel, defaultValueForType, EVENT_LABELS, newTriggerId } from '../lib/triggerUtils.js';
+import { ACTION_LABELS, ACTION_TYPES, blockLabel, defaultValueForType, eventLabelFor, newTriggerId } from '../lib/triggerUtils.js';
 
 function emptyAction(type, variables, pageBlocks, pages) {
   if (type === 'SET_VAR') {
@@ -162,6 +162,7 @@ function isActionValid(action) {
 export default function TriggerBuilderModal({
   title,
   validEvents,
+  blockType,
   excludeBlockId,
   pageBlocks,
   pages,
@@ -211,7 +212,7 @@ export default function TriggerBuilderModal({
           <select className="input" value={event} onChange={(e) => setEvent(e.target.value)}>
             {validEvents.map((ev) => (
               <option key={ev} value={ev}>
-                {EVENT_LABELS[ev] || ev}
+                {eventLabelFor(ev, blockType)}
               </option>
             ))}
           </select>

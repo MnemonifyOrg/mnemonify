@@ -1,17 +1,18 @@
 import express from 'express';
 import pool from '../db.js';
 import { DEV_USER_ID } from '../lib/devUser.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
 
-router.get('/users/me', async (req, res) => {
+router.get('/users/me', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT id, email, name, role, onboarding_completed FROM users WHERE id = $1`, [
     DEV_USER_ID,
   ]);
   res.json(result.rows[0]);
-});
+}));
 
-router.patch('/users/me', async (req, res) => {
+router.patch('/users/me', asyncHandler(async (req, res) => {
   const { onboarding_completed } = req.body;
   const fields = [];
   const values = [];
@@ -30,6 +31,6 @@ router.patch('/users/me', async (req, res) => {
     values
   );
   res.json(result.rows[0]);
-});
+}));
 
 export default router;

@@ -93,64 +93,34 @@ export function defaultValueForType(type) {
   return '';
 }
 
-function stripHtml(html) {
-  return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-// Handles every content-field shape used across block types in this
-// codebase: a bare sanitized-HTML string (KC question/option text, heading
-// text, list items -- the convention adopted after the 2026-07-17
-// rich-text fix), an array of rich_text segments (text block content,
-// {t:'text'|'html'|'asset_link', v}), or a {rich_text: [...]} wrapper
-// (reflection prompt, course header/footer). See DECISIONS.md.
-function plainText(value) {
-  if (!value) return '';
-  if (typeof value === 'string') return stripHtml(value);
-  if (Array.isArray(value)) return value.map((seg) => (seg?.v ? stripHtml(seg.v) : '')).join(' ').trim();
-  if (value.rich_text) return plainText(value.rich_text);
-  return '';
-}
-
-function truncate(text, max = 36) {
-  if (!text) return '';
-  return text.length > max ? `${text.slice(0, max)}…` : text;
-}
-
-function contentSnippet(block) {
-  const c = block.content || {};
-  switch (block.type) {
-    case 'text':
-      return truncate(plainText(c.rich_text));
-    case 'heading':
-      return truncate(plainText(c.text));
-    case 'list':
-      return truncate((c.items || []).map(plainText).join(', '));
-    case 'accordion':
-      return `${(c.items || []).length} item${(c.items || []).length === 1 ? '' : 's'}`;
-    case 'tabs':
-      return (c.items || []).map((i) => i.label).filter(Boolean).join(', ');
-    case 'knowledge-check':
-      return truncate(plainText(c.question));
-    case 'carousel':
-      return `${(c.asset_ids || []).length} image${(c.asset_ids || []).length === 1 ? '' : 's'}`;
-    case 'reflection':
-      return truncate(plainText(c.prompt));
-    case 'table':
-      return c.caption ? truncate(c.caption) : '';
-    case 'embed':
-      return c.label || '';
-    default:
-      return '';
-  }
+// Auto-generated fallback label, e.g. "Image (3)" -- the block's 1-indexed
+// position among blocks of the SAME type on the current page (P1-56,
+// Phase 4 usability-fix session). Replaces the old content-snippet fallback
+// ("Image: ..."), which had no snippet at all for image blocks -- the exact
+// real-user complaint this fixes (several images on one page were all just
+// "Image" in the SHOW_BLOCK dropdown, indistinguishable from each other).
+// Position is computed live from pageBlocks rather than stored, so it's
+// always consistent with the blocks actually on the page today -- it can
+// shift if an earlier same-type block is deleted, same as it would for any
+// author eyeballing "the 3rd image on this page." pageBlocks is optional
+// (some callers, e.g. describeCondition, don't have it in scope) -- falls
+// back to the bare type label when omitted.
+export function autoBlockLabel(block, pageBlocks) {
+  const typeLabel = BLOCK_LABELS[block.type] || block.type;
+  if (!pageBlocks) return typeLabel;
+  const sameType = pageBlocks.filter((b) => b.type === block.type);
+  const position = sameType.findIndex((b) => b.block_id === block.block_id) + 1;
+  return position > 0 ? `${typeLabel} (${position})` : typeLabel;
 }
 
 // Short, readable label for a block, for use in SHOW_BLOCK/HIDE_BLOCK
-// pickers where the author only ever sees a block_id in the raw JSON --
-// meaningless to a non-technical author (Step 5).
-export function blockLabel(block) {
-  const typeLabel = BLOCK_LABELS[block.type] || block.type;
-  const snippet = contentSnippet(block);
-  return snippet ? `${typeLabel}: "${snippet}"` : typeLabel;
+// pickers and trigger sentences where the author only ever sees a block_id
+// in the raw JSON -- meaningless to a non-technical author (Step 5). Prefers
+// the block's own author-set `label` (P1-56) once set; falls back to the
+// auto-generated position label.
+export function blockLabel(block, pageBlocks) {
+  if (block.label && block.label.trim()) return block.label.trim();
+  return autoBlockLabel(block, pageBlocks);
 }
 
 export function newTriggerId() {
@@ -211,11 +181,11 @@ function describeAction(action, { pageBlocks, pages }) {
     }
     case 'SHOW_BLOCK': {
       const target = pageBlocks.find((b) => b.block_id === action.target);
-      return `show ${target ? blockLabel(target) : 'the selected block'}`;
+      return `show ${target ? blockLabel(target, pageBlocks) : 'the selected block'}`;
     }
     case 'HIDE_BLOCK': {
       const target = pageBlocks.find((b) => b.block_id === action.target);
-      return `hide ${target ? blockLabel(target) : 'the selected block'}`;
+      return `hide ${target ? blockLabel(target, pageBlocks) : 'the selected block'}`;
     }
     case 'JUMP_TO_PAGE': {
       const target = pages.find((p) => p.page_id === action.target);

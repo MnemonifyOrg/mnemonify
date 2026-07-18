@@ -1,10 +1,17 @@
-// Reads course.meta.utility_bar (ARCHITECTURE.md 5.1). Rendered TWICE by
-// App.jsx with a different `layout` -- once inside TopBar as inline text
-// links (hidden below 1280px via CSS), once as a fixed-to-viewport bottom
-// bar (hidden at 1280px+ via CSS). Both instances share the exact same
-// item list and click handlers; only the wrapping markup/CSS differs,
-// which is why this is one component with a layout prop rather than two
-// separate ones -- there is no behavioral difference to duplicate.
+// Reads course.meta.utility_bar (ARCHITECTURE.md 5.1). Rendered THREE times
+// (Phase 4 usability-fix session added the third) with a different `layout`
+// -- once inside TopBar as inline text links (hidden below 1280px via CSS),
+// once as a fixed-to-viewport bottom bar (hidden at 1280px+ via CSS), and
+// once inside NavDrawer as a vertical list at the bottom of the mobile
+// hamburger menu (P1-57 -- always visible regardless of width, since the
+// drawer itself is what's gated by breakpoint). All three instances share
+// the exact same item list and click handlers; only the wrapping markup/CSS
+// differs, which is why this is one component with a layout prop rather
+// than three separate ones -- there is no behavioral difference to
+// duplicate. `className` is derived directly from `layout` (utility-bar--
+// <layout>) rather than a bottom-or-inline ternary, specifically so a third
+// layout value doesn't silently fall through to the wrong CSS class the way
+// "drawer" did before this comment was written -- see DECISIONS.md.
 export default function UtilityBar({ utilityBar, courseTitle, onOpenModal, onJumpToPage, layout }) {
   const contact = utilityBar?.contact;
   const resources = utilityBar?.resources;
@@ -59,7 +66,7 @@ export default function UtilityBar({ utilityBar, courseTitle, onOpenModal, onJum
 
   if (items.length === 0) return null;
 
-  const className = layout === 'bottom' ? 'utility-bar utility-bar--bottom' : 'utility-bar utility-bar--inline';
+  const className = `utility-bar utility-bar--${layout || 'inline'}`;
 
   return (
     <nav className={className} aria-label="Course utilities">

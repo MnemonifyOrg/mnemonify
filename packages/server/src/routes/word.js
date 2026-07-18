@@ -6,11 +6,12 @@ import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
 import { buildTemplateWordDoc } from '../lib/wordExport.js';
 import { parseTables } from '../lib/htmlTableParser.js';
 import { applyFieldValue } from '../lib/wordFieldMap.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-router.get('/templates/:id/export-word', async (req, res) => {
+router.get('/templates/:id/export-word', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 AND is_template = true`, [
     req.params.id,
     DEV_ORG_ID,
@@ -27,9 +28,9 @@ router.get('/templates/:id/export-word', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${template.title.replace(/[^\w.-]+/g, '_')}.docx"`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.send(buffer);
-});
+}));
 
-router.post('/courses/import-word', upload.single('file'), async (req, res) => {
+router.post('/courses/import-word', upload.single('file'), asyncHandler(async (req, res) => {
   const { template_id } = req.body;
   if (!req.file || !template_id) {
     res.status(400).json({ error: 'file and template_id are required' });
@@ -83,9 +84,9 @@ router.post('/courses/import-word', upload.single('file'), async (req, res) => {
   }
 
   res.json({ mapped, flagged, skipped, proposed_course_json: proposedCourseJson });
-});
+}));
 
-router.post('/courses/import-word/confirm', async (req, res) => {
+router.post('/courses/import-word/confirm', asyncHandler(async (req, res) => {
   const { proposed_course_json, title } = req.body;
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
@@ -94,6 +95,6 @@ router.post('/courses/import-word/confirm', async (req, res) => {
     [DEV_ORG_ID, title || 'Untitled Course', proposed_course_json, DEV_USER_ID]
   );
   res.status(201).json(result.rows[0]);
-});
+}));
 
 export default router;

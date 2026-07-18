@@ -10,9 +10,11 @@ import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
 import pageTemplatesRouter from './routes/pageTemplates.js';
 
-dotenv.config();
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// See db.js for why this must be an explicit path rather than relying on
+// process.cwd() -- same bug, same fix, kept consistent between the two
+// files that each call dotenv.config() independently.
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const PORT = process.env.PORT || 3001;
 const CONTENT_BASE_URL = process.env.CONTENT_BASE_URL || 'http://localhost:3001';
@@ -99,7 +101,37 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+// Process-level safety nets (Step 0 root-cause fix, see DECISIONS.md).
+// Every route handler is now wrapped in asyncHandler (forwards rejections
+// to the error middleware above), and db.js's pool has its own 'error'
+// listener, so in normal operation neither of these should ever fire --
+// they exist as a last-resort net against whatever wasn't anticipated,
+// logging instead of letting Node's default behavior (silently or
+// fatally terminating the process) hide the actual cause next time.
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] Unhandled promise rejection (process continues):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[server] Uncaught exception (process continues):', err);
+});
+
+const server = app.listen(PORT, () => {
   console.log(`[server] Mnemonify content server listening on port ${PORT}`);
   console.log(`[server] CONTENT_BASE_URL=${CONTENT_BASE_URL}`);
+});
+
+// Without this, a port conflict (a stale process from a previous session
+// still holding PORT -- confirmed to happen repeatedly in this environment,
+// see DECISIONS.md) throws an unhandled 'error' event on the server object,
+// which crashes the process with a stack trace that's easy to miss in
+// scrollback and easy to misread as "the server started, then died" rather
+// than "the server never actually bound the port at all."
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} is already in use by another process. This server did NOT start. Find and stop the other process (e.g. "lsof -i :${PORT}") before retrying.`);
+    process.exit(1);
+  } else {
+    console.error('[server] Failed to start:', err);
+    process.exit(1);
+  }
 });

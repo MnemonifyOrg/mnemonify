@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { BLOCK_SETTINGS } from './blocks/settingsIndex.js';
 import { BLOCK_LABELS } from '../lib/blockDefaults.js';
+import { autoBlockLabel } from '../lib/triggerUtils.js';
 import VariableManagerPanel from './VariableManagerPanel.jsx';
 import PageSettingsPanel from './PageSettingsPanel.jsx';
 import TriggersSection from './TriggersSection.jsx';
+import ConditionBuilder from './ConditionBuilder.jsx';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -88,6 +90,40 @@ function CourseSettings({ meta, onChangeMeta }) {
   );
 }
 
+// Custom block labels (P1-56, Phase 4 usability-fix session). Every UI that
+// lists blocks by name (SHOW_BLOCK/HIDE_BLOCK target pickers, trigger
+// sentences, a block's own canvas toolbar label -- see triggerUtils.js's
+// blockLabel) prefers this once set. Placeholder shows what the
+// auto-generated fallback label would be (e.g. "Image (3)") so an author can
+// see at a glance what they're overriding. Placed at the very top of the
+// block settings panel, above the type-specific fields, per this task's
+// "clearly visible... above Faculty notes" instruction -- found missing
+// during hands-on testing: with several images on one page, the generic
+// "Image" label in trigger dropdowns gave no way to tell them apart.
+function BlockNameField({ block, pageBlocks, onChange }) {
+  function handleChange(value) {
+    if (!value) {
+      const { label, ...rest } = block;
+      onChange(rest);
+      return;
+    }
+    onChange({ ...block, label: value });
+  }
+
+  return (
+    <div className="settings-panel__block-name">
+      <label>Block name</label>
+      <input
+        className="input"
+        type="text"
+        placeholder={autoBlockLabel(block, pageBlocks)}
+        value={block.label || ''}
+        onChange={(e) => handleChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 function FacultyNotesField({ block, onChange }) {
   const existingText = richTextFieldValue(block.faculty_notes);
   const [expanded, setExpanded] = useState(!!existingText);
@@ -148,6 +184,49 @@ function BlockVisibilityToggle({ block, onChange }) {
       <input type="checkbox" checked={isHidden} onChange={(e) => toggle(e.target.checked)} />
       Hidden until shown by a trigger
     </label>
+  );
+}
+
+// Self-owned block visibility (P1-55, Phase 4 usability-fix session). The
+// more powerful, discoverable mechanism going forward -- an author sets
+// this directly on the block that should be shown/hidden, rather than
+// having to go find and edit some OTHER block's trigger (the real-user
+// finding this fixes: showing an image once a variable is true previously
+// required adding a SHOW_BLOCK action to the accordion's own trigger,
+// which is unintuitive when the "should I be visible?" logic conceptually
+// belongs to the image, not the accordion). Placed above the older
+// "Hidden until shown by a trigger" toggle, and given its own heading, per
+// this task's explicit "clearly visible, not buried" instruction.
+// Precedence when both are set (see DECISIONS.md): visibility_condition
+// wins -- once a block has one, any SHOW_BLOCK/HIDE_BLOCK trigger
+// targeting it (from elsewhere) has no further effect.
+function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVariableManager }) {
+  function handleChange(condition) {
+    if (condition) {
+      onChangeBlock({ ...block, visibility_condition: condition }, { forceSnapshot: true });
+    } else {
+      const { visibility_condition, ...rest } = block;
+      onChangeBlock(rest, { forceSnapshot: true });
+    }
+  }
+
+  return (
+    <div className="settings-panel__visibility-condition">
+      <h4>Visibility</h4>
+      <ConditionBuilder
+        variables={variables}
+        value={block.visibility_condition || null}
+        onChange={handleChange}
+        onOpenVariableManager={onOpenVariableManager}
+        toggleLabel="Show this block only if…"
+      />
+      {block.visibility_condition && (
+        <p className="settings-panel__hint">
+          This condition is now authoritative for this block's visibility -- it overrides any Show/Hide action another
+          block's trigger points at this one.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -214,13 +293,20 @@ export default function SettingsPanel({
     <aside className="settings-panel">
       <div className="settings-panel__section">
         <h3>{BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} Settings</h3>
+        <BlockNameField block={selectedBlock} pageBlocks={page?.blocks || []} onChange={onChangeBlock} />
         {SettingsFields ? (
           <SettingsFields block={selectedBlock} assets={assets} onChange={onChangeBlock} onUpdateCourseAsset={onUpdateCourseAsset} />
         ) : (
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}
       </div>
-      <BlockVisibilityToggle block={selectedBlock} onChange={onChangeBlock} />
+      <VisibilityConditionSection
+        block={selectedBlock}
+        variables={variables}
+        onChangeBlock={onChangeBlock}
+        onOpenVariableManager={onOpenVariableManager}
+      />
+      {!selectedBlock.visibility_condition && <BlockVisibilityToggle block={selectedBlock} onChange={onChangeBlock} />}
       <TriggersSection
         block={selectedBlock}
         pageBlocks={page?.blocks || []}

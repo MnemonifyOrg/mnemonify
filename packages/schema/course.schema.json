@@ -276,7 +276,11 @@
         "content": {
           "type": "object"
         },
+        "label": {
+          "type": "string"
+        },
         "visibility": { "$ref": "#/definitions/visibility" },
+        "visibility_condition": { "$ref": "#/definitions/condition" },
         "triggers": {
           "type": "array",
           "items": { "$ref": "#/definitions/trigger" }
@@ -321,7 +325,11 @@
         "content": {
           "type": "object"
         },
+        "label": {
+          "type": "string"
+        },
         "visibility": { "$ref": "#/definitions/visibility" },
+        "visibility_condition": { "$ref": "#/definitions/condition" },
         "triggers": {
           "type": "array",
           "items": { "$ref": "#/definitions/trigger" }

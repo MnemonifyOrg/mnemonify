@@ -106,7 +106,7 @@ function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, o
           <select className="input" value={action.target} onChange={(e) => onChange({ ...action, target: e.target.value })}>
             {pageBlocks.map((b) => (
               <option key={b.block_id} value={b.block_id}>
-                {blockLabel(b)}
+                {blockLabel(b, pageBlocks)}
               </option>
             ))}
           </select>

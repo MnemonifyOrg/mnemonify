@@ -480,6 +480,10 @@ export default function App() {
           onNavigate={handleDrawerNavigate}
           open={navDrawerOpen}
           onClose={() => setNavDrawerOpen(false)}
+          utilityBar={course.meta.utility_bar}
+          courseTitle={course.meta.title}
+          onOpenModal={handleOpenModal}
+          onJumpToPage={handleJumpToPage}
         />
         <main className="player">
           <div className="player__page">
@@ -499,6 +503,7 @@ export default function App() {
                 isPreview={isPreview}
                 onOpenModal={handleOpenModal}
                 blockVisibility={blockVisibility}
+                variables={variables}
               />
             ))}
             <ContinueButton

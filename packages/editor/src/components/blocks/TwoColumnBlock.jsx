@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { BLOCK_EDITORS } from './index.js';
-import { BLOCK_LABELS, createInnerBlock } from '../../lib/blockDefaults.js';
+import { createInnerBlock } from '../../lib/blockDefaults.js';
+import { blockLabel } from '../../lib/triggerUtils.js';
 import { ImageSizeAlignmentFields } from './ImageBlock.jsx';
 
 const SNAP = 5;
@@ -64,7 +65,7 @@ function Slot({ side, slotBlock, parentBlockId, onSetSlot, onClearSlot, onChange
   return (
     <div className="two-column-block-editor__slot-filled">
       <div className="two-column-block-editor__slot-header">
-        <span className="two-column-block-editor__slot-label">{BLOCK_LABELS[slotBlock.type] || slotBlock.type}</span>
+        <span className="two-column-block-editor__slot-label">{blockLabel(slotBlock)}</span>
         <button type="button" className="btn-text" title="Remove from slot" onClick={onClearSlot}>
           ✕
         </button>

@@ -1,5 +1,6 @@
 import { BLOCK_EDITORS } from './index.js';
-import { BLOCK_LABELS, createInnerBlock } from '../../lib/blockDefaults.js';
+import { createInnerBlock } from '../../lib/blockDefaults.js';
+import { blockLabel } from '../../lib/triggerUtils.js';
 import { ImageSizeAlignmentFields } from './ImageBlock.jsx';
 
 // Shared by AccordionBlock.jsx and TabsBlock.jsx editors -- each accordion
@@ -61,7 +62,7 @@ export default function ItemBlockStack({
         return (
           <div className="item-block-stack__block" key={childBlock.block_id}>
             <div className="item-block-stack__block-header">
-              <span className="item-block-stack__block-label">{BLOCK_LABELS[childBlock.type] || childBlock.type}</span>
+              <span className="item-block-stack__block-label">{blockLabel(childBlock)}</span>
               <div className="item-block-stack__block-controls">
                 <button
                   type="button"

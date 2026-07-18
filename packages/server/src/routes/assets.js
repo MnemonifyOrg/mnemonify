@@ -6,6 +6,7 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
 import { DEV_ORG_ID } from '../lib/devUser.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
@@ -120,7 +121,7 @@ const bulkUpload = multer({
   limits: { fileSize: MAX_ZIP_BYTES },
 });
 
-router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 }, { name: 'zip', maxCount: 1 }]), async (req, res) => {
+router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 }, { name: 'zip', maxCount: 1 }]), asyncHandler(async (req, res) => {
   const courseId = req.body.course_id;
   if (!courseId) {
     res.status(400).json({ error: 'course_id is required' });
@@ -169,17 +170,17 @@ router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 },
   }
 
   res.status(201).json({ created, skipped });
-});
+}));
 
-router.get('/assets/:courseId', async (req, res) => {
+router.get('/assets/:courseId', asyncHandler(async (req, res) => {
   const result = await pool.query(
     `SELECT * FROM assets WHERE course_id = $1 AND organisation_id = $2 ORDER BY created_at ASC`,
     [req.params.courseId, DEV_ORG_ID]
   );
   res.json(result.rows);
-});
+}));
 
-router.patch('/assets/:assetId', async (req, res) => {
+router.patch('/assets/:assetId', asyncHandler(async (req, res) => {
   const { alt, caption } = req.body;
   const fields = [];
   const values = [];
@@ -206,9 +207,9 @@ router.patch('/assets/:assetId', async (req, res) => {
     return;
   }
   res.json(result.rows[0]);
-});
+}));
 
-router.delete('/assets/:assetId', async (req, res) => {
+router.delete('/assets/:assetId', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM assets WHERE id = $1 AND organisation_id = $2`, [
     req.params.assetId,
     DEV_ORG_ID,
@@ -224,6 +225,6 @@ router.delete('/assets/:assetId', async (req, res) => {
   }
   await pool.query(`DELETE FROM assets WHERE id = $1`, [asset.id]);
   res.status(204).end();
-});
+}));
 
 export default router;

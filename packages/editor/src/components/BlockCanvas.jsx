@@ -3,13 +3,15 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { BLOCK_EDITORS } from './blocks/index.js';
-import { BLOCK_LABELS, createBlock } from '../lib/blockDefaults.js';
+import { createBlock } from '../lib/blockDefaults.js';
+import { blockLabel } from '../lib/triggerUtils.js';
 import GenericBlockPreview from './GenericBlockPreview.jsx';
 import BlockPickerModal from './BlockPickerModal.jsx';
 import MoveCopyBlockModal from './MoveCopyBlockModal.jsx';
 
 function BlockWrapper({
   block,
+  pageBlocks,
   selected,
   onSelect,
   onChange,
@@ -49,7 +51,7 @@ function BlockWrapper({
         <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
           ⠿
         </span>
-        <span className="block-wrapper__label">{BLOCK_LABELS[block.type] || block.type}</span>
+        <span className="block-wrapper__label">{blockLabel(block, pageBlocks)}</span>
         <span className="block-wrapper__spacer" />
         <button
           className="btn-text"
@@ -157,6 +159,7 @@ export default function BlockCanvas({
             <BlockWrapper
               key={block.block_id}
               block={block}
+              pageBlocks={page.blocks}
               assets={assets}
               courseId={courseId}
               onAddCourseAsset={onAddCourseAsset}

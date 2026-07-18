@@ -2,10 +2,11 @@ import express from 'express';
 import pool from '../db.js';
 import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
 import { templatizeCourse } from '../lib/templatize.js';
+import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
 
-router.get('/courses', async (req, res) => {
+router.get('/courses', asyncHandler(async (req, res) => {
   const result = await pool.query(
     `SELECT id, title, status, updated_at, is_template
      FROM courses
@@ -14,9 +15,9 @@ router.get('/courses', async (req, res) => {
     [DEV_ORG_ID]
   );
   res.json(result.rows);
-});
+}));
 
-router.get('/templates', async (req, res) => {
+router.get('/templates', asyncHandler(async (req, res) => {
   const result = await pool.query(
     `SELECT id, title, template_scope, updated_at
      FROM courses
@@ -25,9 +26,9 @@ router.get('/templates', async (req, res) => {
     [DEV_ORG_ID]
   );
   res.json(result.rows);
-});
+}));
 
-router.get('/courses/:id', async (req, res) => {
+router.get('/courses/:id', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
     DEV_ORG_ID,
@@ -37,9 +38,9 @@ router.get('/courses/:id', async (req, res) => {
     return;
   }
   res.json(result.rows[0]);
-});
+}));
 
-router.post('/courses', async (req, res) => {
+router.post('/courses', asyncHandler(async (req, res) => {
   const { title, course_json } = req.body;
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
@@ -48,9 +49,14 @@ router.post('/courses', async (req, res) => {
     [DEV_ORG_ID, title || 'Untitled Course', course_json || {}, DEV_USER_ID]
   );
   res.status(201).json(result.rows[0]);
-});
+}));
 
-router.patch('/courses/:id', async (req, res) => {
+// PATCH /courses/:id is the autosave endpoint -- hit every 5 seconds during
+// active editing (CourseEditor.jsx's debounced save). The single highest-
+// traffic, highest-risk-of-a-transient-failure handler in the whole API,
+// and the one most likely to have been the actual crash source before this
+// file had any error handling at all (see DECISIONS.md, Step 0).
+router.patch('/courses/:id', asyncHandler(async (req, res) => {
   const { title, course_json, status } = req.body;
   const fields = [];
   const values = [];
@@ -80,17 +86,17 @@ router.patch('/courses/:id', async (req, res) => {
     return;
   }
   res.json(result.rows[0]);
-});
+}));
 
-router.delete('/courses/:id', async (req, res) => {
+router.delete('/courses/:id', asyncHandler(async (req, res) => {
   await pool.query(`UPDATE courses SET status = 'deleted', updated_at = now() WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
     DEV_ORG_ID,
   ]);
   res.status(204).end();
-});
+}));
 
-router.post('/courses/:id/duplicate', async (req, res) => {
+router.post('/courses/:id/duplicate', asyncHandler(async (req, res) => {
   const original = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
     DEV_ORG_ID,
@@ -107,9 +113,9 @@ router.post('/courses/:id/duplicate', async (req, res) => {
     [DEV_ORG_ID, `${source.title} (Copy)`, source.course_json, DEV_USER_ID]
   );
   res.status(201).json(result.rows[0]);
-});
+}));
 
-router.post('/courses/:id/save-as-template', async (req, res) => {
+router.post('/courses/:id/save-as-template', asyncHandler(async (req, res) => {
   const { template_scope, title } = req.body;
   const original = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
@@ -130,6 +136,6 @@ router.post('/courses/:id/save-as-template', async (req, res) => {
     [DEV_ORG_ID, templateTitle, template_scope || 'personal', templatizedJson, DEV_USER_ID]
   );
   res.status(201).json(result.rows[0]);
-});
+}));
 
 export default router;

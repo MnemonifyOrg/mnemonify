@@ -141,6 +141,22 @@
   }
 }
 
+.utility-bar--drawer {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+.utility-bar--drawer .utility-bar__item {
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  color: var(--color-text-primary);
+}
+.utility-bar--drawer .utility-bar__item:hover {
+  background: var(--color-bg-secondary);
+}
+
 /* ---- Nav drawer ---- */
 .nav-drawer {
   background: var(--color-surface);

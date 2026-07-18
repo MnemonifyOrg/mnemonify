@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import UtilityBar from './UtilityBar.jsx';
 
 const STATUS_LABELS = {
   'not-visited': 'Not visited',
@@ -99,7 +100,20 @@ function GroupSection({ group, pages, getStatus, currentPageId, onNavigate }) {
 // click/Escape). `open` is a single boolean controlled by App.jsx; CSS
 // alone gives it the two different visual treatments per breakpoint --
 // see chrome.css.
-export default function NavDrawer({ pages, pageDisplay, pageGroups, currentPageId, getStatus, onNavigate, open, onClose }) {
+export default function NavDrawer({
+  pages,
+  pageDisplay,
+  pageGroups,
+  currentPageId,
+  getStatus,
+  onNavigate,
+  open,
+  onClose,
+  utilityBar,
+  courseTitle,
+  onOpenModal,
+  onJumpToPage,
+}) {
   const drawerRef = useRef(null);
 
   useEffect(() => {
@@ -159,6 +173,23 @@ export default function NavDrawer({ pages, pageDisplay, pageGroups, currentPageI
             />
           ))}
         </ul>
+        {/* Utility bar reachable from mobile (P1-57, Phase 4 usability-fix
+            session): the hamburger drawer is the only chrome surface visible
+            below 1280px alongside the bottom utility bar, but nothing put
+            Contact/Resources/custom items INSIDE it -- a real user on mobile
+            had no reason to expect them at the very bottom of the screen
+            rather than in the menu they'd already opened. Reuses UtilityBar
+            as-is (same click handlers, same item list) with a "drawer"
+            layout for vertical-list styling; UtilityBar itself already
+            returns null when no items are enabled, so no extra guard is
+            needed here. */}
+        <UtilityBar
+          utilityBar={utilityBar}
+          courseTitle={courseTitle}
+          onOpenModal={onOpenModal}
+          onJumpToPage={onJumpToPage}
+          layout="drawer"
+        />
       </nav>
     </>
   );

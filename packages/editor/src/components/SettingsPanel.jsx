@@ -5,6 +5,7 @@ import { autoBlockLabel } from '../lib/triggerUtils.js';
 import VariableManagerPanel from './VariableManagerPanel.jsx';
 import PageSettingsPanel from './PageSettingsPanel.jsx';
 import PlayerSettingsPanel from './PlayerSettingsPanel.jsx';
+import CourseHealthPanel from './CourseHealthPanel.jsx';
 import TriggersSection from './TriggersSection.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 
@@ -231,7 +232,7 @@ function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVar
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables'];
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Course Health'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -258,7 +259,11 @@ export default function SettingsPanel({
   activeTab,
   onChangeTab,
   onOpenVariableManager,
+  findings,
+  onNavigateToFinding,
 }) {
+  const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
+
   if (!selectedBlock) {
     return (
       <aside className="settings-panel">
@@ -271,6 +276,11 @@ export default function SettingsPanel({
               onClick={() => onChangeTab(tab)}
             >
               {tab}
+              {tab === 'Course Health' && findings?.length > 0 && (
+                <span className={errorCount > 0 ? 'settings-panel__tab-badge settings-panel__tab-badge--error' : 'settings-panel__tab-badge'}>
+                  {findings.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -293,6 +303,8 @@ export default function SettingsPanel({
           />
         ) : activeTab === 'Variables' ? (
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} />
+        ) : activeTab === 'Course Health' ? (
+          <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} />
         ) : (
           <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />
         )}

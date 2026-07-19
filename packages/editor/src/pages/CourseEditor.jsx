@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../lib/api.js';
 import { genPageId } from '../lib/idGen.js';
@@ -11,6 +11,7 @@ import PageTemplateGalleryModal from '../components/PageTemplateGalleryModal.jsx
 import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
+import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -68,6 +69,8 @@ export default function CourseEditor() {
   const [pageToSaveAsTemplate, setPageToSaveAsTemplate] = useState(null);
   const [showInsertFromTemplate, setShowInsertFromTemplate] = useState(false);
   const [settingsTab, setSettingsTab] = useState('Course');
+  const [publishing, setPublishing] = useState(false);
+  const [publishNotice, setPublishNotice] = useState(null);
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -96,6 +99,12 @@ export default function CourseEditor() {
   useEffect(() => {
     courseRef.current = course;
   }, [course]);
+
+  useEffect(() => {
+    if (!publishNotice) return;
+    const timer = setTimeout(() => setPublishNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [publishNotice]);
 
   useEffect(() => {
     function handleBeforeUnload(e) {
@@ -168,6 +177,51 @@ export default function CourseEditor() {
       setShowExportSaving(false);
     }
     window.location.href = `/api/templates/${course.id}/export-word`;
+  }
+
+  // Phase 4.5c Step 5: pre-publish gating. There is no dedicated "publish"
+  // flow anywhere in this codebase yet (ARCHITECTURE.md 15's
+  // course_versions/push_all/lock_existing machinery is schema-only,
+  // built ahead of its UI same as several other Phase 3.5/4 fields; the
+  // one thing that already exists is `courses.status`, defaulting to
+  // 'draft' and already accepted generically by PATCH /courses/:id). This
+  // is deliberately the minimal "mark a course as published" the task's
+  // own Step 5 wording allows, not a build-out of the full dynamic-SCORM
+  // version-control flow -- that's Phase 6 work. See DECISIONS.md.
+  //
+  // Re-runs the analyzer against a freshly-saved course rather than
+  // trusting the `findings` computed for the currently-rendered state --
+  // an author could click Publish a moment after a change that hasn't
+  // finished its own re-render yet, and this is the one place "was it
+  // actually safe to publish" must be authoritative, not just displayed.
+  async function handlePublish() {
+    await saveNow();
+    const freshFindings = analyzeCourse(courseRef.current.course_json);
+    const errorFindings = freshFindings.filter((f) => f.severity === 'error');
+    if (errorFindings.length > 0) {
+      setSelectedBlockId(null);
+      setSettingsTab('Course Health');
+      setPublishNotice({
+        type: 'error',
+        message: `Cannot publish: ${errorFindings.length} error${errorFindings.length === 1 ? '' : 's'} must be fixed first.`,
+      });
+      return;
+    }
+    setPublishing(true);
+    try {
+      const updated = await api.updateCourse(course.id, { status: 'published' });
+      setCourse((prev) => ({ ...prev, status: updated.status }));
+      const warningCount = freshFindings.length;
+      setPublishNotice({
+        type: 'success',
+        message: warningCount > 0 ? `Published with ${warningCount} warning${warningCount === 1 ? '' : 's'}.` : 'Published.',
+      });
+    } catch (err) {
+      console.error('[course-editor] publish failed:', err);
+      setPublishNotice({ type: 'error', message: 'Publish failed. Please try again.' });
+    } finally {
+      setPublishing(false);
+    }
   }
 
   function pushUndoSnapshot(previousJson) {
@@ -286,6 +340,45 @@ export default function CourseEditor() {
   function openVariableManager() {
     setSelectedBlockId(null);
     setSettingsTab('Variables');
+  }
+
+  // Course Health "click a finding, go to what it's about" (Phase 4.5c
+  // Step 4). Variable/asset findings have no page/block location -- they
+  // navigate to the Variables tab or Media Library instead, the same way
+  // an author would go find that entity themselves. Block-scoped findings
+  // switch to the block's own page, select it (which switches
+  // SettingsPanel out of the tabbed course-level view into that block's
+  // settings, same as clicking the block in the canvas would), and
+  // scroll it into view -- selection alone doesn't guarantee visibility
+  // if the block is below the fold or on a page that wasn't open yet.
+  function handleNavigateToFinding(finding) {
+    if (finding.entityType === 'variable') {
+      setSelectedBlockId(null);
+      setSettingsTab('Variables');
+      return;
+    }
+    if (finding.entityType === 'asset') {
+      setShowMediaLibrary(true);
+      return;
+    }
+    if (finding.location?.page_id) {
+      setActivePageId(finding.location.page_id);
+    }
+    if (finding.location?.block_id) {
+      setSelectedBlockId(finding.location.block_id);
+      // A timeout, not requestAnimationFrame, deliberately -- this only
+      // needs to run after the selection re-render commits, and rAF
+      // callbacks can be starved in some automated/headless browser
+      // contexts (confirmed while testing this feature) where a timeout
+      // still fires reliably.
+      setTimeout(() => {
+        document
+          .querySelector(`[data-block-id="${finding.location.block_id}"]`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 0);
+    } else {
+      setSelectedBlockId(null);
+    }
   }
 
   function handleAddCourseAsset(assetEntry) {
@@ -629,6 +722,14 @@ export default function CourseEditor() {
     saveNow();
   }
 
+  // Phase 4.5c: recomputed on every course_json change rather than
+  // debounced to save or gated behind opening the panel -- analyzeCourse
+  // is a handful of array walks over a small in-memory document, cheap
+  // enough that "always accurate" costs nothing noticeable, and it's what
+  // lets the top-bar issue badge stay correct without its own separate
+  // trigger. See DECISIONS.md.
+  const findings = useMemo(() => analyzeCourse(course?.course_json), [course?.course_json]);
+
   if (!course) return null;
 
   const json = course.course_json;
@@ -636,6 +737,7 @@ export default function CourseEditor() {
   const selectedBlock = page?.blocks.find((b) => b.block_id === selectedBlockId) || null;
 
   const saveLabel = { saved: 'Saved ✓', saving: 'Saving...', unsaved: 'Unsaved changes' }[saveStatus];
+  const errorFindingCount = findings.filter((f) => f.severity === 'error').length;
 
   return (
     <div className="course-editor">
@@ -711,10 +813,38 @@ export default function CourseEditor() {
           </button>
         )}
 
+        {findings.length > 0 && (
+          <button
+            type="button"
+            className={
+              errorFindingCount > 0
+                ? 'course-editor__health-badge course-editor__health-badge--error'
+                : 'course-editor__health-badge course-editor__health-badge--warning'
+            }
+            onClick={() => {
+              setSelectedBlockId(null);
+              setSettingsTab('Course Health');
+            }}
+            title="Open Course Health"
+          >
+            {errorFindingCount > 0 ? `⚠ ${errorFindingCount} error${errorFindingCount === 1 ? '' : 's'}` : `${findings.length} warning${findings.length === 1 ? '' : 's'}`}
+          </button>
+        )}
+
+        <button className="btn btn-primary" onClick={handlePublish} disabled={publishing}>
+          {publishing ? 'Publishing...' : 'Publish'}
+        </button>
+
         <span className="course-editor__save-status" data-status={saveStatus} data-tour="save-status">
           {saveLabel}
         </span>
       </header>
+
+      {publishNotice && (
+        <div className={`course-editor__publish-notice course-editor__publish-notice--${publishNotice.type}`}>
+          {publishNotice.message}
+        </div>
+      )}
 
       {showTour && <OnboardingTour onComplete={handleTourComplete} />}
 
@@ -814,6 +944,8 @@ export default function CourseEditor() {
           activeTab={settingsTab}
           onChangeTab={setSettingsTab}
           onOpenVariableManager={openVariableManager}
+          findings={findings}
+          onNavigateToFinding={handleNavigateToFinding}
         />
       </div>
     </div>

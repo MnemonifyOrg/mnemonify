@@ -37,7 +37,7 @@ function blockDisplayName(type) {
 // identical labels for the same block, since an author comparing a
 // SHOW_BLOCK dropdown label against a delete-warning label should never
 // see two different names for the same block.
-function labelForBlock(block, pageBlocks) {
+export function labelForBlock(block, pageBlocks) {
   if (block.label && block.label.trim()) return block.label.trim();
   const typeLabel = blockDisplayName(block.type);
   if (!pageBlocks) return typeLabel;

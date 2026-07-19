@@ -41,6 +41,7 @@ function BlockWrapper({
     <div
       ref={setNodeRef}
       style={style}
+      data-block-id={block.block_id}
       className={selected ? 'block-wrapper block-wrapper--selected' : 'block-wrapper'}
       onClick={(e) => {
         e.stopPropagation();

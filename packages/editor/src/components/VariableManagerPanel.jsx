@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { countVariableUsages, defaultValueForType } from '../lib/triggerUtils.js';
+import { defaultValueForType } from '../lib/triggerUtils.js';
 import { ValueInput } from './ConditionBuilder.jsx';
 import { genVariableId } from '../lib/idGen.js';
+import { getDependents } from '@mnemonify/schema/dependency-index.js';
 
 const NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -96,7 +97,7 @@ export default function VariableManagerPanel({ variables, courseJson, onChangeVa
   }
 
   function handleDelete(name) {
-    const usageCount = countVariableUsages(courseJson, name);
+    const usageCount = getDependents(name, courseJson).length;
     if (usageCount > 0) {
       const place = usageCount === 1 ? 'place' : 'places';
       if (!window.confirm(`This variable is used in ${usageCount} ${place}. Delete anyway?`)) return;

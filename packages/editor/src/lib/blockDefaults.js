@@ -1,41 +1,17 @@
 import { genBlockId, genCourseId, genPageId, genOptionId, genItemId } from './idGen.js';
+import { BLOCK_TYPES, BLOCK_REGISTRY, getBlockDefinition } from '@mnemonify/schema/block-registry.js';
 
 // Default content shapes per block type, matching the Phase 1 content
 // model documented in DECISIONS.md (2026-07-11 entry). Used both by the
 // starter templates and by the "Add Block" picker in the editor.
-export const BLOCK_TYPES = [
-  'text',
-  'heading',
-  'image',
-  'list',
-  'accordion',
-  'tabs',
-  'knowledge-check',
-  'carousel',
-  'reflection',
-  'two_column',
-  'table',
-  'embed',
-  'video',
-  'audio',
-];
-
-export const BLOCK_LABELS = {
-  text: 'Text',
-  heading: 'Heading',
-  image: 'Image',
-  list: 'List',
-  accordion: 'Accordion',
-  tabs: 'Tabs',
-  'knowledge-check': 'Knowledge Check',
-  carousel: 'Image Carousel',
-  reflection: 'Reflection',
-  two_column: 'Two Column',
-  table: 'Table',
-  embed: 'Embed',
-  video: 'Video',
-  audio: 'Audio',
-};
+//
+// BLOCK_TYPES and BLOCK_LABELS are re-exported here (Phase 4.5b) rather
+// than removed, so existing consumers (SettingsPanel.jsx, triggerUtils.js)
+// keep working unchanged -- the actual source of truth for the type list
+// and display names is now packages/schema/block-registry.js. See
+// DECISIONS.md.
+export { BLOCK_TYPES };
+export const BLOCK_LABELS = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BLOCK_REGISTRY[type].displayName]));
 
 // Slot types allowed inside a two-column block (ARCHITECTURE.md 3.6) --
 // see DECISIONS.md for why this list is deliberately short.
@@ -96,7 +72,14 @@ function defaultContent(type) {
 
 export function createBlock(type) {
   const block = { block_id: genBlockId(), type, content: defaultContent(type), triggers: [] };
-  if (type === 'reflection') block.include_in_pdf = true;
+  // include_in_pdf default (Phase 4.5b): previously only ever set for
+  // `reflection` -- every other type silently got no explicit value at
+  // all, despite ARCHITECTURE.md 11.3 documenting a full defaults table
+  // for every type. Now reads that table from the one place it's
+  // actually defined (packages/schema/block-registry.js) instead of a
+  // single hardcoded special case. See DECISIONS.md.
+  const definition = getBlockDefinition(type);
+  if (definition) block.include_in_pdf = definition.includeInPdfDefault;
   if (type === 'two_column') {
     // left/right start omitted (empty slots) rather than null -- the
     // schema's inner_block definition requires block_id/type/content
@@ -107,11 +90,19 @@ export function createBlock(type) {
   return block;
 }
 
-// Inner block for a two-column slot. block_id is namespaced under the
-// parent so it's never ambiguous which two-column block a slot's block
-// belongs to (e.g. "blk_col1_left") -- see DECISIONS.md.
+// Inner block for a two-column slot or an accordion/tabs item body (shared
+// by TwoColumnBlock.jsx and ItemBlockStack.jsx). block_id is namespaced
+// under the parent so it's never ambiguous which parent block a slot/item
+// block belongs to (e.g. "blk_col1_left") -- see DECISIONS.md.
 export function createInnerBlock(type, parentBlockId, side) {
-  return { block_id: `${parentBlockId}_${side}`, type, content: defaultContent(type), triggers: [] };
+  const definition = getBlockDefinition(type);
+  return {
+    block_id: `${parentBlockId}_${side}`,
+    type,
+    content: defaultContent(type),
+    triggers: [],
+    ...(definition ? { include_in_pdf: definition.includeInPdfDefault } : {}),
+  };
 }
 
 // A schema-valid, empty course document. Blank-course creation and the

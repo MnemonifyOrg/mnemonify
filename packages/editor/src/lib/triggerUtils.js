@@ -1,33 +1,30 @@
 import { genTriggerId } from './idGen.js';
 import { BLOCK_LABELS } from './blockDefaults.js';
+import { BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
-// Which events make sense for which block type (Phase 4 Part 2 Step 3).
-// Block types not listed here get no Triggers section at all in the
-// settings panel (table, list, text, heading, two_column, reflection --
-// "no meaningful interaction events of their own" -- and embed, for the
-// same reason: an iframe's internal content is cross-origin and the player
-// has no reliable way to observe a click inside it). onPageEnter/onPageExit
-// are deliberately NOT included here even though the schema's trigger.event
-// enum allows them on any block -- Part 2 treats them as page-level events
-// authored in Page Settings (page.triggers), not per-block, since the
-// schema already has a dedicated page.triggers array (added in Part 1 for
-// the same reason) and a single "this page was entered/exited" concept is
-// clearer than the same event duplicated on every block on the page. See
-// DECISIONS.md. `button` doesn't exist in this codebase yet (Phase 5+), so
-// its events are not represented here. video/audio (Phase 4 Part 3) get
-// only `onComplete` ("this finishes playing") -- onPlay/onPause exist in
+// Which events make sense for which block type (Phase 4 Part 2 Step 3,
+// now sourced from packages/schema/block-registry.js's validEvents field
+// -- Phase 4.5b). Block types with an empty validEvents array get no
+// Triggers section at all in the settings panel (table, list, text,
+// heading, two_column, reflection -- "no meaningful interaction events of
+// their own" -- and embed, for the same reason: an iframe's internal
+// content is cross-origin and the player has no reliable way to observe a
+// click inside it). onPageEnter/onPageExit are deliberately NOT included
+// here even though the schema's trigger.event enum allows them on any
+// block -- Part 2 treats them as page-level events authored in Page
+// Settings (page.triggers), not per-block, since the schema already has a
+// dedicated page.triggers array (added in Part 1 for the same reason) and
+// a single "this page was entered/exited" concept is clearer than the
+// same event duplicated on every block on the page. See DECISIONS.md.
+// `button` doesn't exist in this codebase yet (Phase 5+), so its events
+// are not represented here. video/audio (Phase 4 Part 3) get only
+// `onComplete` ("this finishes playing") -- onPlay/onPause exist in
 // ARCHITECTURE.md 4's event list but have no author-facing use case in
 // Part 3's minimal media block scope (no interactive-video/timeline work),
 // so they're deliberately left out here, same as onTimeReached.
-export const EVENTS_BY_BLOCK_TYPE = {
-  accordion: ['onOpen', 'onClose'],
-  tabs: ['onOpen', 'onClose'],
-  'knowledge-check': ['onCorrect', 'onIncorrect', 'onComplete'],
-  image: ['onClick'],
-  carousel: ['onClick'],
-  video: ['onComplete'],
-  audio: ['onComplete'],
-};
+export const EVENTS_BY_BLOCK_TYPE = Object.fromEntries(
+  Object.values(BLOCK_REGISTRY).map((def) => [def.type, def.validEvents])
+);
 
 export const PAGE_EVENTS = ['onPageEnter', 'onPageExit'];
 
@@ -210,51 +207,14 @@ export function describeTrigger(trigger, { pageBlocks, pages, variables, blockTy
   return sentence;
 }
 
-// Every place a variable name can appear in a course document -- used by
-// the Variable Manager's delete-warning (Step 1: "used in 3 places").
-// Walks conditions (nested all/any) and action.var, across block triggers
-// (including nested body_blocks/two-column slots) and page-level triggers
-// and continue_gate.
-function countInCondition(condition, varName) {
-  if (!condition) return 0;
-  if (condition.all || condition.any) {
-    return (condition.all || condition.any).reduce((sum, c) => sum + countInCondition(c, varName), 0);
-  }
-  return condition.var === varName ? 1 : 0;
-}
-
-function countInTriggers(triggers, varName) {
-  return (triggers || []).reduce((sum, trigger) => {
-    let count = countInCondition(trigger.condition, varName);
-    count += (trigger.actions || []).filter((a) => a.var === varName).length;
-    return sum + count;
-  }, 0);
-}
-
-function countInBlock(block, varName) {
-  let count = countInTriggers(block.triggers, varName);
-  if (block.left) count += countInBlock(block.left, varName);
-  if (block.right) count += countInBlock(block.right, varName);
-  if (block.content?.items) {
-    block.content.items.forEach((item) => {
-      if (item && typeof item === 'object' && item.body_blocks) {
-        item.body_blocks.forEach((child) => {
-          count += countInBlock(child, varName);
-        });
-      }
-    });
-  }
-  return count;
-}
-
-export function countVariableUsages(courseJson, varName) {
-  let count = 0;
-  (courseJson.pages || []).forEach((page) => {
-    count += countInTriggers(page.triggers, varName);
-    count += countInCondition(page.continue_gate, varName);
-    (page.blocks || []).forEach((block) => {
-      count += countInBlock(block, varName);
-    });
-  });
-  return count;
-}
+// Variable usage counting (Step 1: "used in 3 places" delete-warning) used
+// to be a hand-rolled walk local to this file. Phase 4.5b replaced it with
+// packages/schema/dependency-index.js's getDependents(), the one shared
+// implementation of "what references this entity" used for variables,
+// blocks, and assets alike -- see VariableManagerPanel.jsx and
+// MediaLibraryPanel.jsx. The old walk never checked block.visibility_condition
+// (P1-55 self-owned visibility rules), so a variable used only there showed
+// "0 usages" and could be deleted while still silently breaking that
+// block's visibility -- getDependents closes that gap as a side effect of
+// being the one correct implementation instead of two divergent ones. See
+// DECISIONS.md.

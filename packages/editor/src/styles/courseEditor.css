@@ -240,6 +240,19 @@
   margin: 0;
 }
 
+/* Category grouping (Phase 4.5b) -- one heading + grid per
+   block-registry category, stacked in the modal. */
+.block-picker-category {
+  margin-bottom: var(--space-4);
+}
+.block-picker-category__title {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-2);
+}
+
 .block-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

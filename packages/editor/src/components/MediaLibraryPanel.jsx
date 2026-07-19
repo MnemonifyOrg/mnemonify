@@ -16,6 +16,7 @@ export default function MediaLibraryPanel({
   onClose,
   selectionMode,
   onAddSelected,
+  getAssetDependents,
 }) {
   const [dbAssets, setDbAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +79,22 @@ export default function MediaLibraryPanel({
     setDbAssets((prev) => prev.map((a) => (a.id === dbAsset.id ? { ...a, [field]: value } : a)));
   }
 
+  // Phase 4.5b: previously deleted immediately with no usage check at all
+  // (not even a plain "are you sure?"). Uses the same shared dependency
+  // index the Variable Manager's delete-warning uses (getDependents),
+  // rather than a second, asset-specific implementation -- see
+  // DECISIONS.md.
   async function handleDelete(dbAsset) {
+    const dependents = getAssetDependents ? getAssetDependents(dbAsset.asset_id) : [];
+    if (dependents.length > 0) {
+      const place = dependents.length === 1 ? 'place' : 'places';
+      const usedBy = dependents
+        .slice(0, 5)
+        .map((d) => d.label)
+        .join(', ');
+      const more = dependents.length > 5 ? `, and ${dependents.length - 5} more` : '';
+      if (!window.confirm(`This image is used in ${dependents.length} ${place} (${usedBy}${more}). Delete anyway?`)) return;
+    }
     await api.deleteAsset(dbAsset.id);
     await refresh();
   }

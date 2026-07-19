@@ -10,6 +10,7 @@ import SavePageAsTemplateModal from '../components/SavePageAsTemplateModal.jsx';
 import PageTemplateGalleryModal from '../components/PageTemplateGalleryModal.jsx';
 import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
+import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -739,6 +740,7 @@ export default function CourseEditor() {
           onAddCourseAssets={handleAddCourseAssets}
           onUpdateCourseAsset={handleUpdateCourseAsset}
           onClose={() => setShowMediaLibrary(false)}
+          getAssetDependents={(assetId) => getDependents(assetId, json)}
         />
       )}
 

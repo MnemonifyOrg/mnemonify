@@ -13,7 +13,13 @@ import CarouselBlock from './CarouselBlock.jsx';
 import VideoBlock from './VideoBlock.jsx';
 import AudioBlock from './AudioBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
+import { BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
 
+// block-type -> player component. Component references can't live in the
+// shared, framework-free packages/schema/block-registry.js (see that
+// file's own comment), so this stays the environment-local half of the
+// registry, keyed by the exact same type strings block-registry.js
+// defines.
 const REGISTRY = {
   heading: HeadingBlock,
   text: TextBlock,
@@ -30,6 +36,17 @@ const REGISTRY = {
   video: VideoBlock,
   audio: AudioBlock,
 };
+
+// Dev-time completeness check (Phase 4.5b) -- same purpose as the
+// matching check in packages/editor/src/components/blocks/index.js: catch
+// a registry type with no player component at build/dev time rather than
+// a learner silently seeing nothing render.
+if (import.meta.env?.DEV) {
+  const missing = BLOCK_TYPES.filter((type) => !REGISTRY[type]);
+  if (missing.length > 0) {
+    console.warn(`[player] Registry type(s) with no player component: ${missing.join(', ')}`);
+  }
+}
 
 export default function BlockRenderer({ block, assets, onTrigger, isPreview, onOpenModal, blockVisibility, variables }) {
   // block.faculty_notes is intentionally never passed to any block

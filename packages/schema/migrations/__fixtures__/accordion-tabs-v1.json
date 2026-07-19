@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "course_id": "crs_fxacc",
+    "title": "Accordion and Tabs Fixture",
+    "theme": { "accent": "#0891B2" },
+    "completion_rule": "viewed_all_pages"
+  },
+  "variables": [],
+  "assets": [],
+  "pages": [
+    {
+      "page_id": "pg_01",
+      "title": "Page 1",
+      "blocks": [
+        {
+          "block_id": "blk_acc1",
+          "type": "accordion",
+          "content": {
+            "items": [
+              {
+                "title": "Reveal diagnosis",
+                "body_blocks": [
+                  { "block_id": "blk_acc1_item0_blk0", "type": "text", "content": { "rich_text": [{ "t": "text", "v": "Diagnosis text." }] }, "triggers": [] }
+                ]
+              },
+              { "title": "Second finding", "body_blocks": [] }
+            ]
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_tabs1",
+          "type": "tabs",
+          "content": {
+            "items": [
+              { "label": "Gross", "body_blocks": [] },
+              {
+                "label": "Micro",
+                "body_blocks": [
+                  { "block_id": "blk_tabs1_item1_blk0", "type": "heading", "content": { "text": "Microscopic findings", "level": 3 }, "triggers": [] }
+                ]
+              },
+              { "label": "IHC", "body_blocks": [] }
+            ]
+          },
+          "triggers": []
+        }
+      ]
+    }
+  ]
+}

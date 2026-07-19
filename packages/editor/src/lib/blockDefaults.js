@@ -1,4 +1,4 @@
-import { genBlockId, genCourseId, genPageId } from './idGen.js';
+import { genBlockId, genCourseId, genPageId, genOptionId, genItemId } from './idGen.js';
 
 // Default content shapes per block type, matching the Phase 1 content
 // model documented in DECISIONS.md (2026-07-11 entry). Used both by the
@@ -56,15 +56,20 @@ function defaultContent(type) {
     case 'list':
       return { style: 'bulleted', items: [''] };
     case 'accordion':
-      return { items: [{ title: '', body_blocks: [] }] };
+      return { items: [{ item_id: genItemId(), title: '', body_blocks: [] }] };
     case 'tabs':
-      return { items: [{ label: 'Tab 1', body_blocks: [] }, { label: 'Tab 2', body_blocks: [] }] };
+      return {
+        items: [
+          { item_id: genItemId(), label: 'Tab 1', body_blocks: [] },
+          { item_id: genItemId(), label: 'Tab 2', body_blocks: [] },
+        ],
+      };
     case 'knowledge-check':
       return {
         question: '',
         options: [
-          { id: 'opt_a', text: '', correct: true },
-          { id: 'opt_b', text: '', correct: false },
+          { id: genOptionId(), text: '', correct: true },
+          { id: genOptionId(), text: '', correct: false },
         ],
       };
     case 'carousel':
@@ -112,9 +117,15 @@ export function createInnerBlock(type, parentBlockId, side) {
 // A schema-valid, empty course document. Blank-course creation and the
 // onboarding tour both start from this rather than `{}` — CourseEditor
 // assumes meta/pages/assets always exist (see course.schema.json).
+// CURRENT_SCHEMA_VERSION here must match packages/schema/course.schema.json's
+// schema_version const and packages/schema/migrations/index.js's
+// CURRENT_VERSION -- a freshly created course starts at the latest version,
+// never needs migrating. See DECISIONS.md (Phase 4.5a).
+const CURRENT_SCHEMA_VERSION = 2;
+
 export function createBlankCourseJson(title) {
   return {
-    schema_version: 1,
+    schema_version: CURRENT_SCHEMA_VERSION,
     meta: {
       course_id: genCourseId(),
       title: title || 'Untitled Course',

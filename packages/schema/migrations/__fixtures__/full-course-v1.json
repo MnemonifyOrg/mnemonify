@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 1,
   "meta": {
     "course_id": "crs_fs001",
     "title": "Frozen Section Interpretation: Case 1",
@@ -73,8 +73,7 @@
     {
       "name": "readDiagnosis",
       "type": "boolean",
-      "default": false,
-      "variable_id": "var_smp01"
+      "default": false
     }
   ],
   "assets": [
@@ -272,8 +271,7 @@
                     },
                     "triggers": []
                   }
-                ],
-                "item_id": "itm_smp01"
+                ]
               }
             ]
           },
@@ -312,8 +310,7 @@
                     },
                     "triggers": []
                   }
-                ],
-                "item_id": "itm_smp02"
+                ]
               },
               {
                 "label": "Microscopic Description",
@@ -331,8 +328,7 @@
                     },
                     "triggers": []
                   }
-                ],
-                "item_id": "itm_smp03"
+                ]
               }
             ]
           },

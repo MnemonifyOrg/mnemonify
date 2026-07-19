@@ -1,5 +1,6 @@
 import EditableRichField from './EditableRichField.jsx';
 import ItemBlockStack from './ItemBlockStack.jsx';
+import { genItemId } from '../../lib/idGen.js';
 
 export default function AccordionBlockEditor({
   block,
@@ -24,7 +25,7 @@ export default function AccordionBlockEditor({
   }
 
   function addItem() {
-    setItems([...items, { title: '', body_blocks: [] }], { forceSnapshot: true });
+    setItems([...items, { item_id: genItemId(), title: '', body_blocks: [] }], { forceSnapshot: true });
   }
 
   function deleteItem(index) {
@@ -37,7 +38,7 @@ export default function AccordionBlockEditor({
   return (
     <div className="accordion-block-editor">
       {items.map((item, index) => (
-        <div className="accordion-block-editor__item card" key={index}>
+        <div className="accordion-block-editor__item card" key={item.item_id || index}>
           <div className="accordion-block-editor__item-header">
             <EditableRichField
               className="editable-field"

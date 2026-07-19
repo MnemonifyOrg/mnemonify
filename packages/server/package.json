@@ -8,6 +8,7 @@
     "migrate": "node src/migrate.js"
   },
   "dependencies": {
+    "@mnemonify/schema": "*",
     "adm-zip": "^0.6.0",
     "cors": "^2.8.5",
     "docx": "^9.7.1",

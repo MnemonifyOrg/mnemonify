@@ -65,7 +65,17 @@ async function insertResource({ courseId, filename, filePath, label, sizeBytes }
      RETURNING *`,
     [DEV_ORG_ID, courseId, resourceId, filename, filePath, label || filename, sizeBytes]
   );
-  return result.rows[0];
+  const row = result.rows[0];
+  // pg returns a BIGINT column (size_bytes) as a JS string, not a number,
+  // to avoid silent precision loss above Number.MAX_SAFE_INTEGER -- fine
+  // for a 50MB-capped upload (MAX_RESOURCE_BYTES), but course.schema.json
+  // requires size_bytes to be a real integer once it's copied into
+  // course_json.meta.resources[] (CourseEditor.jsx's handleAddCourseResource),
+  // so it's cast back to a number here, at the one place a resource row is
+  // ever newly created. Found during the Phase 4.5a migration work when
+  // real schema validation ran for the first time ever against existing
+  // course data -- see DECISIONS.md.
+  return { ...row, size_bytes: Number(row.size_bytes) };
 }
 
 const singleUpload = multer({

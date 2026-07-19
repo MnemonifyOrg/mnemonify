@@ -263,7 +263,7 @@ These fields enter the schema now because retrofitting them after Phase 4 means 
     "question_image_id": "ast_x",
     "options": [
       {
-        "option_id": "opt_a",
+        "id": "opt_a",
         "label": { "rich_text": [] },
         "image_id": null,
         "correct": false,

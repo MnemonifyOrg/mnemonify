@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "meta": {
+    "course_id": "crs_fxcurrent",
+    "title": "Already Current v2 Course",
+    "theme": { "accent": "#0891B2" },
+    "completion_rule": "viewed_all_pages"
+  },
+  "variables": [{ "variable_id": "var_fx01", "name": "readIntro", "type": "boolean", "default": false }],
+  "assets": [],
+  "pages": [
+    {
+      "page_id": "pg_01",
+      "title": "Page 1",
+      "blocks": [
+        {
+          "block_id": "blk_acc1",
+          "type": "accordion",
+          "content": {
+            "items": [
+              { "item_id": "itm_fx01", "title": "Item one", "body_blocks": [] },
+              { "item_id": "itm_fx02", "title": "Item two", "body_blocks": [] }
+            ]
+          },
+          "triggers": []
+        }
+      ]
+    }
+  ]
+}

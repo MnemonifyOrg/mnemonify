@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "meta": { "$ref": "#/definitions/meta" },
     "variables": {
@@ -201,9 +201,13 @@
     },
     "variable": {
       "type": "object",
-      "required": ["name", "type", "default"],
+      "required": ["variable_id", "name", "type", "default"],
       "additionalProperties": false,
       "properties": {
+        "variable_id": {
+          "type": "string",
+          "pattern": "^var_[a-zA-Z0-9_]+$"
+        },
         "name": {
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
@@ -246,8 +250,7 @@
           "minLength": 1
         },
         "alt": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "caption": {
           "type": "string"
@@ -328,6 +331,34 @@
         },
         "left": { "$ref": "#/definitions/inner_block" },
         "right": { "$ref": "#/definitions/inner_block" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "accordion" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/items_with_stable_ids" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "tabs" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/items_with_stable_ids" } } }
+        }
+      ]
+    },
+    "items_with_stable_ids": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["item_id"],
+            "properties": {
+              "item_id": {
+                "type": "string",
+                "pattern": "^itm_[a-zA-Z0-9_]+$"
+              }
+            }
+          }
+        }
       }
     },
     "inner_block": {

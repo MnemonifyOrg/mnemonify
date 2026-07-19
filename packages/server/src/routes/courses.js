@@ -3,8 +3,46 @@ import pool from '../db.js';
 import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
 import { templatizeCourse } from '../lib/templatize.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
+import { migrateCourse, MigrationError } from '@mnemonify/schema/migrations/index.js';
 
 const router = express.Router();
+
+// Phase 4.5a: this handler is the content server's one real course-serving
+// path (ARCHITECTURE-AUDIT.md 4.3's "load -> inspect version -> migrate ->
+// validate -> normalize -> open" flow) -- both the editor
+// (packages/editor/src/lib/api.js's getCourse) and the player's own
+// preview-mode fetch (packages/player/src/App.jsx) call this exact
+// endpoint, so wiring migration here covers both named load paths at
+// once. Pulled out of the route handler so /courses/:id and the
+// /duplicate endpoint (which also reads a stored row and should never
+// hand a caller pre-migration data either) share one implementation.
+//
+// The original DB row is never overwritten until the migrated document
+// has both (a) passed schema validation and (b) been written back
+// successfully -- if the UPDATE fails, this throws and the request fails
+// loudly (asyncHandler's error middleware returns 500) rather than
+// silently serving data that looks migrated but isn't actually saved.
+async function loadAndMigrateCourseRow(row) {
+  let migrationResult;
+  try {
+    migrationResult = migrateCourse(row.course_json, { courseId: row.id });
+  } catch (err) {
+    if (err instanceof MigrationError) {
+      console.error(`[courses] course ${row.id} failed to migrate:`, err.message);
+    }
+    throw err;
+  }
+  if (!migrationResult.migrated) return row;
+
+  const updateResult = await pool.query(
+    `UPDATE courses SET course_json = $1, updated_at = now() WHERE id = $2 AND organisation_id = $3 RETURNING *`,
+    [migrationResult.document, row.id, DEV_ORG_ID]
+  );
+  if (updateResult.rows.length === 0) {
+    throw new MigrationError(`Migrated course ${row.id} could not be saved (no matching row).`, { courseId: row.id });
+  }
+  return updateResult.rows[0];
+}
 
 router.get('/courses', asyncHandler(async (req, res) => {
   const result = await pool.query(
@@ -37,7 +75,8 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
     res.status(404).json({ error: 'Course not found' });
     return;
   }
-  res.json(result.rows[0]);
+  const row = await loadAndMigrateCourseRow(result.rows[0]);
+  res.json(row);
 }));
 
 router.post('/courses', asyncHandler(async (req, res) => {
@@ -105,7 +144,7 @@ router.post('/courses/:id/duplicate', asyncHandler(async (req, res) => {
     res.status(404).json({ error: 'Course not found' });
     return;
   }
-  const source = original.rows[0];
+  const source = await loadAndMigrateCourseRow(original.rows[0]);
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
      VALUES ($1, $2, $3, $4)
@@ -125,7 +164,7 @@ router.post('/courses/:id/save-as-template', asyncHandler(async (req, res) => {
     res.status(404).json({ error: 'Course not found' });
     return;
   }
-  const source = original.rows[0];
+  const source = await loadAndMigrateCourseRow(original.rows[0]);
   const templatizedJson = templatizeCourse(source.course_json);
   const templateTitle = title || `${source.title} Template`;
 

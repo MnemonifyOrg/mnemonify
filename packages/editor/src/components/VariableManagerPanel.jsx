@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { countVariableUsages, defaultValueForType } from '../lib/triggerUtils.js';
 import { ValueInput } from './ConditionBuilder.jsx';
+import { genVariableId } from '../lib/idGen.js';
 
 const NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -70,22 +71,25 @@ function VariableForm({ initial, variables, editingName, onSave, onCancel }) {
 // Course-level Variable Manager (Phase 4 Part 2 Step 1). Writes directly to
 // course.variables, matching the existing schema shape (name/type/default)
 // -- no schema change needed, since this was already defined ahead of its
-// UI. A variable's name is treated as its stable identity once created
-// (triggers reference variables by name, not a separate id) -- Edit can
-// change type/default but not name, to avoid silently orphaning every
-// trigger/condition that already references it. See DECISIONS.md.
+// UI. Every variable also carries a stable `variable_id` (Phase 4.5a,
+// DECISIONS.md) minted once on creation and preserved across edits --
+// triggers/conditions still reference variables by `name`, unchanged, since
+// rewiring that resolution path is a runtime-engine change out of 4.5a's
+// scope, not an identity one. Edit can change type/default but not name,
+// to avoid silently orphaning every trigger/condition that already
+// references it by name.
 export default function VariableManagerPanel({ variables, courseJson, onChangeVariables }) {
   const [adding, setAdding] = useState(false);
   const [editingName, setEditingName] = useState(null);
 
   function handleAdd(variable) {
-    onChangeVariables([...variables, variable], { forceSnapshot: true });
+    onChangeVariables([...variables, { variable_id: genVariableId(), ...variable }], { forceSnapshot: true });
     setAdding(false);
   }
 
   function handleEdit(variable) {
     onChangeVariables(
-      variables.map((v) => (v.name === editingName ? variable : v)),
+      variables.map((v) => (v.name === editingName ? { ...variable, variable_id: v.variable_id || genVariableId() } : v)),
       { forceSnapshot: true }
     );
     setEditingName(null);

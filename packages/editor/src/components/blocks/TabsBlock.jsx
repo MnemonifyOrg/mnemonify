@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import EditableRichField from './EditableRichField.jsx';
 import ItemBlockStack from './ItemBlockStack.jsx';
+import { genItemId } from '../../lib/idGen.js';
 
 const MAX_TABS = 6;
 
@@ -30,7 +31,7 @@ export default function TabsBlockEditor({
 
   function addTab() {
     if (items.length >= MAX_TABS) return;
-    setItems([...items, { label: `Tab ${items.length + 1}`, body_blocks: [] }], { forceSnapshot: true });
+    setItems([...items, { item_id: genItemId(), label: `Tab ${items.length + 1}`, body_blocks: [] }], { forceSnapshot: true });
     setActiveIndex(items.length);
   }
 
@@ -46,7 +47,7 @@ export default function TabsBlockEditor({
     <div className="tabs-block-editor">
       <div className="tabs-block-editor__bar">
         {items.map((item, index) => (
-          <div key={index} className={index === safeActive ? 'tabs-block-editor__tab tabs-block-editor__tab--active' : 'tabs-block-editor__tab'}>
+          <div key={item.item_id || index} className={index === safeActive ? 'tabs-block-editor__tab tabs-block-editor__tab--active' : 'tabs-block-editor__tab'}>
             <EditableRichField
               className="editable-field"
               placeholder="Tab title..."

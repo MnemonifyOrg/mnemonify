@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import EditableRichField from './EditableRichField.jsx';
+import { genOptionId } from '../../lib/idGen.js';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -107,8 +108,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   function addOption() {
     if (options.length >= MAX_OPTIONS) return;
-    const id = `opt_${Math.random().toString(36).slice(2, 6)}`;
-    setContent({ options: [...options, { id, text: '', correct: false }] });
+    setContent({ options: [...options, { id: genOptionId(), text: '', correct: false }] });
   }
 
   function deleteOption(id) {

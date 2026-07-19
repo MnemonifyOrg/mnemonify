@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "course_id": "crs_fxres",
+    "title": "Resources With String size_bytes (real historical bug, DECISIONS.md)",
+    "theme": { "accent": "#0891B2" },
+    "completion_rule": "viewed_all_pages",
+    "resources": [
+      { "resource_id": "res_fx01", "filename": "syllabus.pdf", "file_path": "crs_fxres/resources/syllabus.pdf", "label": "Syllabus", "size_bytes": "245001", "uploaded_at": "2026-07-01T00:00:00.000Z" }
+    ]
+  },
+  "variables": [],
+  "assets": [],
+  "pages": [
+    {
+      "page_id": "pg_01",
+      "title": "Page 1",
+      "blocks": [
+        { "block_id": "blk_text1", "type": "text", "content": { "rich_text": [{ "t": "text", "v": "Content." }] }, "triggers": [] }
+      ]
+    }
+  ]
+}

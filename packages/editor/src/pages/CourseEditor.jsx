@@ -483,7 +483,15 @@ export default function CourseEditor() {
         ...next.content,
         items: next.content.items.map((item) =>
           item && typeof item === 'object' && item.body_blocks
-            ? { ...item, body_blocks: item.body_blocks.map((child) => rebuildBlockWithIds(child, idMap)) }
+            ? {
+                ...item,
+                // Fresh item_id on every copy (never carried over), same as
+                // block_id/trigger_id above -- keeps item_id globally unique
+                // per DATA-MODEL.md 19. Items copied from pre-migration data
+                // with no item_id yet stay unset; the migration assigns one.
+                ...(item.item_id ? { item_id: genId('itm') } : {}),
+                body_blocks: item.body_blocks.map((child) => rebuildBlockWithIds(child, idMap)),
+              }
             : item
         ),
       };
@@ -558,7 +566,11 @@ export default function CourseEditor() {
         ...newBlock.content,
         items: newBlock.content.items.map((item) =>
           item && typeof item === 'object' && item.body_blocks
-            ? { ...item, body_blocks: item.body_blocks.map(regenerateIds) }
+            ? {
+                ...item,
+                ...(item.item_id ? { item_id: `itm_${Math.random().toString(36).slice(2, 8)}` } : {}),
+                body_blocks: item.body_blocks.map(regenerateIds),
+              }
             : item
         ),
       };

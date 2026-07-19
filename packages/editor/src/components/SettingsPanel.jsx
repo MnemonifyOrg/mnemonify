@@ -4,6 +4,7 @@ import { BLOCK_LABELS } from '../lib/blockDefaults.js';
 import { autoBlockLabel } from '../lib/triggerUtils.js';
 import VariableManagerPanel from './VariableManagerPanel.jsx';
 import PageSettingsPanel from './PageSettingsPanel.jsx';
+import PlayerSettingsPanel from './PlayerSettingsPanel.jsx';
 import TriggersSection from './TriggersSection.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 
@@ -230,7 +231,7 @@ function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVar
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Variables'];
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -251,6 +252,9 @@ export default function SettingsPanel({
   onChangeBlock,
   assets,
   onUpdateCourseAsset,
+  onAddCourseResource,
+  onRemoveCourseResource,
+  onUpdateCourseResource,
   activeTab,
   onChangeTab,
   onOpenVariableManager,
@@ -277,6 +281,15 @@ export default function SettingsPanel({
             variables={variables}
             onChangePage={onChangePage}
             onOpenVariableManager={onOpenVariableManager}
+          />
+        ) : activeTab === 'Player' ? (
+          <PlayerSettingsPanel
+            meta={meta}
+            pages={pages}
+            onChangeMeta={onChangeMeta}
+            onAddCourseResource={onAddCourseResource}
+            onRemoveCourseResource={onRemoveCourseResource}
+            onUpdateCourseResource={onUpdateCourseResource}
           />
         ) : activeTab === 'Variables' ? (
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} />

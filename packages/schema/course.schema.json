@@ -81,7 +81,11 @@
           "type": "array",
           "items": { "$ref": "#/definitions/page_group" }
         },
-        "utility_bar": { "$ref": "#/definitions/utility_bar" }
+        "utility_bar": { "$ref": "#/definitions/utility_bar" },
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/resource" }
+        }
       }
     },
     "rich_text_field": {
@@ -177,6 +181,22 @@
         "label": { "type": "string", "minLength": 1 },
         "action": { "enum": ["modal", "jump_page"] },
         "target": { "type": "string" }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": ["resource_id", "filename", "file_path", "size_bytes", "uploaded_at"],
+      "additionalProperties": false,
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "pattern": "^res_[a-zA-Z0-9_]+$"
+        },
+        "filename": { "type": "string", "minLength": 1 },
+        "file_path": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "uploaded_at": { "type": "string" }
       }
     },
     "variable": {

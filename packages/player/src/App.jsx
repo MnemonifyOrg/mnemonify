@@ -466,6 +466,7 @@ export default function App() {
         onToggleDrawer={handleToggleDrawer}
         drawerOpen={navDrawerOpen}
         utilityBar={course.meta.utility_bar}
+        resources={course.meta.resources}
         onOpenModal={handleOpenModal}
         onJumpToPage={handleJumpToPage}
       />
@@ -481,6 +482,7 @@ export default function App() {
           open={navDrawerOpen}
           onClose={() => setNavDrawerOpen(false)}
           utilityBar={course.meta.utility_bar}
+          resources={course.meta.resources}
           courseTitle={course.meta.title}
           onOpenModal={handleOpenModal}
           onJumpToPage={handleJumpToPage}
@@ -521,6 +523,7 @@ export default function App() {
       </div>
       <UtilityBar
         utilityBar={course.meta.utility_bar}
+        resources={course.meta.resources}
         courseTitle={course.meta.title}
         onOpenModal={handleOpenModal}
         onJumpToPage={handleJumpToPage}

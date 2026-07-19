@@ -30,6 +30,13 @@ export const api = {
   updateAsset: (assetId, payload) => client.patch(`/api/assets/${assetId}`, payload).then((r) => r.data),
   deleteAsset: (assetId) => client.delete(`/api/assets/${assetId}`),
 
+  // Resources (manually-attached course documents, distinct from assets --
+  // Phase 4 usability-fix session Step 2)
+  uploadResource: (formData) =>
+    client.post('/api/resources/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
+  updateResource: (resourceId, payload) => client.patch(`/api/resources/${resourceId}`, payload).then((r) => r.data),
+  deleteResource: (resourceId) => client.delete(`/api/resources/${resourceId}`),
+
   // Users
   getMe: () => client.get('/api/users/me').then((r) => r.data),
   updateMe: (payload) => client.patch('/api/users/me', payload).then((r) => r.data),

@@ -4,6 +4,7 @@ import IframePayload from './modal-payloads/IframePayload.jsx';
 import PdfPayload from './modal-payloads/PdfPayload.jsx';
 import EmailPayload from './modal-payloads/EmailPayload.jsx';
 import MessagePayload from './modal-payloads/MessagePayload.jsx';
+import ResourcesPayload from './modal-payloads/ResourcesPayload.jsx';
 import BlockRenderer from '../blocks/BlockRenderer.jsx';
 
 // Unified in-player modal layer (ARCHITECTURE.md 5.3). One component
@@ -18,6 +19,7 @@ const PAYLOAD_RENDERERS = {
   pdf: PdfPayload,
   email: EmailPayload,
   message: MessagePayload,
+  resources: ResourcesPayload,
 };
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';

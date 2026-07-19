@@ -4,7 +4,7 @@ import UtilityBar from './UtilityBar.jsx';
 // right (desktop only -- UtilityBar's own CSS hides the inline layout
 // below 1280px, where the same items reappear in the fixed bottom bar
 // App.jsx renders separately).
-export default function TopBar({ courseTitle, onToggleDrawer, drawerOpen, utilityBar, onOpenModal, onJumpToPage }) {
+export default function TopBar({ courseTitle, onToggleDrawer, drawerOpen, utilityBar, resources, onOpenModal, onJumpToPage }) {
   return (
     <header className="top-bar">
       <button
@@ -28,6 +28,7 @@ export default function TopBar({ courseTitle, onToggleDrawer, drawerOpen, utilit
       <div className="top-bar__utility-slot">
         <UtilityBar
           utilityBar={utilityBar}
+          resources={resources}
           courseTitle={courseTitle}
           onOpenModal={onOpenModal}
           onJumpToPage={onJumpToPage}

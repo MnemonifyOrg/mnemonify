@@ -789,6 +789,57 @@ input:focus-visible {
   text-decoration: none;
 }
 
+/* Manually-attached course resources (Step 2, Phase 4 usability-fix
+   session) -- see modal-payloads/ResourcesPayload.jsx */
+.modal-payload--resources {
+  padding-top: var(--space-4);
+}
+.modal-payload__resource-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.modal-payload__resource-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+.modal-payload__resource-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.modal-payload__resource-label {
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.modal-payload__resource-size {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.modal-payload__resource-download {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+.modal-payload__resource-download:hover {
+  background: var(--color-bg-secondary);
+}
+
 /* Image lightbox payload: pan/zoom on a static image via CSS transform
    only (scale()/translate()) -- no canvas, no tile loading. This is a
    lightweight zoom for a single-resolution image, not the Phase 7

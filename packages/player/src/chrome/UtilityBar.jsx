@@ -12,9 +12,9 @@
 // <layout>) rather than a bottom-or-inline ternary, specifically so a third
 // layout value doesn't silently fall through to the wrong CSS class the way
 // "drawer" did before this comment was written -- see DECISIONS.md.
-export default function UtilityBar({ utilityBar, courseTitle, onOpenModal, onJumpToPage, layout }) {
+export default function UtilityBar({ utilityBar, resources, courseTitle, onOpenModal, onJumpToPage, layout }) {
   const contact = utilityBar?.contact;
-  const resources = utilityBar?.resources;
+  const resourcesConfig = utilityBar?.resources;
   const custom = utilityBar?.custom || [];
 
   const items = [];
@@ -34,17 +34,19 @@ export default function UtilityBar({ utilityBar, courseTitle, onOpenModal, onJum
     });
   }
 
-  if (resources?.enabled) {
+  if (resourcesConfig?.enabled) {
     items.push({
       id: 'resources',
       label: 'Resources',
-      // The PDF pipeline is Phase 5 scope (P1-18) -- this placeholder
-      // keeps the utility item real and clickable now so it doesn't need
-      // to change shape once real course PDFs exist to list here.
+      // Manually-attached resources (Step 2, Phase 4 usability-fix
+      // session) -- distinct from the still-unbuilt Phase 5 auto-generated
+      // PDF pipeline (P1-18/19). The two are expected to coexist in this
+      // same modal once Phase 5 lands (an auto-generated summary PDF
+      // alongside whatever's manually attached here) -- see DECISIONS.md.
       onClick: () =>
         onOpenModal({
-          type: 'message',
-          message: 'Course resources will appear here once published.',
+          type: 'resources',
+          resources: resources || [],
           ariaLabel: 'Resources',
         }),
     });

@@ -302,6 +302,60 @@ export default function CourseEditor() {
     }));
   }
 
+  // Manually-attached course resources (Step 2, Phase 4 usability-fix
+  // session) -- distinct from `assets` and stored under `meta.resources`,
+  // not top-level, matching the schema shape the task specified. Each is a
+  // discrete, deliberate author action (not a keystroke stream), so all
+  // three get an explicit forceSnapshot the same way block/page-structure
+  // actions do (ARCHITECTURE.md 3.9), guaranteeing attach/remove are each
+  // their own undo step.
+  async function handleAddCourseResource(file) {
+    const formData = new FormData();
+    formData.append('course_id', course.id);
+    formData.append('file', file);
+    const dbResource = await api.uploadResource(formData);
+    const resourceEntry = {
+      resource_id: dbResource.resource_id,
+      filename: dbResource.filename,
+      file_path: dbResource.file_path,
+      label: dbResource.label,
+      size_bytes: dbResource.size_bytes,
+      uploaded_at: dbResource.created_at,
+    };
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        meta: { ...json.meta, resources: [...(json.meta.resources || []), resourceEntry] },
+      }),
+      { forceSnapshot: true }
+    );
+  }
+
+  async function handleUpdateCourseResource(resourceId, label) {
+    await api.updateResource(resourceId, { label });
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        meta: {
+          ...json.meta,
+          resources: (json.meta.resources || []).map((r) => (r.resource_id === resourceId ? { ...r, label } : r)),
+        },
+      }),
+      { forceSnapshot: true }
+    );
+  }
+
+  async function handleRemoveCourseResource(resourceId) {
+    await api.deleteResource(resourceId);
+    updateCourseJson(
+      (json) => ({
+        ...json,
+        meta: { ...json.meta, resources: (json.meta.resources || []).filter((r) => r.resource_id !== resourceId) },
+      }),
+      { forceSnapshot: true }
+    );
+  }
+
   async function handleTourComplete() {
     setShowTour(false);
     await api.updateMe({ onboarding_completed: true });
@@ -739,6 +793,9 @@ export default function CourseEditor() {
           onChangePage={handleChangePage}
           onChangeVariables={handleChangeVariables}
           onUpdateCourseAsset={handleUpdateCourseAsset}
+          onAddCourseResource={handleAddCourseResource}
+          onRemoveCourseResource={handleRemoveCourseResource}
+          onUpdateCourseResource={handleUpdateCourseResource}
           onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
           activeTab={settingsTab}
           onChangeTab={setSettingsTab}

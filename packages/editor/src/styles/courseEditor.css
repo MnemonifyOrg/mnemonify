@@ -1030,6 +1030,79 @@
   font-size: var(--text-sm);
   margin: var(--space-4) 0 var(--space-1);
 }
+.settings-panel__error {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+/* Player tab (Step 1, Phase 4 usability-fix session) */
+.settings-panel__player-heading {
+  margin: 0 0 var(--space-3);
+}
+.player-settings__resource-list,
+.player-settings__custom-list {
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.player-settings__resource-row {
+  /* The settings sidebar is a fixed ~280px column -- a 3-across row
+     (filename+size, label input, Remove button) leaves almost no room
+     for the label field once a real filename is present. Stacked
+     instead: filename+size on one line, the label input full-width
+     below it, Remove on its own line. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.player-settings__resource-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.player-settings__resource-filename {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.player-settings__resource-size {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+.player-settings__resource-label {
+  width: 100%;
+}
+.player-settings__resource-row > .btn-text {
+  align-self: flex-end;
+}
+.player-settings__custom-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.player-settings__custom-item .input {
+  width: 100%;
+}
+.player-settings__custom-item .btn-text {
+  align-self: flex-end;
+}
 
 .settings-panel__visibility-toggle {
   margin-top: var(--space-4);

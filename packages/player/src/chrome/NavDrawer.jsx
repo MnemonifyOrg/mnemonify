@@ -110,6 +110,7 @@ export default function NavDrawer({
   open,
   onClose,
   utilityBar,
+  resources,
   courseTitle,
   onOpenModal,
   onJumpToPage,
@@ -185,6 +186,7 @@ export default function NavDrawer({
             needed here. */}
         <UtilityBar
           utilityBar={utilityBar}
+          resources={resources}
           courseTitle={courseTitle}
           onOpenModal={onOpenModal}
           onJumpToPage={onJumpToPage}

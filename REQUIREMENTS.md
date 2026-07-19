@@ -322,6 +322,7 @@ Phases 5 and 7 form the pathology differentiation wedge. No free tool or AI gene
 3. **(Product) CLOSED.** Phase 1 block set confirmed: text, heading, image, list, accordion, tabs, knowledge check (7 types). All implemented and keyboard-verified.
 4. **(Technical) PARTIALLY CLOSED.** Ethos dynamic SCORM confirmed working via ngrok in dev. Ethos UAT full test pending (UAT site was down). Retest when UAT is restored and document any Ethos quirks in DECISIONS.md.
 5. **(Product, resolve by Phase 6)** Hosted version pricing model, if any: donations, flat nominal fee, or free with paid support.
+6. **(Technical) CLOSED.** Two pre-Phase-4 QA items deliberately deferred pending the full player chrome (nav drawer, top bar, progress bar): (a) table block scrollbar affordance — re-verified in the player under the complete Phase 4 chrome at 1280px and 375px; scrollbar/hint still renders correctly, no clipping by chrome, no fix needed. (b) embed block scroll-jump-on-load — re-verified against the chrome's actual scroll container; `window.scrollTo` is confirmed still the correct target (the chrome introduces no internal `overflow` container for main content), the deliberate-click gate still holds, and nav drawer interaction (desktop sidebar + mobile overlay) causes no equivalent jump; no fix needed.
 
 ## 12. Out-of-Scope Parking Lot
 

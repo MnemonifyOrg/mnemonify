@@ -340,7 +340,7 @@ The authoritative strategic and architectural document set lives in the `mnemoni
 3. **(Product) CLOSED.** Phase 1 block set confirmed: text, heading, image, list, accordion, tabs, knowledge check (7 types). All implemented and keyboard-verified.
 4. **(Technical) PARTIALLY CLOSED.** Ethos dynamic SCORM confirmed working via ngrok in dev. Ethos UAT full test pending (UAT site was down). Retest when UAT is restored and document any Ethos quirks in DECISIONS.md.
 5. **(Product, resolve by Phase 6)** Hosted version pricing model, if any: donations, flat nominal fee, or free with paid support.
-6. **(Technical, verify after Phase 4)** Two QA items fixed but not yet independently confirmed outside the editor's dev environment: (a) table block scrollbar visibility/affordance on a paste-in-created table, (b) embed block scroll-jump on page load. Deferred deliberately: Phase 4 builds the full player chrome (nav drawer, top bar, progress bar), which changes the page's scroll container structure — better to verify both against the final chrome once, via a real SCORM package test, than re-verify twice.
+6. **(Technical) CLOSED.** Both deferred QA items re-verified and fixed against the completed Phase 4 player chrome: (a) table block scrollbar visibility/affordance — confirmed working, (b) embed block scroll-jump on page load — root cause corrected for the new chrome's scroll container. Verified hands-on post-Phase-4.
 
 ## 12. Out-of-Scope Parking Lot
 

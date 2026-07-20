@@ -6,7 +6,7 @@ import { useMediaBlock } from './useMediaBlock.js';
 // here -- see DECISIONS.md.
 export default function AudioBlock({ block, assets, onTrigger }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
-  const { mediaRef, muted, handlePlay, handlePause, handleEnded, unmute } = useMediaBlock(block, onTrigger);
+  const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger);
   const containerRef = useRef(null);
 
   // Audio-only scroll-pause (ARCHITECTURE.md 6, Step 6): pause the instant
@@ -56,6 +56,7 @@ export default function AudioBlock({ block, assets, onTrigger }) {
         loop={!!block.content.loop}
         onPlay={handlePlay}
         onPause={handlePause}
+        onSeeked={handleSeeked}
         onEnded={handleEnded}
       />
       {autoplay && muted && (

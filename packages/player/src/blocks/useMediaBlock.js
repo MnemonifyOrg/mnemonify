@@ -10,6 +10,11 @@ export function useMediaBlock(block, onTrigger) {
   const mediaRef = useRef(null);
   const [muted, setMuted] = useState(!!block.content.autoplay);
 
+  function currentTimestamp() {
+    const value = mediaRef.current?.currentTime;
+    return Number.isFinite(value) ? Number(value.toFixed(3)) : 0;
+  }
+
   useEffect(() => {
     const el = mediaRef.current;
     if (!el) return;
@@ -33,6 +38,9 @@ export function useMediaBlock(block, onTrigger) {
     // work at all, since accordion/tabs unmount their closed content
     // rather than hiding it (see mediaManager.js header comment).
     return () => {
+      if (el.currentTime > 0 && !el.ended) {
+        track('media_dropoff', { blockId: block.block_id, payload: { timestamp: Number(el.currentTime.toFixed(3)) } });
+      }
       if (!el.paused) el.pause();
       mediaManager.savePosition(block.block_id, el.currentTime);
       mediaManager.unregister(block.block_id);
@@ -42,15 +50,18 @@ export function useMediaBlock(block, onTrigger) {
 
   function handlePlay() {
     mediaManager.notifyPlaying(block.block_id);
-    track('media_play', { blockId: block.block_id });
+    track('media_play', { blockId: block.block_id, payload: { timestamp: currentTimestamp() } });
   }
   function handlePause() {
     mediaManager.notifyStopped(block.block_id);
-    track('media_pause', { blockId: block.block_id });
+    track('media_pause', { blockId: block.block_id, payload: { timestamp: currentTimestamp() } });
+  }
+  function handleSeeked() {
+    track('media_scrub', { blockId: block.block_id, payload: { timestamp: currentTimestamp() } });
   }
   function handleEnded() {
     mediaManager.notifyStopped(block.block_id);
-    track('media_complete', { blockId: block.block_id });
+    track('media_complete', { blockId: block.block_id, payload: { timestamp: currentTimestamp() } });
     onTrigger?.(block, 'onComplete');
   }
   function unmute() {
@@ -58,5 +69,5 @@ export function useMediaBlock(block, onTrigger) {
     if (mediaRef.current) mediaRef.current.muted = false;
   }
 
-  return { mediaRef, muted, handlePlay, handlePause, handleEnded, unmute };
+  return { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute };
 }

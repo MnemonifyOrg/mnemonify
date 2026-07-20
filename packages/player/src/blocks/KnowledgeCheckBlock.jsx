@@ -44,7 +44,15 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     // addition to onCorrect/onIncorrect, not instead of -- an author who
     // only cares "did they answer at all" (e.g. to reveal a Continue gate)
     // shouldn't have to attach two triggers covering both outcomes.
-    onTrigger(block, 'onComplete');
+    const confidenceLevel = selected?.confidence_level ?? block.content.confidence_level;
+    onTrigger(block, 'onComplete', {
+      question_id: block.block_id,
+      answer_selected: selectedId,
+      ...(confidenceLevel !== undefined && confidenceLevel !== null
+        ? { confidence_level: confidenceLevel }
+        : {}),
+      correct: !!selected?.correct,
+    });
   }
 
   const selectedOption = options.find((o) => o.id === selectedId);

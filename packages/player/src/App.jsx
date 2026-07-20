@@ -70,6 +70,26 @@ export default function App() {
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const answeredRef = useRef({ total: 0, correct: 0, answeredCount: 0 });
   const completedRef = useRef(false);
+  const pageEnterTimesRef = useRef(new Map());
+
+  function trackPageEnter(pageId) {
+    const enteredAt = Date.now();
+    pageEnterTimesRef.current.set(pageId, enteredAt);
+    track('page_enter', {
+      pageId,
+      payload: { entered_at: new Date(enteredAt).toISOString() },
+    });
+  }
+
+  function trackPageExit(pageId) {
+    const enteredAt = pageEnterTimesRef.current.get(pageId);
+    pageEnterTimesRef.current.delete(pageId);
+    const timeOnPage = enteredAt === undefined ? 0 : Math.max(0, (Date.now() - enteredAt) / 1000);
+    track('page_exit', {
+      pageId,
+      payload: { time_on_page: Number(timeOnPage.toFixed(3)) },
+    });
+  }
 
   async function evaluateCourseCompletion(courseArg, variablesArg, completedPageIdsArg, currentPageIdArg) {
     if (completedRef.current || !courseArg) return;
@@ -87,7 +107,21 @@ export default function App() {
     if (!isComplete) return;
 
     completedRef.current = true;
-    track('course_complete', { pageId: currentPageIdArg });
+    track('course_complete', {
+      pageId: currentPageIdArg,
+      payload: {
+        completion_rule: rule,
+        completed_pages: completedPageIdsArg.length,
+        total_pages: courseArg.pages.length,
+        knowledge_checks: { answered: answeredCount, total, correct },
+        ...(total > 0
+          ? {
+              score: { raw: correct, min: 0, max: total, scaled: correct / total },
+              success: correct === total ? 'passed' : 'failed',
+            }
+          : {}),
+      },
+    });
     await scorm2004.setSuspendData({
       variables: variablesArg,
       pageId: currentPageIdArg,
@@ -312,7 +346,7 @@ export default function App() {
     setVariables(result.variables);
     applyEffects(result.effects);
     setVisitedPageIds((prev) => (prev.includes(currentPageId) ? prev : [...prev, currentPageId]));
-    track('page_enter', { pageId: currentPageId });
+    trackPageEnter(currentPageId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPageId, course]);
 
@@ -361,9 +395,13 @@ export default function App() {
     setModalPayload(null);
   }
 
-  function handleTrigger(block, eventName) {
+  function handleTrigger(block, eventName, eventPayload) {
     if (block.type === 'knowledge-check' && eventName === 'onComplete') {
-      track('knowledge_check_attempt', { pageId: currentPageId, blockId: block.block_id });
+      track('knowledge_check_attempt', {
+        pageId: currentPageId,
+        blockId: block.block_id,
+        payload: eventPayload,
+      });
     } else if (eventName === 'onOpen' || eventName === 'onClose' || eventName === 'onClick') {
       track('block_interaction', {
         pageId: currentPageId,
@@ -412,7 +450,7 @@ export default function App() {
     if (getPageStatus(pageId) === 'locked') return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
-      track('page_exit', { pageId: currentPageId });
+      trackPageExit(currentPageId);
       const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
       setVariables(result.variables);
       applyEffects(result.effects);
@@ -432,7 +470,7 @@ export default function App() {
     if (!targetPage) return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
-      track('page_exit', { pageId: currentPageId });
+      trackPageExit(currentPageId);
       const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
       setVariables(result.variables);
       applyEffects(result.effects);
@@ -447,10 +485,16 @@ export default function App() {
       ? completedPageIds
       : [...completedPageIds, currentPageId];
     setCompletedPageIds(nextCompletedPageIds);
-    track('page_exit', { pageId: currentPageId });
+    trackPageExit(currentPageId);
     track('continue_clicked', {
       pageId: currentPageId,
-      payload: { conditions_met: !continueDisabled },
+      payload: {
+        conditions_met: page.continue_gate
+          ? continueDisabled
+            ? []
+            : ['continue_gate']
+          : ['no_continue_gate'],
+      },
     });
     const result = runTriggers(variables, currentPage.triggers, 'onPageExit');
     setVariables(result.variables);

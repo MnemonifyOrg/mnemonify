@@ -17,7 +17,13 @@ export const BLOCK_LABELS = Object.fromEntries(BLOCK_TYPES.map((type) => [type, 
 // see DECISIONS.md for why this list is deliberately short.
 export const TWO_COLUMN_SLOT_TYPES = ['text', 'heading', 'image', 'embed'];
 
-export const DEFAULT_EMBED_SANDBOX = 'allow-scripts allow-same-origin allow-popups';
+// allow-presentation is required for YouTube/Vimeo's own fullscreen and
+// picture-in-picture/casting controls inside the embedded player;
+// allow-popups-to-escape-sandbox stays permanently excluded (see
+// EmbedBlock.jsx in both this package and packages/player, which strip
+// it defensively even if it were ever present) -- that token is the one
+// that would let embedded content navigate/control the parent window.
+export const DEFAULT_EMBED_SANDBOX = 'allow-scripts allow-same-origin allow-presentation allow-popups';
 
 function defaultContent(type) {
   switch (type) {

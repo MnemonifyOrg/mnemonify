@@ -6,7 +6,7 @@
 // window and defeat the whole point of sandboxing it.
 export default function EmbedBlock({ block }) {
   const { url, label, sandbox } = block.content;
-  const safeSandbox = (sandbox || 'allow-scripts allow-same-origin allow-popups')
+  const safeSandbox = (sandbox || 'allow-scripts allow-same-origin allow-presentation allow-popups')
     .split(' ')
     .filter((token) => token !== 'allow-popups-to-escape-sandbox')
     .join(' ');

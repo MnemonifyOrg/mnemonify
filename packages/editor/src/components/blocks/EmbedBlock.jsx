@@ -1,4 +1,5 @@
 import { DEFAULT_EMBED_SANDBOX } from '../../lib/blockDefaults.js';
+import { toEmbeddableUrl } from '../../lib/embedUrl.js';
 
 // Domains known to work well embedded (DigitalScope for pathology WSI
 // viewers, plus the common video hosts). Not an enforced restriction --
@@ -39,6 +40,24 @@ export default function EmbedBlockEditor({ block, onChange }) {
         className="input"
         value={url}
         onChange={(e) => setContent({ url: e.target.value })}
+        onPaste={(e) => {
+          // Convert recognized YouTube/Vimeo watch-page or short links to
+          // their embeddable form on paste -- the common way an author
+          // gets a URL onto their clipboard in the first place. Doesn't
+          // interfere with normal typing: only replaces the field when
+          // the pasted text is a full, recognized URL.
+          const pasted = e.clipboardData.getData('text');
+          const converted = toEmbeddableUrl(pasted);
+          if (converted !== pasted) {
+            e.preventDefault();
+            setContent({ url: converted });
+          }
+        }}
+        onBlur={(e) => {
+          // Safety net for a manually-typed (not pasted) watch/short URL.
+          const converted = toEmbeddableUrl(e.target.value);
+          if (converted !== e.target.value) setContent({ url: converted });
+        }}
         placeholder="https://..."
       />
 

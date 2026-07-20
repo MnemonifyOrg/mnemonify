@@ -1836,10 +1836,14 @@
   color: var(--color-primary);
 }
 .info-tooltip__bubble {
+  /* left/top are computed inline by InfoTooltip.jsx (clamped to whichever
+     container actually clips the tooltip) -- these are just the
+     pre-measurement fallback shown for one frame before that effect runs,
+     and a safety net if JS position calculation ever fails to fire. */
   position: absolute;
   z-index: 20;
+  left: 0;
   top: 22px;
-  right: 0;
   width: 240px;
   max-width: calc(100vw - 32px);
   padding: var(--space-2) var(--space-3);

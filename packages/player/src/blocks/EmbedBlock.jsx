@@ -1,15 +1,15 @@
+import { safeEmbedSandbox } from '../lib/embedSandbox.js';
+
 // In-player containment rule (ARCHITECTURE.md 5.2): the iframe is
 // sandboxed with only the allowances the author configured, and never
 // includes allow-popups-to-escape-sandbox -- that specific token lets a
 // popup opened from inside the iframe escape the sandbox's restrictions
 // entirely, which would let embedded content navigate the parent/top
-// window and defeat the whole point of sandboxing it.
+// window and defeat the whole point of sandboxing it. safeEmbedSandbox
+// strips it defensively; see packages/player/src/lib/embedSandbox.js.
 export default function EmbedBlock({ block }) {
   const { url, label, sandbox } = block.content;
-  const safeSandbox = (sandbox || 'allow-scripts allow-same-origin allow-presentation allow-popups')
-    .split(' ')
-    .filter((token) => token !== 'allow-popups-to-escape-sandbox')
-    .join(' ');
+  const safeSandbox = safeEmbedSandbox(sandbox, 'allow-scripts allow-same-origin allow-presentation allow-popups');
 
   return (
     <div className="block block-embed">

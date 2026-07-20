@@ -1,5 +1,6 @@
 import { DEFAULT_EMBED_SANDBOX } from '../../lib/blockDefaults.js';
 import { toEmbeddableUrl } from '../../lib/embedUrl.js';
+import { safeEmbedSandbox } from '../../lib/embedSandbox.js';
 
 // Domains known to work well embedded (DigitalScope for pathology WSI
 // viewers, plus the common video hosts). Not an enforced restriction --
@@ -70,12 +71,14 @@ export default function EmbedBlockEditor({ block, onChange }) {
 
       {url.trim() && (
         // Same sandbox rules as the player -- an author previewing here
-        // sees exactly the containment the learner will get.
+        // sees exactly the containment the learner will get. safeEmbedSandbox
+        // strips allow-popups-to-escape-sandbox the same way the player's
+        // own iframe does, via the shared (per-package) embedSandbox.js.
         <iframe
           className="embed-block-editor__preview"
           src={url}
           title={label || 'Embed preview'}
-          sandbox={sandbox || DEFAULT_EMBED_SANDBOX}
+          sandbox={safeEmbedSandbox(sandbox, DEFAULT_EMBED_SANDBOX)}
         />
       )}
     </div>

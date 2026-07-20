@@ -278,10 +278,6 @@
           "type": "array",
           "items": { "$ref": "#/definitions/trigger" }
         },
-        "timeline_triggers": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/timeline_trigger" }
-        },
         "continue_gate": {
           "$ref": "#/definitions/condition"
         }
@@ -311,6 +307,10 @@
         "triggers": {
           "type": "array",
           "items": { "$ref": "#/definitions/trigger" }
+        },
+        "timeline_triggers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/timeline_trigger" }
         },
         "include_in_pdf": {
           "type": "boolean"

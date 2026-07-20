@@ -273,8 +273,8 @@
                     "triggers": [],
                     "timeline_triggers": [
                       {
-                        "trigger_id": "trg_video01_pause_5s",
-                        "at_seconds": 5,
+                        "trigger_id": "trg_video01_pause_2s",
+                        "at_seconds": 2,
                         "actions": [
                           {
                             "action": "OPEN_MODAL",
@@ -294,12 +294,12 @@
                                   {
                                     "trigger_id": "trg_video01_overlay_correct",
                                     "event": "onCorrect",
-                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 10 }]
+                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 3 }]
                                   },
                                   {
                                     "trigger_id": "trg_video01_overlay_incorrect",
                                     "event": "onIncorrect",
-                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 2 }]
+                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 1 }]
                                   }
                                 ]
                               }

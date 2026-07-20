@@ -2,6 +2,7 @@ import { useState } from 'react';
 import ConditionBuilder from './ConditionBuilder.jsx';
 import TriggerBuilderModal from './TriggerBuilderModal.jsx';
 import { describeTrigger, PAGE_EVENTS } from '../lib/triggerUtils.js';
+import InfoTooltip from './InfoTooltip.jsx';
 
 // Page-level settings (Phase 4 Part 2 Step 5): the Continue gate an author
 // can attach to a page, and onPageEnter/onPageExit triggers. Both write
@@ -45,7 +46,10 @@ export default function PageSettingsPanel({ page, pages, variables, onChangePage
       <h3>Page Settings</h3>
       <p className="settings-panel__hint">Applies to "{page.title}" only.</p>
 
-      <h4>Continue gate</h4>
+      <h4>
+        Continue gate
+        <InfoTooltip text="A rule that stops the learner from moving past this page until it's met, like requiring them to answer a knowledge check correctly first. If you don't set one, learners can continue freely." />
+      </h4>
       <p className="settings-panel__hint">Don't let the learner continue past this page until a condition is met.</p>
       <ConditionBuilder
         variables={variables}

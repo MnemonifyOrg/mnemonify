@@ -65,14 +65,18 @@ const STEPS = [
     body: 'Preview your course exactly as learners will see it, at phone, tablet, or desktop widths.',
   },
   {
-    target: '[data-tour="media-library"]',
+    // Phase 4.6 Step 4 moved Media Library and Save as Template into the
+    // "More tools" overflow menu (both less-frequent than Preview/
+    // Publish/Undo). Both steps now target that one button rather than
+    // their own former standalone buttons -- see DECISIONS.md.
+    target: '[data-tour="more-tools"]',
     title: 'Media library',
-    body: 'Upload images one at a time or in bulk (even as a ZIP), then reuse them across blocks like the image carousel.',
+    body: 'Open More tools to find the Media Library — upload images one at a time or in bulk (even as a ZIP), then reuse them across blocks like the image carousel.',
   },
   {
-    target: '[data-tour="save-template"]',
+    target: '[data-tour="more-tools"]',
     title: 'Templates',
-    body: 'Turn any course into a reusable template — teammates can start new courses from it, or export it to Word for offline authoring.',
+    body: 'More tools also has Save as Template — turn any course into a reusable template teammates can start new courses from, or export it to Word for offline authoring.',
   },
   {
     target: '[data-tour="save-status"]',

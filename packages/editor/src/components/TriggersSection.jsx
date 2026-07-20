@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TriggerBuilderModal from './TriggerBuilderModal.jsx';
+import InfoTooltip from './InfoTooltip.jsx';
 import { describeTrigger, EVENTS_BY_BLOCK_TYPE } from '../lib/triggerUtils.js';
 
 // Block-level "Triggers" section (Phase 4 Part 2 Step 2), shown in a
@@ -34,9 +35,12 @@ export default function TriggersSection({ block, pageBlocks, pages, variables, o
 
   return (
     <div className="settings-panel__triggers">
-      <button type="button" className="btn-text settings-panel__triggers-toggle" onClick={() => setExpanded((e) => !e)}>
-        ⚡ Triggers {triggers.length > 0 ? `(${triggers.length})` : ''} {expanded ? '▲' : '▼'}
-      </button>
+      <div className="settings-panel__triggers-header">
+        <button type="button" className="btn-text settings-panel__triggers-toggle" onClick={() => setExpanded((e) => !e)}>
+          ⚡ Triggers {triggers.length > 0 ? `(${triggers.length})` : ''} {expanded ? '▲' : '▼'}
+        </button>
+        <InfoTooltip text="An if-this-then-that rule for this block, like 'when the learner clicks Continue, set a variable' or 'when this video ends, show the next block.' Optional -- most blocks work fine with none." />
+      </div>
 
       {expanded && (
         <div className="settings-panel__triggers-body">

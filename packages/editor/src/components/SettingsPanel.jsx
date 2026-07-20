@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getBlockDefinition } from '@mnemonify/schema/block-registry.js';
 import { BLOCK_SETTINGS } from './blocks/settingsIndex.js';
 import { BLOCK_LABELS } from '../lib/blockDefaults.js';
 import { autoBlockLabel } from '../lib/triggerUtils.js';
@@ -8,6 +9,7 @@ import PlayerSettingsPanel from './PlayerSettingsPanel.jsx';
 import CourseHealthPanel from './CourseHealthPanel.jsx';
 import TriggersSection from './TriggersSection.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
+import InfoTooltip from './InfoTooltip.jsx';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -42,7 +44,10 @@ function CourseSettings({ meta, onChangeMeta }) {
         onChange={(e) => onChangeMeta({ ...meta, theme: { ...meta.theme, accent: e.target.value } })}
       />
 
-      <label>Navigation mode</label>
+      <label>
+        Navigation mode
+        <InfoTooltip text="Linear means learners must go through pages in order, one at a time. Free navigation lets them jump to any page from the menu whenever they want." />
+      </label>
       <select
         className="input"
         value={meta.nav_mode || 'linear'}
@@ -52,7 +57,20 @@ function CourseSettings({ meta, onChangeMeta }) {
         <option value="free">Free navigation</option>
       </select>
 
-      <label>Completion rule</label>
+      <label>Page display</label>
+      <select
+        className="input"
+        value={meta.page_display || 'flat'}
+        onChange={(e) => onChangeMeta({ ...meta, page_display: e.target.value })}
+      >
+        <option value="flat">Flat list</option>
+        <option value="grouped">Grouped into modules</option>
+      </select>
+
+      <label>
+        Completion rule
+        <InfoTooltip text="Decides when this course reports as complete to the LMS (via SCORM). 'Viewed all pages' finishes once every page has been opened; 'Passed final knowledge check' waits for a passing score on the last quiz." />
+      </label>
       <select
         className="input"
         value={meta.completion_rule || 'viewed_all_pages'}
@@ -142,13 +160,16 @@ function FacultyNotesField({ block, onChange }) {
 
   return (
     <div className="settings-panel__faculty-notes">
-      <button
-        type="button"
-        className="btn-text settings-panel__faculty-notes-toggle"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        📝 Faculty notes (not shown to learners) {expanded ? '▲' : '▼'}
-      </button>
+      <div className="settings-panel__faculty-notes-header">
+        <button
+          type="button"
+          className="btn-text settings-panel__faculty-notes-toggle"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          📝 Faculty notes (not shown to learners) {expanded ? '▲' : '▼'}
+        </button>
+        <InfoTooltip text="A private note only you and co-authors can see, like a reminder about how to teach this part or a source for a claim. Learners never see this, in the player, in print, or anywhere else." />
+      </div>
       {expanded && (
         <textarea
           className="input settings-panel__faculty-notes-field"
@@ -214,7 +235,10 @@ function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVar
 
   return (
     <div className="settings-panel__visibility-condition">
-      <h4>Visibility</h4>
+      <h4>
+        Visibility
+        <InfoTooltip text="Show or hide this block for a learner based on a condition, like only showing it if they answered a previous question a certain way. If you don't set a condition, the block always shows." />
+      </h4>
       <ConditionBuilder
         variables={variables}
         value={block.visibility_condition || null}
@@ -228,6 +252,48 @@ function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVar
           block's trigger points at this one.
         </p>
       )}
+    </div>
+  );
+}
+
+// Phase 4.6 Step 1: session-level (module-scope, resets on page reload,
+// per this step's own "doesn't need to persist across reloads" allowance)
+// memory of which blocks' Advanced disclosure the author has expanded.
+// Deliberately a plain module-scoped Set rather than component state
+// lifted to CourseEditor or a new localStorage key -- this only needs to
+// survive across switching between blocks within the current session, and
+// a Set living for the lifetime of the JS module does exactly that without
+// a new prop-drilled state slot for something this minor. Mutated directly
+// by AdvancedSection below; the component's own useState exists only to
+// force a re-render on toggle (mutating a module-level Set doesn't).
+const expandedAdvancedBlocks = new Set();
+
+// blockId is passed as this component's `key` at the call site, not just
+// a prop -- selecting a different block must fully remount this component
+// so its useState initializer re-reads that block's own remembered
+// expanded/collapsed state, rather than carrying over whatever the
+// previously-selected block's Advanced section was showing.
+function AdvancedSection({ blockId, children }) {
+  const [expanded, setExpanded] = useState(expandedAdvancedBlocks.has(blockId));
+
+  function toggle() {
+    const next = !expanded;
+    setExpanded(next);
+    if (next) expandedAdvancedBlocks.add(blockId);
+    else expandedAdvancedBlocks.delete(blockId);
+  }
+
+  return (
+    <div className="settings-panel__advanced">
+      <button
+        type="button"
+        className="btn-text settings-panel__advanced-toggle"
+        onClick={toggle}
+        aria-expanded={expanded}
+      >
+        {expanded ? '▲' : '▼'} Advanced
+      </button>
+      {expanded && <div className="settings-panel__advanced-body">{children}</div>}
     </div>
   );
 }
@@ -261,6 +327,7 @@ export default function SettingsPanel({
   onOpenVariableManager,
   findings,
   onNavigateToFinding,
+  onOpenAltTextReview,
 }) {
   const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
 
@@ -304,7 +371,7 @@ export default function SettingsPanel({
         ) : activeTab === 'Variables' ? (
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} />
         ) : activeTab === 'Course Health' ? (
-          <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} />
+          <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />
         ) : (
           <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />
         )}
@@ -313,34 +380,51 @@ export default function SettingsPanel({
   }
 
   const SettingsFields = BLOCK_SETTINGS[selectedBlock.type];
+  const definition = getBlockDefinition(selectedBlock.type);
+  // Falls back to "everything is Advanced, nothing is Basic content" for a
+  // block type the registry somehow doesn't know about -- should never
+  // happen in practice (every shipped type has a registry entry), but a
+  // missing definition degrading gracefully beats a crash.
+  const groups = definition?.settingsGroups || { basic: [], advanced: ['blockName', 'visibility', 'triggers', 'facultyNotes'] };
 
   return (
     <aside className="settings-panel">
       <div className="settings-panel__section">
         <h3>{BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} Settings</h3>
-        <BlockNameField block={selectedBlock} pageBlocks={page?.blocks || []} onChange={onChangeBlock} />
-        {SettingsFields ? (
+        {groups.basic.includes('content') && SettingsFields ? (
           <SettingsFields block={selectedBlock} assets={assets} onChange={onChangeBlock} onUpdateCourseAsset={onUpdateCourseAsset} />
         ) : (
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}
       </div>
-      <VisibilityConditionSection
-        block={selectedBlock}
-        variables={variables}
-        onChangeBlock={onChangeBlock}
-        onOpenVariableManager={onOpenVariableManager}
-      />
-      {!selectedBlock.visibility_condition && <BlockVisibilityToggle block={selectedBlock} onChange={onChangeBlock} />}
-      <TriggersSection
-        block={selectedBlock}
-        pageBlocks={page?.blocks || []}
-        pages={pages}
-        variables={variables}
-        onChangeBlock={onChangeBlock}
-        onOpenVariableManager={onOpenVariableManager}
-      />
-      <FacultyNotesField block={selectedBlock} onChange={onChangeBlock} />
+
+      <AdvancedSection key={selectedBlock.block_id} blockId={selectedBlock.block_id}>
+        {groups.advanced.includes('blockName') && (
+          <BlockNameField block={selectedBlock} pageBlocks={page?.blocks || []} onChange={onChangeBlock} />
+        )}
+        {groups.advanced.includes('visibility') && (
+          <>
+            <VisibilityConditionSection
+              block={selectedBlock}
+              variables={variables}
+              onChangeBlock={onChangeBlock}
+              onOpenVariableManager={onOpenVariableManager}
+            />
+            {!selectedBlock.visibility_condition && <BlockVisibilityToggle block={selectedBlock} onChange={onChangeBlock} />}
+          </>
+        )}
+        {groups.advanced.includes('triggers') && (
+          <TriggersSection
+            block={selectedBlock}
+            pageBlocks={page?.blocks || []}
+            pages={pages}
+            variables={variables}
+            onChangeBlock={onChangeBlock}
+            onOpenVariableManager={onOpenVariableManager}
+          />
+        )}
+        {groups.advanced.includes('facultyNotes') && <FacultyNotesField block={selectedBlock} onChange={onChangeBlock} />}
+      </AdvancedSection>
     </aside>
   );
 }

@@ -3,6 +3,7 @@ import { defaultValueForType } from '../lib/triggerUtils.js';
 import { ValueInput } from './ConditionBuilder.jsx';
 import { genVariableId } from '../lib/idGen.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
+import InfoTooltip from './InfoTooltip.jsx';
 
 const NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -110,7 +111,10 @@ export default function VariableManagerPanel({ variables, courseJson, onChangeVa
 
   return (
     <div className="settings-panel__section variable-manager">
-      <h3>Variables</h3>
+      <h3>
+        Variables
+        <InfoTooltip text="A named value your course remembers, like a quiz score or a choice a learner made. Set one with a trigger, then use it later to show/hide content, gate a page, or personalize a message." />
+      </h3>
       <p className="settings-panel__hint">
         Named values your course can remember and react to -- attach a trigger to a block to set one, and use it in a
         trigger's condition or a page's Continue gate.

@@ -142,6 +142,9 @@ a {
 .modal-card h2 {
   margin-top: 0;
 }
+.modal-card--wide {
+  width: min(720px, 92vw);
+}
 
 .top-bar {
   display: flex;

@@ -9,7 +9,9 @@ import SaveAsTemplateModal from '../components/SaveAsTemplateModal.jsx';
 import SavePageAsTemplateModal from '../components/SavePageAsTemplateModal.jsx';
 import PageTemplateGalleryModal from '../components/PageTemplateGalleryModal.jsx';
 import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
+import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
+import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
 import '../styles/courseEditor.css';
@@ -64,6 +66,7 @@ export default function CourseEditor() {
   const [previewMode, setPreviewMode] = useState(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [showAltTextReview, setShowAltTextReview] = useState(false);
   const [showTour, setShowTour] = useState(searchParams.get('tour') === '1');
   const [showExportSaving, setShowExportSaving] = useState(false);
   const [pageToSaveAsTemplate, setPageToSaveAsTemplate] = useState(null);
@@ -71,6 +74,19 @@ export default function CourseEditor() {
   const [settingsTab, setSettingsTab] = useState('Course');
   const [publishing, setPublishing] = useState(false);
   const [publishNotice, setPublishNotice] = useState(null);
+
+  // Phase 4.6 Step 2: panel collapse + Focus Mode. Deliberately plain
+  // useState, entirely separate from the undo/redo system below -- this is
+  // view state (what the author is currently looking at), not document
+  // state (what the course contains). Toggling a panel or Focus Mode must
+  // never push an undo snapshot and must never itself be undoable; see
+  // DECISIONS.md. Session-level only (resets on reload), per this step's
+  // own "doesn't need to persist across sessions" allowance.
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const effectiveLeftCollapsed = leftPanelCollapsed || focusMode;
+  const effectiveRightCollapsed = rightPanelCollapsed || focusMode;
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -316,8 +332,15 @@ export default function CourseEditor() {
     setCanUndo(true);
   }
 
-  function handleChangeMeta(newMeta) {
-    updateCourseJson((json) => ({ ...json, meta: newMeta }));
+  // options forwarded through (Phase 4.6 Step 5): PageList's module
+  // create/rename/delete/assign actions pass { forceSnapshot: true }, the
+  // same "this is a discrete structural action, not a keystroke burst"
+  // signal every other structural mutation in this file already uses --
+  // previously dropped here since this function only ever took one
+  // argument, silently downgrading module edits to the default
+  // burst-coalescing snapshot behavior meant for continuous typing.
+  function handleChangeMeta(newMeta, options) {
+    updateCourseJson((json) => ({ ...json, meta: newMeta }), options);
   }
 
   function handleChangeVariables(newVariables, options) {
@@ -700,15 +723,52 @@ export default function CourseEditor() {
     if (selectedBlockId === blockId) setSelectedBlockId(null);
   }
 
-  function handleAddBlock(newBlock) {
+  // insertIndex (Phase 4.6 Step 3): omitted/undefined appends at the end,
+  // exactly like before -- the bottom "+ Add Block" control still calls
+  // this with no index. A between-block "+" passes the exact position to
+  // splice into, so the new block lands where the author clicked, not at
+  // the bottom of the page.
+  function handleAddBlock(newBlock, insertIndex) {
     updateCourseJson(
       (json) => ({
         ...json,
-        pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: [...p.blocks, newBlock] })),
+        pages: json.pages.map((p) => {
+          if (p.page_id !== activePageId) return p;
+          const blocks = [...p.blocks];
+          const index = insertIndex == null ? blocks.length : insertIndex;
+          blocks.splice(index, 0, newBlock);
+          return { ...p, blocks };
+        }),
       }),
       { forceSnapshot: true }
     );
     setSelectedBlockId(newBlock.block_id);
+    // Focus the new block's primary editable field once it's rendered --
+    // a generic "first focusable thing inside this block" query rather
+    // than per-block-type wiring, since it correctly reaches the common
+    // case (a contentEditable field) for most types and a sensible
+    // fallback (the upload zone) for media types. Same deferred-timeout
+    // pattern as handleNavigateToFinding's scroll-into-view, for the same
+    // reason: needs to run after the selection/insertion re-render commits.
+    setTimeout(() => {
+      const wrapper = document.querySelector(`[data-block-id="${newBlock.block_id}"]`);
+      wrapper?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Scoped to .block-wrapper__content specifically, not the whole
+      // wrapper -- the wrapper also contains the block's own toolbar
+      // (drag handle, move/copy/duplicate/delete buttons), which sits
+      // earlier in DOM order than the actual content and would otherwise
+      // win a document-order querySelector, focusing "Delete" instead of
+      // the block's own editable field. contentEditable is tried first and
+      // separately from the input/textarea/button/select fallback -- a
+      // rich-text block's own formatting toolbar (B/I/U buttons) also
+      // sits before its EditableRichField in DOM order, so a single
+      // combined selector would win on the wrong element the same way.
+      const content = wrapper?.querySelector('.block-wrapper__content');
+      const primaryField =
+        content?.querySelector('[contenteditable="true"]') ||
+        content?.querySelector('input, textarea, button, select');
+      primaryField?.focus();
+    }, 0);
   }
 
   function handleReorderBlocks(newBlocks) {
@@ -785,33 +845,40 @@ export default function CourseEditor() {
           </button>
         </div>
 
-        <div className="course-editor__preview-toggle" data-tour="preview-toggle">
-          {['phone', 'tablet', 'desktop'].map((m) => (
-            <button
-              key={m}
-              className={previewMode === m ? 'btn btn-primary' : 'btn'}
-              onClick={() => {
-                const turningOn = previewMode !== m;
-                if (turningOn) saveNow();
-                setPreviewMode(turningOn ? m : null);
-              }}
-            >
-              {m[0].toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          className="btn"
+          data-tour="preview-toggle"
+          onClick={() => {
+            saveNow();
+            setPreviewMode((current) => current || 'desktop');
+          }}
+        >
+          Preview
+        </button>
 
-        <button className="btn" data-tour="media-library" onClick={() => setShowMediaLibrary(true)}>
-          Media Library
+        <button
+          type="button"
+          className={focusMode ? 'btn btn-primary' : 'btn'}
+          onClick={() => setFocusMode((v) => !v)}
+          aria-pressed={focusMode}
+          title="Hide both side panels to focus on the canvas"
+        >
+          {focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
         </button>
-        <button className="btn" data-tour="save-template" onClick={() => setShowSaveTemplate(true)}>
-          Save as Template
-        </button>
-        {course.is_template && (
-          <button className="btn" onClick={handleExportWord} disabled={showExportSaving}>
-            {showExportSaving ? 'Saving before export...' : 'Export Word'}
-          </button>
-        )}
+
+        <MoreToolsMenu
+          dataTour="more-tools"
+          items={[
+            { label: 'Media Library', onClick: () => setShowMediaLibrary(true) },
+            { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
+            course.is_template && {
+              label: showExportSaving ? 'Saving before export...' : 'Export Word',
+              onClick: handleExportWord,
+              disabled: showExportSaving,
+            },
+          ]}
+        />
 
         {findings.length > 0 && (
           <button
@@ -874,26 +941,70 @@ export default function CourseEditor() {
         />
       )}
 
-      <div className="course-editor__body">
+      {showAltTextReview && (
+        <BulkAltTextReview
+          assets={json.assets}
+          onUpdateCourseAsset={handleUpdateCourseAsset}
+          onClose={() => setShowAltTextReview(false)}
+        />
+      )}
+
+      <div
+        className={
+          'course-editor__body' +
+          (effectiveLeftCollapsed ? ' course-editor__body--left-collapsed' : '') +
+          (effectiveRightCollapsed ? ' course-editor__body--right-collapsed' : '')
+        }
+      >
         <nav className="course-editor__left-panel" data-tour="page-list">
-          <PageList
-            pages={json.pages}
-            activePageId={activePageId}
-            onSelectPage={handleSelectPage}
-            onAddPage={handleAddPage}
-            onRenamePage={handleRenamePage}
-            onDeletePage={handleDeletePage}
-            onSaveAsPageTemplate={setPageToSaveAsTemplate}
-            onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
-          />
+          <button
+            type="button"
+            className="course-editor__panel-toggle course-editor__panel-toggle--left"
+            onClick={() => setLeftPanelCollapsed((v) => !v)}
+            disabled={focusMode}
+            aria-expanded={!effectiveLeftCollapsed}
+            aria-label={effectiveLeftCollapsed ? 'Expand page list panel' : 'Collapse page list panel'}
+            title={effectiveLeftCollapsed ? 'Expand page list' : 'Collapse page list'}
+          >
+            {effectiveLeftCollapsed ? '▶' : '◀'}
+          </button>
+          {!effectiveLeftCollapsed && (
+            <PageList
+              pages={json.pages}
+              meta={json.meta}
+              onChangeMeta={handleChangeMeta}
+              activePageId={activePageId}
+              onSelectPage={handleSelectPage}
+              onAddPage={handleAddPage}
+              onRenamePage={handleRenamePage}
+              onDeletePage={handleDeletePage}
+              onSaveAsPageTemplate={setPageToSaveAsTemplate}
+              onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
+            />
+          )}
         </nav>
 
         <main className="course-editor__center-panel">
           {previewMode ? (
             <div className="preview-frame-container">
-              <button className="btn preview-frame-container__close" onClick={() => setPreviewMode(null)}>
-                Close Preview
-              </button>
+              <div className="preview-frame-container__toolbar">
+                <div className="preview-frame-container__widths">
+                  {['phone', 'tablet', 'desktop'].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={previewMode === m ? 'btn btn-primary' : 'btn'}
+                      onClick={() => setPreviewMode(m)}
+                      aria-pressed={previewMode === m}
+                    >
+                      {m[0].toUpperCase() + m.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <button className="btn preview-frame-container__close" onClick={() => setPreviewMode(null)}>
+                  Close Preview
+                </button>
+              </div>
               <iframe
                 key={previewMode}
                 title="Course preview"
@@ -926,27 +1037,43 @@ export default function CourseEditor() {
           )}
         </main>
 
-        <SettingsPanel
-          selectedBlock={selectedBlock}
-          meta={json.meta}
-          page={page}
-          pages={json.pages}
-          variables={json.variables || []}
-          assets={json.assets}
-          onChangeMeta={handleChangeMeta}
-          onChangePage={handleChangePage}
-          onChangeVariables={handleChangeVariables}
-          onUpdateCourseAsset={handleUpdateCourseAsset}
-          onAddCourseResource={handleAddCourseResource}
-          onRemoveCourseResource={handleRemoveCourseResource}
-          onUpdateCourseResource={handleUpdateCourseResource}
-          onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
-          activeTab={settingsTab}
-          onChangeTab={setSettingsTab}
-          onOpenVariableManager={openVariableManager}
-          findings={findings}
-          onNavigateToFinding={handleNavigateToFinding}
-        />
+        <div className="course-editor__right-panel">
+          <button
+            type="button"
+            className="course-editor__panel-toggle course-editor__panel-toggle--right"
+            onClick={() => setRightPanelCollapsed((v) => !v)}
+            disabled={focusMode}
+            aria-expanded={!effectiveRightCollapsed}
+            aria-label={effectiveRightCollapsed ? 'Expand settings panel' : 'Collapse settings panel'}
+            title={effectiveRightCollapsed ? 'Expand settings' : 'Collapse settings'}
+          >
+            {effectiveRightCollapsed ? '◀' : '▶'}
+          </button>
+          {!effectiveRightCollapsed && (
+            <SettingsPanel
+              selectedBlock={selectedBlock}
+              meta={json.meta}
+              page={page}
+              pages={json.pages}
+              variables={json.variables || []}
+              assets={json.assets}
+              onChangeMeta={handleChangeMeta}
+              onChangePage={handleChangePage}
+              onChangeVariables={handleChangeVariables}
+              onUpdateCourseAsset={handleUpdateCourseAsset}
+              onAddCourseResource={handleAddCourseResource}
+              onRemoveCourseResource={handleRemoveCourseResource}
+              onUpdateCourseResource={handleUpdateCourseResource}
+              onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
+              activeTab={settingsTab}
+              onChangeTab={setSettingsTab}
+              onOpenVariableManager={openVariableManager}
+              findings={findings}
+              onNavigateToFinding={handleNavigateToFinding}
+              onOpenAltTextReview={() => setShowAltTextReview(true)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

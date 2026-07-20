@@ -29,6 +29,32 @@
 
 export const BLOCK_CATEGORIES = ['Content', 'Layout', 'Interactive', 'Media'];
 
+// Phase 4.6 Step 1: which settings-panel sections belong in the always-
+// visible "Basic" group vs. the collapsed-by-default "Advanced" disclosure,
+// per block type. 'content' means "render this type's own *Settings
+// component (BLOCK_SETTINGS), if it has one" -- the core content-editing
+// fields (alt text, question/options, split ratio, row/column controls,
+// etc.), which SettingsPanel.jsx already renders per-type via
+// packages/editor/src/components/blocks/settingsIndex.js. The four
+// Advanced-tier concepts (block name/label, visibility condition, triggers,
+// faculty notes) are cross-cutting metadata/logic rather than content --
+// every block type gets 'blockName'/'visibility'/'facultyNotes'
+// universally (no product reason found to vary these), but 'triggers' is
+// included only when validEvents is non-empty, matching
+// TriggersSection.jsx's own existing "no events, no section" rule exactly
+// (see DECISIONS.md -- this was already effectively registry-driven via
+// validEvents; settingsGroups.advanced just makes the resulting Advanced
+// section list an explicit, single per-type array SettingsPanel.jsx reads,
+// instead of four separately-conditioned components deciding individually
+// whether to render themselves).
+const UNIVERSAL_ADVANCED = ['blockName', 'visibility', 'facultyNotes'];
+function settingsGroupsFor({ hasSettings, validEvents }) {
+  return {
+    basic: hasSettings ? ['content'] : [],
+    advanced: validEvents.length > 0 ? [...UNIVERSAL_ADVANCED, 'triggers'] : UNIVERSAL_ADVANCED,
+  };
+}
+
 export const BLOCK_REGISTRY = {
   text: {
     type: 'text',
@@ -161,6 +187,13 @@ export const BLOCK_REGISTRY = {
     hasSettings: true,
   },
 };
+
+// Backfill settingsGroups onto every entry from its own hasSettings/
+// validEvents -- computed once here rather than hand-duplicated 14 times
+// above, so the two stay impossible to drift apart.
+for (const def of Object.values(BLOCK_REGISTRY)) {
+  def.settingsGroups = settingsGroupsFor(def);
+}
 
 // Ordered type list -- Object.keys preserves insertion order for
 // string-keyed objects in every JS engine this project targets, so this

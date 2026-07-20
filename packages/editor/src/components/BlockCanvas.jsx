@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -8,6 +8,30 @@ import { blockLabel } from '../lib/triggerUtils.js';
 import GenericBlockPreview from './GenericBlockPreview.jsx';
 import BlockPickerModal from './BlockPickerModal.jsx';
 import MoveCopyBlockModal from './MoveCopyBlockModal.jsx';
+
+// Phase 4.6 Step 3: a between-block "+" insertion point. Always present in
+// the DOM (not conditionally rendered only on hover) so it's a real button
+// in the natural tab order -- keyboard reachability comes for free from
+// that, rather than needing a separate keyboard-only path. Visually
+// subtle until hover or keyboard focus via CSS (.block-canvas__insert,
+// same reveal-on-hover/focus pattern as .page-list__actions).
+function InsertionPoint({ index, onInsert }) {
+  return (
+    <div className="block-canvas__insert">
+      <button
+        type="button"
+        className="block-canvas__insert-btn"
+        aria-label="Insert a block here"
+        onClick={(e) => {
+          e.stopPropagation();
+          onInsert(index);
+        }}
+      >
+        +
+      </button>
+    </div>
+  );
+}
 
 function BlockWrapper({
   block,
@@ -85,7 +109,7 @@ function BlockWrapper({
           ⧉
         </button>
         <button
-          className="btn-text"
+          className="btn-text block-wrapper__delete-btn"
           title="Delete"
           onClick={(e) => {
             e.stopPropagation();
@@ -140,7 +164,8 @@ export default function BlockCanvas({
   onMoveBlockToPage,
   onCopyBlockToPage,
 }) {
-  const [showPicker, setShowPicker] = useState(false);
+  // null = closed; a number = open, inserting at that block index.
+  const [pickerInsertIndex, setPickerInsertIndex] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   function handleDragEnd(event) {
@@ -156,26 +181,29 @@ export default function BlockCanvas({
       {page.blocks.length === 0 && <p className="block-canvas__empty">No blocks yet. Add your first one below.</p>}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={page.blocks.map((b) => b.block_id)} strategy={verticalListSortingStrategy}>
-          {page.blocks.map((block) => (
-            <BlockWrapper
-              key={block.block_id}
-              block={block}
-              pageBlocks={page.blocks}
-              assets={assets}
-              courseId={courseId}
-              onAddCourseAsset={onAddCourseAsset}
-              onAddCourseAssets={onAddCourseAssets}
-              onUpdateCourseAsset={onUpdateCourseAsset}
-              selected={block.block_id === selectedBlockId}
-              onSelect={onSelectBlock}
-              onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}
-              onDuplicate={onDuplicateBlock}
-              onDelete={onDeleteBlock}
-              pages={pages}
-              activePageId={page.page_id}
-              onMoveBlockToPage={onMoveBlockToPage}
-              onCopyBlockToPage={onCopyBlockToPage}
-            />
+          <InsertionPoint index={0} onInsert={setPickerInsertIndex} />
+          {page.blocks.map((block, index) => (
+            <Fragment key={block.block_id}>
+              <BlockWrapper
+                block={block}
+                pageBlocks={page.blocks}
+                assets={assets}
+                courseId={courseId}
+                onAddCourseAsset={onAddCourseAsset}
+                onAddCourseAssets={onAddCourseAssets}
+                onUpdateCourseAsset={onUpdateCourseAsset}
+                selected={block.block_id === selectedBlockId}
+                onSelect={onSelectBlock}
+                onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}
+                onDuplicate={onDuplicateBlock}
+                onDelete={onDeleteBlock}
+                pages={pages}
+                activePageId={page.page_id}
+                onMoveBlockToPage={onMoveBlockToPage}
+                onCopyBlockToPage={onCopyBlockToPage}
+              />
+              <InsertionPoint index={index + 1} onInsert={setPickerInsertIndex} />
+            </Fragment>
           ))}
         </SortableContext>
       </DndContext>
@@ -184,17 +212,17 @@ export default function BlockCanvas({
         data-tour="add-block"
         onClick={(e) => {
           e.stopPropagation();
-          setShowPicker(true);
+          setPickerInsertIndex(page.blocks.length);
         }}
       >
         + Add Block
       </button>
-      {showPicker && (
+      {pickerInsertIndex !== null && (
         <BlockPickerModal
-          onClose={() => setShowPicker(false)}
+          onClose={() => setPickerInsertIndex(null)}
           onPick={(type) => {
-            onAddBlock(createBlock(type));
-            setShowPicker(false);
+            onAddBlock(createBlock(type), pickerInsertIndex);
+            setPickerInsertIndex(null);
           }}
         />
       )}

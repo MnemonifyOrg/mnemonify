@@ -30,7 +30,78 @@ after a change** — an agent session reporting these as "working" is
 reporting that the code path looks correct, not that a real drag or a real
 file dialog was exercised.
 
-## 2. Content-server stability
+## 2. Codex sandbox has no persistent server/browser — a distinct limitation from Claude Code's environment
+
+This Codex development environment cannot start a persistent running Node
+server or a real browser session. Any "verification" performed here is
+code-level: unit tests, direct API calls made from within the same
+process/session, or static code inspection. It is **not** equivalent to a
+live browser hitting a live server.
+
+This is stricter than the two limitations in Section 1 (dnd-kit drag and
+OS file-picker dialogs). Those are specific interaction types that fail
+inside an otherwise-working browser session. This limitation is broader:
+no browser session exists at all in this environment.
+
+**Practical implication:** any task involving real HTTP request/response
+behavior between a running player and a running server — analytics
+telemetry, SCORM communication, or anything involving actual network calls
+rather than pure logic — requires independent human verification in a real
+browser. Watch the real Network tab and query the real database. Code that
+passes unit tests, and even a direct API call made from this sandbox, can
+still fail in the genuinely wired-together system. This happened three
+times in a row during the analytics telemetry work before the real bugs
+were found.
+
+### Case study: the analytics telemetry debugging session
+
+This is the concrete sequence, recorded so future agents do not repeat the
+same false-confidence pattern:
+
+1. The initial analytics implementation passed all unit/server tests and a
+   player build check, and was reported as complete.
+2. Live human browser testing found every `/api/events` request returning
+   404. As far as the running server was concerned, the routes genuinely
+   did not exist.
+3. The cause was a stale Node dev-server process that had started before
+   the analytics route file was added. Restarting the process loaded the
+   route. This was not a route-path code bug; it was a dev-environment
+   gotcha. See the Content-server stability guidance in Section 3 for the
+   related stale-process and server-lifecycle lessons.
+4. After restart, live testing found a new HTTP 400:
+   `course_version must be a string of 200 characters or fewer.` The player
+   was sending `null` instead of omitting the optional field.
+5. That fix was initially left uncommitted and untracked locally — `git
+   status` showed the entire feature as local changes. Live testing also
+   continued to show old pre-fix behavior because of an unrelated stale
+   build, briefly making it look as if the fix itself had failed.
+6. Once the player was genuinely rebuilt fresh, live testing found a
+   second instance of the same bug class on `actor_hash`. The final fix
+   swept all similarly conditional fields at once instead of finding them
+   one at a time.
+7. Once events returned 202, most payloads were still empty `{}`. This was
+   a data-completeness gap, not an HTTP error, and would have gone unnoticed
+   if verification had checked only status codes instead of reading the
+   database rows.
+8. The final fix populated the real payload data specified by
+   `ARCHITECTURE.md` Section 14.2: knowledge-check answers and correctness,
+   media timestamps, page entry/exit timing, Continue conditions, and a
+   course-completion summary with score context. A human real-browser and
+   database session confirmed real knowledge-check answers, real
+   time-on-page durations, and a real completion summary. That same session
+   confirmed that reflection-block text never appeared in any event,
+   preserving the P1-46 privacy requirement.
+
+The lesson is: **"tests pass" and "an isolated API call succeeds" are
+necessary but not sufficient.** A human running a real browser session and
+actually reading the resulting database rows — not just checking for a
+success status code — caught four distinct real issues in this one feature:
+stale server state, invalid optional metadata, incomplete rebuild state,
+and missing event payload data. Budget for that independent live check on
+any future feature involving real network communication between running
+processes.
+
+## 3. Content-server stability
 
 Full root cause and fix: DECISIONS.md 2026-07-18, "Phase 4 usability-fix
 session, Step 0." Short version: a chain of four issues, not one — wrong
@@ -59,12 +130,12 @@ this session's code" without ever getting a stack trace.
   they're the last-resort loud-logging safety net; if either gets removed
   during a refactor, a future crash goes back to being silent.
 
-## 3. SCORM testing workflow
+## 4. SCORM testing workflow
 
 Three separate terminals, one browser tab, plus a workaround step:
 
 1. **Content server**: `npm run dev:server` from repo root (port 3001 per
-   `.env`, see section 4). Must stay running.
+  `.env`, see section 5). Must stay running.
 2. **ngrok tunnel**: `ngrok http 3001` — exposes the local content server
    at a public `https://*.ngrok-free.app` URL. SCORM Cloud/Ethos needs a
    real HTTPS URL it can reach; `localhost` isn't reachable from their
@@ -126,7 +197,7 @@ real deployed domain (mnemonify.org, per the roadmap), the entire ngrok
 interstitial workaround disappears on its own — it only exists because
 local dev is being tunneled. A real deployed URL has no interstitial.
 
-## 4. Dev environment setup
+## 5. Dev environment setup
 
 PostgreSQL (local, one-time):
 ```
@@ -162,7 +233,7 @@ if that dist doesn't exist yet:
 npm run build --workspace=packages/player
 ```
 
-## 5. Where the project stands
+## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM
 integration (2), full editor + templates + media (3), player chrome +
@@ -183,7 +254,7 @@ and **any new validation/health rule** goes into the 4.5c analyzer's
 finding shape, rather than a one-off check bolted on somewhere else (Phase
 4.5c entries).
 
-## 6. Other things worth knowing
+## 7. Other things worth knowing
 
 - **Test data hygiene**: this project's shared dev course library
   accumulates a lot of one-off test courses across sessions (`Phase 3 TEST

@@ -22,7 +22,12 @@ const router = express.Router();
 // successfully -- if the UPDATE fails, this throws and the request fails
 // loudly (asyncHandler's error middleware returns 500) rather than
 // silently serving data that looks migrated but isn't actually saved.
-async function loadAndMigrateCourseRow(row) {
+//
+// Exported so index.js's /content/:courseId (the SCORM/launcher-facing
+// load path for a real authored course) can call this exact function
+// rather than reimplementing it -- one migration-on-load implementation,
+// not two that could quietly drift apart.
+export async function loadAndMigrateCourseRow(row) {
   let migrationResult;
   try {
     migrationResult = migrateCourse(row.course_json, { courseId: row.id });

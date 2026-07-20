@@ -4,12 +4,15 @@ import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import coursesRouter from './routes/courses.js';
+import coursesRouter, { loadAndMigrateCourseRow } from './routes/courses.js';
 import assetsRouter from './routes/assets.js';
 import resourcesRouter from './routes/resources.js';
 import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
 import pageTemplatesRouter from './routes/pageTemplates.js';
+import pool from './db.js';
+import { DEV_ORG_ID } from './lib/devUser.js';
+import { asyncHandler } from './lib/asyncHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // See db.js for why this must be an explicit path rather than relying on
@@ -66,14 +69,42 @@ app.use('/api', wordRouter);
 app.use('/api', pageTemplatesRouter);
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-app.get('/content/:courseId', (req, res) => {
-  const coursePath = COURSES[req.params.courseId];
-  if (!coursePath || !fs.existsSync(coursePath)) {
-    res.status(404).json({ error: `Unknown courseId "${req.params.courseId}"` });
+// Serves course content to the SCORM launcher and the player's own
+// standalone (non-preview) fetch (packages/player/src/App.jsx). Two
+// sources: the hardcoded COURSES map below (today just the Phase 2
+// "sample" fixture, unchanged from its original behavior) for a known
+// static-file courseId, and -- for anything else -- a real authored
+// course looked up from the same `courses` table the editor reads,
+// pushed through the identical load-and-migrate path GET /api/courses/:id
+// uses (loadAndMigrateCourseRow, courses.js) rather than a second,
+// divergent implementation. A course served here for SCORM testing must
+// be migrated the same way the editor opens it -- serving a raw,
+// unmigrated document would let a learner-facing session see a shape the
+// editor itself would never show an author.
+app.get('/content/:courseId', asyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+
+  const staticPath = COURSES[courseId];
+  if (staticPath) {
+    if (!fs.existsSync(staticPath)) {
+      res.status(404).json({ error: `Unknown courseId "${courseId}"` });
+      return;
+    }
+    res.type('application/json').sendFile(staticPath);
     return;
   }
-  res.type('application/json').sendFile(coursePath);
-});
+
+  const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
+    courseId,
+    DEV_ORG_ID,
+  ]);
+  if (result.rows.length === 0) {
+    res.status(404).json({ error: `No course found with id "${courseId}".` });
+    return;
+  }
+  const row = await loadAndMigrateCourseRow(result.rows[0]);
+  res.json(row.course_json);
+}));
 
 app.use('/assets', express.static(PLAYER_ASSETS_DIR));
 

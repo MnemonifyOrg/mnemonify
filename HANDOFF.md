@@ -105,18 +105,21 @@ ngrok interstitial. This is already in place; don't remove it. Permissive
 CORS (`cors({ origin: '*', ... })`) is also already set for the same
 reason.
 
-**Pointing a real course at the launcher, not the hardcoded sample —
-important gap:** `packages/launcher/build.js`'s `COURSE_ID` arg controls
-what gets baked into the zip's `config.json`, but the content server's
-`/content/:courseId` route (`packages/server/src/index.js`) currently only
-recognizes IDs present in a **hardcoded `COURSES` map** (today: just
-`{ sample: '<path to samples/sample-course.json>' }`). A real course's
-UUID from the `courses` table will 404 against this route as-is —
-`COURSE_ID=<real-uuid>` alone is **not** sufficient. Before testing a real
-course through SCORM, this route needs to be extended to look up the
-`courses` table by id (returning `course_json`) for any id not in the
-static map, the same way `/api/courses/:id` already does for the editor.
-This has not been built yet.
+**Pointing a real course at the launcher, not the hardcoded sample — resolved
+(2026-07-20):** `/content/:courseId` (`packages/server/src/index.js`) now
+serves any real course by id, not just the hardcoded sample. The static
+`COURSES` map still handles `sample` exactly as before (unchanged, for the
+original Phase 2 fixture test case); any other id is looked up in the
+`courses` table and pushed through `loadAndMigrateCourseRow`
+(`packages/server/src/routes/courses.js`) — the identical migration-on-load
+function `GET /api/courses/:id` uses for the editor, imported and reused
+rather than reimplemented, so there is exactly one load-and-migrate path,
+not two that could drift apart. A nonexistent id returns a clear 404
+instead of a silent failure. `COURSE_ID=<real-uuid>` now works end-to-end
+with `packages/launcher/build.js`. See DECISIONS.md 2026-07-20 for the live
+migration proof (a course forced back to schema_version 1 directly in the
+DB was correctly migrated to v2 and served through this route, with the
+migration write-back confirmed via a follow-up DB read).
 
 Once this content-server work exists and Phase 6 moves off ngrok to a
 real deployed domain (mnemonify.org, per the roadmap), the entire ngrok

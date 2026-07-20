@@ -9,6 +9,7 @@ import ContinueButton from './chrome/ContinueButton.jsx';
 import UtilityBar from './chrome/UtilityBar.jsx';
 import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import { configureAnalytics, track } from './engine/analytics.js';
+import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
 
 function RichTextPreview({ field }) {
@@ -70,6 +71,7 @@ export default function App() {
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const answeredRef = useRef({ total: 0, correct: 0, answeredCount: 0 });
   const completedRef = useRef(false);
+  const timelineContextRef = useRef(null);
   const pageEnterTimesRef = useRef(new Map());
 
   function trackPageEnter(pageId) {
@@ -357,7 +359,8 @@ export default function App() {
   // page being left -- that page is already mid-handling the event that
   // produced this effect, so re-entering the exit lifecycle from inside it
   // would be circular).
-  function applyEffects(effects) {
+  function applyEffects(effects, { timelineBlockId } = {}) {
+    const opensModal = effects.some((effect) => effect.action === 'OPEN_MODAL');
     effects.forEach((effect) => {
       if (effect.action === 'SHOW_BLOCK') {
         setBlockVisibility((v) => ({ ...v, [effect.target]: true }));
@@ -365,6 +368,22 @@ export default function App() {
         setBlockVisibility((v) => ({ ...v, [effect.target]: false }));
       } else if (effect.action === 'JUMP_TO_PAGE') {
         goToPage(effect.target);
+      } else if (effect.action === 'JUMP_TO_TIMESTAMP') {
+        const blockId = timelineBlockId || timelineContextRef.current?.blockId;
+        if (!blockId) return;
+        mediaManager.seek(blockId, effect.target);
+        if (timelineContextRef.current) timelineContextRef.current.resumeTimestamp = effect.target;
+        if (!opensModal && !timelineContextRef.current?.modalOpen) mediaManager.play(blockId);
+      } else if (effect.action === 'OPEN_MODAL') {
+        const block = effect.content?.block;
+        if (!block) return;
+        if (timelineContextRef.current) timelineContextRef.current.modalOpen = true;
+        setModalPayload({
+          type: effect.payload_type,
+          block,
+          assets: course?.assets || [],
+          onTrigger: handleOverlayTrigger,
+        });
       }
     });
   }
@@ -392,7 +411,14 @@ export default function App() {
   }
 
   function handleCloseModal() {
+    const timelineContext = timelineContextRef.current;
     setModalPayload(null);
+    if (timelineContext) {
+      const resumeTimestamp = timelineContext.resumeTimestamp ?? timelineContext.timestamp;
+      mediaManager.seek(timelineContext.blockId, resumeTimestamp);
+      mediaManager.play(timelineContext.blockId);
+      timelineContextRef.current = null;
+    }
   }
 
   function handleTrigger(block, eventName, eventPayload) {
@@ -411,13 +437,31 @@ export default function App() {
     }
     const result = runTriggers(variables, block.triggers, eventName);
     setVariables(result.variables);
-    applyEffects(result.effects);
+    applyEffects(result.effects, {
+      timelineBlockId: block.type === 'video' ? block.block_id : timelineContextRef.current?.blockId,
+    });
 
     if (block.type === 'knowledge-check' && (eventName === 'onCorrect' || eventName === 'onIncorrect')) {
       answeredRef.current.answeredCount += 1;
       if (eventName === 'onCorrect') answeredRef.current.correct += 1;
       evaluateCourseCompletion(course, result.variables, completedPageIds, currentPageId);
     }
+  }
+
+  function handleOverlayTrigger(block, eventName, eventPayload) {
+    handleTrigger(block, eventName, eventPayload);
+  }
+
+  function handleTimelineReached(videoBlock, timelineTrigger, timestamp) {
+    timelineContextRef.current = {
+      blockId: videoBlock.block_id,
+      timestamp,
+      resumeTimestamp: timestamp,
+    };
+    const timelineEvent = { ...timelineTrigger, event: 'onTimeReached' };
+    const result = runTriggers(variables, [...(videoBlock.triggers || []), timelineEvent], 'onTimeReached');
+    setVariables(result.variables);
+    applyEffects(result.effects, { timelineBlockId: videoBlock.block_id });
   }
 
   // Pure navigation -- sets the current page and, on mobile/tablet, closes
@@ -572,6 +616,7 @@ export default function App() {
                 block={block}
                 assets={course.assets}
                 onTrigger={handleTrigger}
+                onTimeReached={handleTimelineReached}
                 isPreview={isPreview}
                 onOpenModal={handleOpenModal}
                 blockVisibility={blockVisibility}

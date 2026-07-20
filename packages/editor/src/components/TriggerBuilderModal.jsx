@@ -14,7 +14,148 @@ function emptyAction(type, variables, pageBlocks, pages) {
   if (type === 'SHOW_BLOCK' || type === 'HIDE_BLOCK') {
     return { action: type, target: pageBlocks[0]?.block_id || '' };
   }
+  if (type === 'JUMP_TO_TIMESTAMP') {
+    return { action: 'JUMP_TO_TIMESTAMP', target: 0 };
+  }
+  if (type === 'OPEN_MODAL') {
+    return {
+      action: 'OPEN_MODAL',
+      payload_type: 'interactive_video_overlay',
+      content: {
+        block: {
+          block_id: `blk_overlay_${Date.now()}`,
+          type: 'text',
+          content: { rich_text: [{ t: 'text', v: 'Pause point' }] },
+          triggers: [],
+        },
+      },
+    };
+  }
   return { action: 'JUMP_TO_PAGE', target: pages[0]?.page_id || '' };
+}
+
+function updateOverlayBlock(action, updater) {
+  const current = action.content?.block || emptyAction('OPEN_MODAL').content.block;
+  return {
+    ...action,
+    payload_type: 'interactive_video_overlay',
+    content: { ...action.content, block: updater(current) },
+  };
+}
+
+function OverlayContentEditor({ action, onChange }) {
+  const block = action.content?.block || emptyAction('OPEN_MODAL').content.block;
+  const changeType = (type) => {
+    const next =
+      type === 'knowledge-check'
+        ? {
+            ...block,
+            type,
+            content: {
+              question: 'Question',
+              options: [
+                { id: 'opt_overlay_a', text: 'Correct answer', correct: true },
+                { id: 'opt_overlay_b', text: 'Incorrect answer', correct: false },
+              ],
+            },
+            triggers: block.triggers || [],
+          }
+        : type === 'button'
+          ? { ...block, type, content: { label: 'Continue' }, triggers: block.triggers || [] }
+          : { ...block, type: 'text', content: { rich_text: [{ t: 'text', v: 'Pause point' }] }, triggers: block.triggers || [] };
+    onChange(updateOverlayBlock(action, () => next));
+  };
+
+  return (
+    <div className="trigger-builder__overlay-editor">
+      <span className="trigger-builder__inline-label">Overlay</span>
+      <select className="input" value={block.type} onChange={(e) => changeType(e.target.value)}>
+        <option value="knowledge-check">Knowledge check</option>
+        <option value="text">Text</option>
+        <option value="button">Button</option>
+      </select>
+      {block.type === 'text' && (
+        <textarea
+          className="input"
+          rows={3}
+          value={block.content?.rich_text?.[0]?.v || ''}
+          onChange={(e) =>
+            onChange(
+              updateOverlayBlock(action, (current) => ({
+                ...current,
+                content: { rich_text: [{ t: 'text', v: e.target.value }] },
+              }))
+            )
+          }
+        />
+      )}
+      {block.type === 'button' && (
+        <input
+          className="input"
+          value={block.content?.label || ''}
+          placeholder="Button label"
+          onChange={(e) =>
+            onChange(updateOverlayBlock(action, (current) => ({ ...current, content: { label: e.target.value } })))
+          }
+        />
+      )}
+      {block.type === 'knowledge-check' && (
+        <>
+          <textarea
+            className="input"
+            rows={2}
+            value={block.content?.question || ''}
+            placeholder="Question"
+            onChange={(e) =>
+              onChange(updateOverlayBlock(action, (current) => ({ ...current, content: { ...current.content, question: e.target.value } })))
+            }
+          />
+          {(block.content?.options || []).map((option, index) => (
+            <div className="trigger-builder__overlay-option" key={option.id || index}>
+              <input
+                className="input"
+                value={option.text || ''}
+                placeholder={`Answer ${index + 1}`}
+                onChange={(e) =>
+                  onChange(
+                    updateOverlayBlock(action, (current) => ({
+                      ...current,
+                      content: {
+                        ...current.content,
+                        options: current.content.options.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, text: e.target.value } : item
+                        ),
+                      },
+                    }))
+                  )
+                }
+              />
+              <label className="settings-panel__checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={!!option.correct}
+                  onChange={(e) =>
+                    onChange(
+                      updateOverlayBlock(action, (current) => ({
+                        ...current,
+                        content: {
+                          ...current.content,
+                          options: current.content.options.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, correct: e.target.checked } : item
+                          ),
+                        },
+                      }))
+                    )
+                  }
+                />
+                Correct
+              </label>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
 }
 
 function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, onOpenVariableManager }) {
@@ -125,6 +266,22 @@ function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, o
           </select>
         ))}
 
+      {action.action === 'JUMP_TO_TIMESTAMP' && (
+        <label className="trigger-builder__inline-field">
+          <input
+            type="number"
+            className="input"
+            min={0}
+            step={0.1}
+            value={action.target}
+            onChange={(e) => onChange({ ...action, target: Number(e.target.value) })}
+          />{' '}
+          seconds
+        </label>
+      )}
+
+      {action.action === 'OPEN_MODAL' && <OverlayContentEditor action={action} onChange={onChange} />}
+
       <button type="button" className="btn-text" title="Remove action" onClick={onRemove}>
         ✕
       </button>
@@ -150,6 +307,8 @@ function isActionValid(action) {
   if (action.action === 'ADJUST_VAR') return !!action.var;
   if (action.action === 'SHOW_BLOCK' || action.action === 'HIDE_BLOCK') return !!action.target;
   if (action.action === 'JUMP_TO_PAGE') return !!action.target;
+  if (action.action === 'JUMP_TO_TIMESTAMP') return Number.isFinite(action.target) && action.target >= 0;
+  if (action.action === 'OPEN_MODAL') return action.payload_type === 'interactive_video_overlay' && !!action.content?.block;
   return false;
 }
 
@@ -171,13 +330,16 @@ export default function TriggerBuilderModal({
   onSave,
   onClose,
   onOpenVariableManager,
+  defaultActionType = 'SET_VAR',
 }) {
   const otherPageBlocks = excludeBlockId ? pageBlocks.filter((b) => b.block_id !== excludeBlockId) : pageBlocks;
 
   const [event, setEvent] = useState(existingTrigger?.event || validEvents[0]);
   const [condition, setCondition] = useState(existingTrigger?.condition || null);
   const [actions, setActions] = useState(
-    existingTrigger?.actions?.length ? existingTrigger.actions : [emptyAction('SET_VAR', variables, otherPageBlocks, pages)]
+    existingTrigger?.actions?.length
+      ? existingTrigger.actions
+      : [emptyAction(defaultActionType, variables, otherPageBlocks, pages)]
   );
 
   const canSave = !!event && actions.length > 0 && actions.every(isActionValid);

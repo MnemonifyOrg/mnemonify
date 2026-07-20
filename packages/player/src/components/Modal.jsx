@@ -74,6 +74,7 @@ export default function Modal({ payload, onClose }) {
 
   const isOverlay = payload.type === 'interactive_video_overlay';
   const PayloadComponent = isOverlay ? null : PAYLOAD_RENDERERS[payload.type];
+  const overlayBlock = payload.block;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -91,9 +92,19 @@ export default function Modal({ payload, onClose }) {
           ✕
         </button>
         {isOverlay ? (
-          payload.block ? (
+          overlayBlock?.type === 'button' ? (
             <div className="modal-payload modal-payload--overlay">
-              <BlockRenderer block={payload.block} assets={payload.assets || []} onTrigger={payload.onTrigger} />
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => payload.onTrigger?.(overlayBlock, 'onClick')}
+              >
+                {overlayBlock.content?.label || 'Continue'}
+              </button>
+            </div>
+          ) : overlayBlock ? (
+            <div className="modal-payload modal-payload--overlay">
+              <BlockRenderer block={overlayBlock} assets={payload.assets || []} onTrigger={payload.onTrigger} />
             </div>
           ) : (
             <p className="modal-payload__placeholder">No overlay content.</p>

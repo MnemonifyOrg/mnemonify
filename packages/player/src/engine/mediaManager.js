@@ -21,15 +21,64 @@
 // (the accordion's onOpen/onClose triggers fire on the accordion block as
 // a whole, not "this specific item's video"). See DECISIONS.md.
 
-const registry = new Map(); // block_id -> HTMLMediaElement
+const TIMELINE_TOLERANCE_SECONDS = 0.25;
+const registry = new Map(); // block_id -> { element, timelineTriggers, onTimeReached, ... }
 const savedPositions = new Map(); // block_id -> seconds
 let activeBlockId = null;
 
-export function register(blockId, element) {
-  registry.set(blockId, element);
+function resetFiredMarkers(entry, currentTime) {
+  entry.firedMarkers = new Set(
+    [...entry.firedMarkers].filter((triggerId) => {
+      const marker = entry.timelineTriggers.find((trigger) => trigger.trigger_id === triggerId);
+      return marker && marker.at_seconds <= currentTime + TIMELINE_TOLERANCE_SECONDS;
+    })
+  );
+}
+
+function handleTimeUpdate(blockId) {
+  const entry = registry.get(blockId);
+  if (!entry || entry.timelineTriggers.length === 0) return;
+
+  const currentTime = Number(entry.element.currentTime) || 0;
+  const previousTime = entry.lastTime;
+  if (currentTime + TIMELINE_TOLERANCE_SECONDS < previousTime) {
+    // A backward seek is a new opportunity to encounter markers that lie
+    // after the new position. Forward branches remain consumed until the
+    // learner seeks back before them.
+    resetFiredMarkers(entry, currentTime);
+  }
+  entry.lastTime = currentTime;
+  if (entry.element.paused || !entry.onTimeReached) return;
+
+  const trigger = entry.timelineTriggers.find(
+    (candidate) =>
+      !entry.firedMarkers.has(candidate.trigger_id) &&
+      previousTime < candidate.at_seconds &&
+      currentTime + TIMELINE_TOLERANCE_SECONDS >= candidate.at_seconds
+  );
+  if (!trigger) return;
+
+  entry.firedMarkers.add(trigger.trigger_id);
+  entry.element.pause();
+  entry.onTimeReached(trigger, currentTime);
+}
+
+export function register(blockId, element, { timelineTriggers = [], onTimeReached } = {}) {
+  const entry = {
+    element,
+    timelineTriggers: [...timelineTriggers].sort((a, b) => a.at_seconds - b.at_seconds),
+    onTimeReached,
+    firedMarkers: new Set(),
+    lastTime: Number(element.currentTime) || 0,
+  };
+  entry.handleTimeUpdate = () => handleTimeUpdate(blockId);
+  element.addEventListener('timeupdate', entry.handleTimeUpdate);
+  registry.set(blockId, entry);
 }
 
 export function unregister(blockId) {
+  const entry = registry.get(blockId);
+  if (entry) entry.element.removeEventListener('timeupdate', entry.handleTimeUpdate);
   registry.delete(blockId);
   if (activeBlockId === blockId) activeBlockId = null;
 }
@@ -40,7 +89,7 @@ export function unregister(blockId) {
 // its own (e.g. reached the end) between events.
 export function notifyPlaying(blockId) {
   if (activeBlockId && activeBlockId !== blockId) {
-    const other = registry.get(activeBlockId);
+    const other = registry.get(activeBlockId)?.element;
     if (other && !other.paused) other.pause();
   }
   activeBlockId = blockId;
@@ -61,3 +110,25 @@ export function savePosition(blockId, time) {
 export function getSavedPosition(blockId) {
   return savedPositions.get(blockId) || 0;
 }
+
+export function getCurrentTime(blockId) {
+  return Number(registry.get(blockId)?.element.currentTime) || 0;
+}
+
+export function seek(blockId, seconds) {
+  const entry = registry.get(blockId);
+  if (!entry) return;
+  const nextTime = Math.max(0, Number(seconds) || 0);
+  entry.element.currentTime = nextTime;
+  entry.lastTime = nextTime;
+  resetFiredMarkers(entry, nextTime);
+}
+
+export function play(blockId) {
+  const element = registry.get(blockId)?.element;
+  if (!element) return;
+  const result = element.play();
+  result?.catch?.(() => {});
+}
+
+export { TIMELINE_TOLERANCE_SECONDS };

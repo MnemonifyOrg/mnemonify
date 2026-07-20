@@ -4,7 +4,7 @@ import BlockRenderer from './BlockRenderer.jsx';
 // 3.6). Below 768px the grid collapses to a single column and the left slot
 // stacks above the right slot (player.css), matching print/PDF rendering,
 // which uses the same single-column layout unconditionally.
-export default function TwoColumnBlock({ block, assets, onTrigger, onOpenModal, blockVisibility, variables }) {
+export default function TwoColumnBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables }) {
   const split = block.layout?.split ?? 40;
 
   return (
@@ -14,12 +14,12 @@ export default function TwoColumnBlock({ block, assets, onTrigger, onOpenModal, 
     >
       <div className="block-two-column__slot block-two-column__slot--left">
         {block.left && (
-          <BlockRenderer block={block.left} assets={assets} onTrigger={onTrigger} onOpenModal={onOpenModal} blockVisibility={blockVisibility} variables={variables} />
+          <BlockRenderer block={block.left} assets={assets} onTrigger={onTrigger} onTimeReached={onTimeReached} onOpenModal={onOpenModal} blockVisibility={blockVisibility} variables={variables} />
         )}
       </div>
       <div className="block-two-column__slot block-two-column__slot--right">
         {block.right && (
-          <BlockRenderer block={block.right} assets={assets} onTrigger={onTrigger} onOpenModal={onOpenModal} blockVisibility={blockVisibility} variables={variables} />
+          <BlockRenderer block={block.right} assets={assets} onTrigger={onTrigger} onTimeReached={onTimeReached} onOpenModal={onOpenModal} blockVisibility={blockVisibility} variables={variables} />
         )}
       </div>
     </div>

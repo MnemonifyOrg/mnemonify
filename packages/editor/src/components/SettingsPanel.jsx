@@ -392,7 +392,16 @@ export default function SettingsPanel({
       <div className="settings-panel__section">
         <h3>{BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} Settings</h3>
         {groups.basic.includes('content') && SettingsFields ? (
-          <SettingsFields block={selectedBlock} assets={assets} onChange={onChangeBlock} onUpdateCourseAsset={onUpdateCourseAsset} />
+          <SettingsFields
+            block={selectedBlock}
+            assets={assets}
+            pageBlocks={page?.blocks || []}
+            pages={pages}
+            variables={variables}
+            onChange={onChangeBlock}
+            onUpdateCourseAsset={onUpdateCourseAsset}
+            onOpenVariableManager={onOpenVariableManager}
+          />
         ) : (
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}

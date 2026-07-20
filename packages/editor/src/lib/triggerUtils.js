@@ -16,12 +16,9 @@ import { BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 // dedicated page.triggers array (added in Part 1 for the same reason) and
 // a single "this page was entered/exited" concept is clearer than the
 // same event duplicated on every block on the page. See DECISIONS.md.
-// `button` doesn't exist in this codebase yet (Phase 5+), so its events
-// are not represented here. video/audio (Phase 4 Part 3) get only
-// `onComplete` ("this finishes playing") -- onPlay/onPause exist in
-// ARCHITECTURE.md 4's event list but have no author-facing use case in
-// Part 3's minimal media block scope (no interactive-video/timeline work),
-// so they're deliberately left out here, same as onTimeReached.
+// `button` is an overlay-only content shape for interactive video; it is not
+// a standalone course block. Video additionally exposes onTimeReached now
+// that Phase 5 timeline triggers are authorable.
 export const EVENTS_BY_BLOCK_TYPE = Object.fromEntries(
   Object.values(BLOCK_REGISTRY).map((def) => [def.type, def.validEvents])
 );
@@ -36,6 +33,7 @@ export const EVENT_LABELS = {
   onClick: 'this is clicked',
   onPageEnter: 'the learner enters this page',
   onPageExit: 'the learner leaves this page',
+  onTimeReached: 'the video reaches a pause point',
 };
 
 // onComplete means something different depending on which block type owns
@@ -50,12 +48,15 @@ export function eventLabelFor(event, blockType) {
   return EVENT_LABELS[event] || event;
 }
 
-// Action types with Part 2 authoring UI. OPEN_MODAL, ENABLE_BLOCK,
-// DISABLE_BLOCK, SET_STATE, SCORM_COMPLETE, SCORM_SET_SCORE are valid per
-// the schema (built ahead of their UI, same pattern as Phase 3.5's schema
-// hooks) but have no author-facing use case yet in this codebase -- see
-// DECISIONS.md.
-export const ACTION_TYPES = ['SET_VAR', 'ADJUST_VAR', 'SHOW_BLOCK', 'HIDE_BLOCK', 'JUMP_TO_PAGE'];
+export const ACTION_TYPES = [
+  'SET_VAR',
+  'ADJUST_VAR',
+  'SHOW_BLOCK',
+  'HIDE_BLOCK',
+  'JUMP_TO_PAGE',
+  'JUMP_TO_TIMESTAMP',
+  'OPEN_MODAL',
+];
 
 export const ACTION_LABELS = {
   SET_VAR: 'Set a variable',
@@ -63,6 +64,8 @@ export const ACTION_LABELS = {
   SHOW_BLOCK: 'Show a block',
   HIDE_BLOCK: 'Hide a block',
   JUMP_TO_PAGE: 'Jump to a page',
+  JUMP_TO_TIMESTAMP: 'Jump to a video timestamp',
+  OPEN_MODAL: 'Open an interactive video overlay',
 };
 
 export const COMPARISON_LABELS = {

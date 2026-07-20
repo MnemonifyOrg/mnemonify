@@ -48,7 +48,7 @@ if (import.meta.env?.DEV) {
   }
 }
 
-export default function BlockRenderer({ block, assets, onTrigger, isPreview, onOpenModal, blockVisibility, variables }) {
+export default function BlockRenderer({ block, assets, onTrigger, onTimeReached, isPreview, onOpenModal, blockVisibility, variables }) {
   // block.faculty_notes is intentionally never passed to any block
   // component below, in any context (SCORM, standalone, preview, review).
   // It is editor/instructor-only content (ARCHITECTURE.md 3.8) -- the
@@ -84,6 +84,7 @@ export default function BlockRenderer({ block, assets, onTrigger, isPreview, onO
       block={block}
       assets={assets}
       onTrigger={onTrigger}
+      onTimeReached={onTimeReached}
       isPreview={isPreview}
       onOpenModal={onOpenModal}
       blockVisibility={blockVisibility}

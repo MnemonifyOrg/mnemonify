@@ -270,7 +270,44 @@
                       "autoplay": false,
                       "loop": false
                     },
-                    "triggers": []
+                    "triggers": [],
+                    "timeline_triggers": [
+                      {
+                        "trigger_id": "trg_video01_pause_5s",
+                        "at_seconds": 5,
+                        "actions": [
+                          {
+                            "action": "OPEN_MODAL",
+                            "payload_type": "interactive_video_overlay",
+                            "content": {
+                              "block": {
+                                "block_id": "blk_video01_overlay_kc",
+                                "type": "knowledge-check",
+                                "content": {
+                                  "question": "Which margin action should happen next?",
+                                  "options": [
+                                    { "id": "opt_overlay_correct", "text": "Re-excise the involved margin", "correct": true },
+                                    { "id": "opt_overlay_incorrect", "text": "Take no further action", "correct": false }
+                                  ]
+                                },
+                                "triggers": [
+                                  {
+                                    "trigger_id": "trg_video01_overlay_correct",
+                                    "event": "onCorrect",
+                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 10 }]
+                                  },
+                                  {
+                                    "trigger_id": "trg_video01_overlay_incorrect",
+                                    "event": "onIncorrect",
+                                    "actions": [{ "action": "JUMP_TO_TIMESTAMP", "target": 2 }]
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ],
                 "item_id": "itm_smp01"

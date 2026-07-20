@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function AccordionBlock({ block, assets, onTrigger, onOpenModal, blockVisibility, variables }) {
+export default function AccordionBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables }) {
   const [openIndex, setOpenIndex] = useState(null);
 
   function toggle(index) {
@@ -45,6 +45,7 @@ export default function AccordionBlock({ block, assets, onTrigger, onOpenModal, 
                     block={childBlock}
                     assets={assets}
                     onTrigger={onTrigger}
+                    onTimeReached={onTimeReached}
                     onOpenModal={onOpenModal}
                     blockVisibility={blockVisibility}
                     variables={variables}

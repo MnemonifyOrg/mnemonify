@@ -1,4 +1,5 @@
 import { useMediaUpload } from './useMediaUpload.js';
+import TimelineTriggersSection from '../TimelineTriggersSection.jsx';
 
 export default function VideoBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
@@ -32,7 +33,7 @@ export default function VideoBlockEditor({ block, assets, onChange, courseId, on
   );
 }
 
-export function VideoBlockSettings({ block, onChange }) {
+export function VideoBlockSettings({ block, onChange, pageBlocks, pages, variables, onOpenVariableManager }) {
   // Autoplay/loop are discrete toggles, not continuous typing -- each
   // click is its own forced undo/redo snapshot (same pattern as
   // ImageBlockSettings' size/alignment buttons).
@@ -50,6 +51,14 @@ export function VideoBlockSettings({ block, onChange }) {
         <input type="checkbox" checked={!!block.content.loop} onChange={() => toggle('loop')} />
         Loop
       </label>
+      <TimelineTriggersSection
+        block={block}
+        pageBlocks={pageBlocks}
+        pages={pages}
+        variables={variables}
+        onChangeBlock={onChange}
+        onOpenVariableManager={onOpenVariableManager}
+      />
     </>
   );
 }

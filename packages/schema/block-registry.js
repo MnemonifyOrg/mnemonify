@@ -172,7 +172,7 @@ export const BLOCK_REGISTRY = {
     type: 'video',
     displayName: 'Video',
     category: 'Media',
-    validEvents: ['onComplete'],
+    validEvents: ['onComplete', 'onTimeReached'],
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,

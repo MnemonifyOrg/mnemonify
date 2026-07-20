@@ -6,7 +6,7 @@ import { track } from '../engine/analytics.js';
 // aware position save/restore, one-active-media notifications, and the
 // onComplete trigger are identical for both; only the scroll-pause
 // behavior (AudioBlock only, ARCHITECTURE.md 6) and markup differ.
-export function useMediaBlock(block, onTrigger) {
+export function useMediaBlock(block, onTrigger, onTimeReached) {
   const mediaRef = useRef(null);
   const [muted, setMuted] = useState(!!block.content.autoplay);
 
@@ -18,7 +18,10 @@ export function useMediaBlock(block, onTrigger) {
   useEffect(() => {
     const el = mediaRef.current;
     if (!el) return;
-    mediaManager.register(block.block_id, el);
+    mediaManager.register(block.block_id, el, {
+      timelineTriggers: block.type === 'video' ? block.timeline_triggers || [] : [],
+      onTimeReached: block.type === 'video' ? onTimeReached : undefined,
+    });
 
     const savedTime = mediaManager.getSavedPosition(block.block_id);
     if (savedTime > 0) {

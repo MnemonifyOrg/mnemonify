@@ -3,9 +3,9 @@ import { useMediaBlock } from './useMediaBlock.js';
 // Minimal video block (Phase 4 Part 3 -- ARCHITECTURE.md Section 6). Native
 // HTML5 controls only, no custom scrubber. Captions/transcripts/timeline
 // triggers are explicitly Phase 5 scope, not built here -- see DECISIONS.md.
-export default function VideoBlock({ block, assets, onTrigger }) {
+export default function VideoBlock({ block, assets, onTrigger, onTimeReached }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
-  const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger);
+  const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger, onTimeReached);
 
   if (!asset) {
     return (

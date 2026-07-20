@@ -3,7 +3,8 @@
   Pure functions: given (state, event) -> (new state, effects), per the rule
   documented in ARCHITECTURE.md 4. Phase 1 fully implemented SET_VAR /
   ADJUST_VAR, which mutate `variables` directly. Phase 4 Part 2 adds
-  SHOW_BLOCK / HIDE_BLOCK / JUMP_TO_PAGE, which do NOT mutate `variables` --
+  SHOW_BLOCK / HIDE_BLOCK / JUMP_TO_PAGE / JUMP_TO_TIMESTAMP / OPEN_MODAL,
+  which do NOT mutate `variables` --
   block visibility and page navigation are separate pieces of runtime state
   the player owns (App.jsx's blockVisibility map and currentPageId), so
   these are returned as `effects` for the caller to apply, rather than
@@ -15,7 +16,7 @@
 */
 
 const VARIABLE_ACTIONS = new Set(['SET_VAR', 'ADJUST_VAR']);
-const EFFECT_ACTIONS = new Set(['SHOW_BLOCK', 'HIDE_BLOCK', 'JUMP_TO_PAGE']);
+const EFFECT_ACTIONS = new Set(['SHOW_BLOCK', 'HIDE_BLOCK', 'JUMP_TO_PAGE', 'JUMP_TO_TIMESTAMP', 'OPEN_MODAL']);
 const IMPLEMENTED_ACTIONS = new Set([...VARIABLE_ACTIONS, ...EFFECT_ACTIONS]);
 
 export function evaluateCondition(condition, variables) {

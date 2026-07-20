@@ -162,6 +162,10 @@ async function getValue(key) {
   return '';
 }
 
+async function getLearnerId() {
+  return getValue('cmi.learner_id');
+}
+
 async function setValue(key, value) {
   if (mode === 'direct') {
     const result = directApi.SetValue(key, value);
@@ -297,6 +301,7 @@ function getSessionTime() {
 const scorm2004 = {
   initialize,
   getValue,
+  getLearnerId,
   setValue,
   commit,
   terminate,

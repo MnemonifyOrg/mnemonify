@@ -8,6 +8,7 @@ import NavDrawer from './chrome/NavDrawer.jsx';
 import ContinueButton from './chrome/ContinueButton.jsx';
 import UtilityBar from './chrome/UtilityBar.jsx';
 import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
+import { configureAnalytics, track } from './engine/analytics.js';
 import scorm2004 from './lms/scorm2004.js';
 
 function RichTextPreview({ field }) {
@@ -86,6 +87,7 @@ export default function App() {
     if (!isComplete) return;
 
     completedRef.current = true;
+    track('course_complete', { pageId: currentPageIdArg });
     await scorm2004.setSuspendData({
       variables: variablesArg,
       pageId: currentPageIdArg,
@@ -115,6 +117,7 @@ export default function App() {
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
+      let learnerId = null;
 
       try {
         if (isPreview) {
@@ -141,6 +144,7 @@ export default function App() {
             if (cancelled) return;
 
             const suspend = await scorm2004.getSuspendData();
+            learnerId = await scorm2004.getLearnerId();
             restoredVariables = suspend.variables || initialVariables(loadedCourse);
             restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
             restoredCompletedPageIds = suspend.completedPageIds || [];
@@ -176,6 +180,11 @@ export default function App() {
       }
 
       if (cancelled) return;
+      await configureAnalytics({
+        courseId: isPreview ? null : loadedCourse.meta.course_id,
+        courseVersion: params.get('versionId'),
+        learnerId,
+      });
       setIsScorm(scormAvailable);
       answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
       setVariables(restoredVariables);
@@ -303,6 +312,7 @@ export default function App() {
     setVariables(result.variables);
     applyEffects(result.effects);
     setVisitedPageIds((prev) => (prev.includes(currentPageId) ? prev : [...prev, currentPageId]));
+    track('page_enter', { pageId: currentPageId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPageId, course]);
 
@@ -352,6 +362,15 @@ export default function App() {
   }
 
   function handleTrigger(block, eventName) {
+    if (block.type === 'knowledge-check' && eventName === 'onComplete') {
+      track('knowledge_check_attempt', { pageId: currentPageId, blockId: block.block_id });
+    } else if (eventName === 'onOpen' || eventName === 'onClose' || eventName === 'onClick') {
+      track('block_interaction', {
+        pageId: currentPageId,
+        blockId: block.block_id,
+        payload: { event: eventName },
+      });
+    }
     const result = runTriggers(variables, block.triggers, eventName);
     setVariables(result.variables);
     applyEffects(result.effects);
@@ -393,6 +412,7 @@ export default function App() {
     if (getPageStatus(pageId) === 'locked') return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
+      track('page_exit', { pageId: currentPageId });
       const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
       setVariables(result.variables);
       applyEffects(result.effects);
@@ -412,6 +432,7 @@ export default function App() {
     if (!targetPage) return;
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
+      track('page_exit', { pageId: currentPageId });
       const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
       setVariables(result.variables);
       applyEffects(result.effects);
@@ -426,6 +447,11 @@ export default function App() {
       ? completedPageIds
       : [...completedPageIds, currentPageId];
     setCompletedPageIds(nextCompletedPageIds);
+    track('page_exit', { pageId: currentPageId });
+    track('continue_clicked', {
+      pageId: currentPageId,
+      payload: { conditions_met: !continueDisabled },
+    });
     const result = runTriggers(variables, currentPage.triggers, 'onPageExit');
     setVariables(result.variables);
     applyEffects(result.effects);

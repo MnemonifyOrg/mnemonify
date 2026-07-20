@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node src/index.js",
-    "migrate": "node src/migrate.js"
+    "migrate": "node src/migrate.js",
+    "test": "node --test src/lib/*.test.js"
   },
   "dependencies": {
     "@mnemonify/schema": "*",

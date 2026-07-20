@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as mediaManager from '../engine/mediaManager.js';
+import { track } from '../engine/analytics.js';
 
 // Shared by VideoBlock.jsx and AudioBlock.jsx -- registration, container-
 // aware position save/restore, one-active-media notifications, and the
@@ -41,12 +42,15 @@ export function useMediaBlock(block, onTrigger) {
 
   function handlePlay() {
     mediaManager.notifyPlaying(block.block_id);
+    track('media_play', { blockId: block.block_id });
   }
   function handlePause() {
     mediaManager.notifyStopped(block.block_id);
+    track('media_pause', { blockId: block.block_id });
   }
   function handleEnded() {
     mediaManager.notifyStopped(block.block_id);
+    track('media_complete', { blockId: block.block_id });
     onTrigger?.(block, 'onComplete');
   }
   function unmute() {

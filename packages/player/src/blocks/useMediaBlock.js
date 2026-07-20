@@ -20,7 +20,14 @@ export function useMediaBlock(block, onTrigger, onTimeReached) {
     if (!el) return;
     mediaManager.register(block.block_id, el, {
       timelineTriggers: block.type === 'video' ? block.timeline_triggers || [] : [],
-      onTimeReached: block.type === 'video' ? onTimeReached : undefined,
+      // mediaManager reports (trigger, timestamp); App's timeline handler
+      // also needs the owning video block to run its triggers and resolve
+      // timestamp actions. Keep that adaptation at the media-block boundary
+      // so the manager stays reusable and block-agnostic.
+      onTimeReached:
+        block.type === 'video' && onTimeReached
+          ? (trigger, timestamp) => onTimeReached(block, trigger, timestamp)
+          : undefined,
     });
 
     const savedTime = mediaManager.getSavedPosition(block.block_id);

@@ -70,8 +70,8 @@ const STEPS = [
     // Publish/Undo). Both steps now target that one button rather than
     // their own former standalone buttons -- see DECISIONS.md.
     target: '[data-tour="more-tools"]',
-    title: 'Media library',
-    body: 'Open More tools to find the Media Library — upload images one at a time or in bulk (even as a ZIP), then reuse them across blocks like the image carousel.',
+    title: 'Image library',
+    body: 'Open More tools to find the Image Library — upload images one at a time or in bulk (even as a ZIP), then reuse them across blocks like the image carousel.',
   },
   {
     target: '[data-tour="more-tools"]',

@@ -899,7 +899,7 @@ export default function CourseEditor() {
         <MoreToolsMenu
           dataTour="more-tools"
           items={[
-            { label: 'Media Library', onClick: () => setShowMediaLibrary(true) },
+            { label: 'Image Library', onClick: () => setShowMediaLibrary(true) },
             { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
             { label: 'Export Worksheet', onClick: handleExportWorksheet },
             course.is_template && {

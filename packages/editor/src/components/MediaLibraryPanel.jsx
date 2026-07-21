@@ -112,7 +112,7 @@ export default function MediaLibraryPanel({
     <div className="media-library-overlay" onClick={onClose}>
       <div className="media-library-panel" onClick={(e) => e.stopPropagation()}>
         <div className="media-library-panel__header">
-          <h2>Media Library</h2>
+          <h2>Image Library</h2>
           <button className="btn-text" onClick={onClose}>
             ✕
           </button>

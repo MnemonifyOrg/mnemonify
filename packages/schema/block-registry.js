@@ -186,6 +186,42 @@ export const BLOCK_REGISTRY = {
     includeInPdfDefault: false,
     hasSettings: true,
   },
+  flashcards: {
+    type: 'flashcards',
+    displayName: 'Flashcards',
+    category: 'Interactive',
+    validEvents: [],
+    canContainBlocks: false,
+    includeInPdfDefault: true,
+    hasSettings: false,
+  },
+  matching: {
+    type: 'matching',
+    displayName: 'Matching',
+    category: 'Interactive',
+    validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    canContainBlocks: false,
+    includeInPdfDefault: false,
+    hasSettings: true,
+  },
+  ordering: {
+    type: 'ordering',
+    displayName: 'Ordering',
+    category: 'Interactive',
+    validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    canContainBlocks: false,
+    includeInPdfDefault: false,
+    hasSettings: false,
+  },
+  hotspot: {
+    type: 'hotspot',
+    displayName: 'Image Hotspot',
+    category: 'Interactive',
+    validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    canContainBlocks: false,
+    includeInPdfDefault: false,
+    hasSettings: true,
+  },
 };
 
 // Backfill settingsGroups onto every entry from its own hasSettings/

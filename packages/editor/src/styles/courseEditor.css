@@ -921,6 +921,17 @@
 }
 
 /* Media library */
+.flashcards-editor__card, .hotspot-editor__row { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3); }
+.flashcards-editor__card-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.flashcards-editor__card-header span { flex: 1; }
+.flashcards-editor__side { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.flashcards-editor__image { max-width: 10rem; max-height: 6rem; object-fit: contain; }
+.matching-editor__row, .ordering-editor__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 1fr) auto auto auto; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.ordering-editor__row { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+.hotspot-editor__canvas { position: relative; line-height: 0; cursor: crosshair; user-select: none; }
+.hotspot-editor__canvas img { display: block; width: 100%; height: auto; }
+.hotspot-editor__region { position: absolute; border: 2px solid var(--color-primary); background: color-mix(in srgb, var(--color-primary) 15%, transparent); font-size: var(--text-xs); line-height: normal; }
+.hotspot-editor__region--draft { border-style: dashed; }
 .media-library-overlay {
   position: fixed;
   inset: 0;

@@ -1,4 +1,4 @@
-import { genBlockId, genCourseId, genPageId, genOptionId, genItemId } from './idGen.js';
+import { genBlockId, genCourseId, genPageId, genOptionId, genItemId, genCardId, genMatchingPromptId, genMatchingOptionId, genOrderingItemId } from './idGen.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY, getBlockDefinition } from '@mnemonify/schema/block-registry.js';
 
 // Default content shapes per block type, matching the Phase 1 content
@@ -69,6 +69,14 @@ function defaultContent(type) {
       // Media content stays small; captions/transcripts are asset-linked in
       // the server-side captions table and timeline triggers live on video.
       return { asset_id: null, autoplay: false, loop: false };
+    case 'flashcards':
+      return { cards: [{ card_id: genCardId(), front: { rich_text: [{ t: 'text', v: '' }], image_id: null }, back: { rich_text: [{ t: 'text', v: '' }], image_id: null } }] };
+    case 'matching':
+      return { prompts: [{ prompt_id: genMatchingPromptId(), text: '', correct_option_id: '' }], options: [{ option_id: genMatchingOptionId(), text: '' }, { option_id: genMatchingOptionId(), text: '' }], allow_retry: true };
+    case 'ordering':
+      return { items: [{ item_id: genOrderingItemId(), text: '', correct_position: 0 }, { item_id: genOrderingItemId(), text: '', correct_position: 1 }] };
+    case 'hotspot':
+      return { image_asset_id: null, mode: 'exploratory', regions: [] };
     case 'two_column':
       return {};
     default:

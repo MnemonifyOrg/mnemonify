@@ -279,6 +279,29 @@ export function ruleImageMissingAlt(course) {
   return findings;
 }
 
+// Hotspot regions are image content too: the base image needs the same alt
+// text treatment as a standalone image block. Region labels are revealed by
+// the controls themselves and do not replace the image's accessible name.
+export function ruleHotspotImageMissingAlt(course) {
+  const assetsById = new Map((course.assets || []).map((a) => [a.asset_id, a]));
+  const findings = [];
+  for (const { block, page } of collectAllBlocks(course)) {
+    if (block.type !== 'hotspot' || !block.content?.image_asset_id) continue;
+    const asset = assetsById.get(block.content.image_asset_id);
+    if (asset && !asset.alt?.trim()) {
+      findings.push({
+        ruleId: 'a11y.hotspot_image_alt_missing',
+        severity: 'warning',
+        message: `${labelFor(block, page)} has a hotspot image with no alt text.`,
+        entityType: 'block',
+        entityId: block.block_id,
+        location: blockLocation(page, block),
+      });
+    }
+  }
+  return findings;
+}
+
 // Rule 9: a carousel block contains an image with no alt text.
 export function ruleCarouselImageMissingAlt(course) {
   const assetsById = new Map((course.assets || []).map((a) => [a.asset_id, a]));
@@ -542,6 +565,7 @@ export const RULES = [
   ruleBrokenAssetReferences,
   rulePageGroupMissingPage,
   ruleImageMissingAlt,
+  ruleHotspotImageMissingAlt,
   ruleCarouselImageMissingAlt,
   ruleVideoMissingCaptions,
   ruleVideoCaptionsUnreviewed,

@@ -106,6 +106,11 @@ function walkBlockAssetRefs(block, owner, index) {
   if (content.question_image_id) addEdge(index, content.question_image_id, { ...owner, referenceType: 'block_uses_asset' });
   if (content.correct_feedback_image_id) addEdge(index, content.correct_feedback_image_id, { ...owner, referenceType: 'block_uses_asset' });
   if (content.incorrect_feedback_image_id) addEdge(index, content.incorrect_feedback_image_id, { ...owner, referenceType: 'block_uses_asset' });
+  if (content.image_asset_id) addEdge(index, content.image_asset_id, { ...owner, referenceType: 'block_uses_asset' });
+  for (const card of content.cards || []) {
+    if (card.front?.image_id) addEdge(index, card.front.image_id, { ...owner, referenceType: 'block_uses_asset' });
+    if (card.back?.image_id) addEdge(index, card.back.image_id, { ...owner, referenceType: 'block_uses_asset' });
+  }
   for (const option of content.options || []) {
     if (option.image_id) addEdge(index, option.image_id, { ...owner, referenceType: 'block_uses_asset' });
     if (option.feedback?.image_id) addEdge(index, option.feedback.image_id, { ...owner, referenceType: 'block_uses_asset' });

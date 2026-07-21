@@ -17,3 +17,8 @@ export const genVariableId = () => `var_${shortId()}`;
 export const genObjectiveId = () => `obj_${shortId()}`;
 export const genConceptId = () => `cpt_${shortId()}`;
 export const genGroupId = () => `grp_${shortId()}`;
+export const genCardId = () => `crd_${shortId()}`;
+export const genMatchingPromptId = () => `mp_${shortId()}`;
+export const genMatchingOptionId = () => `mo_${shortId()}`;
+export const genOrderingItemId = () => `ord_${shortId()}`;
+export const genHotspotRegionId = () => `hs_${shortId()}`;

@@ -12,6 +12,10 @@ import EmbedBlock from './EmbedBlock.jsx';
 import CarouselBlock from './CarouselBlock.jsx';
 import VideoBlock from './VideoBlock.jsx';
 import AudioBlock from './AudioBlock.jsx';
+import FlashcardsBlock from './FlashcardsBlock.jsx';
+import MatchingBlock from './MatchingBlock.jsx';
+import OrderingBlock from './OrderingBlock.jsx';
+import HotspotBlock from './HotspotBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
@@ -35,6 +39,10 @@ const REGISTRY = {
   carousel: CarouselBlock,
   video: VideoBlock,
   audio: AudioBlock,
+  flashcards: FlashcardsBlock,
+  matching: MatchingBlock,
+  ordering: OrderingBlock,
+  hotspot: HotspotBlock,
 };
 
 // Dev-time completeness check (Phase 4.5b) -- same purpose as the

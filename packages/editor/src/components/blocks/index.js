@@ -12,6 +12,10 @@ import TableBlockEditor from './TableBlock.jsx';
 import EmbedBlockEditor from './EmbedBlock.jsx';
 import VideoBlockEditor from './VideoBlock.jsx';
 import AudioBlockEditor from './AudioBlock.jsx';
+import FlashcardsBlockEditor from './FlashcardsBlock.jsx';
+import MatchingBlockEditor from './MatchingBlock.jsx';
+import OrderingBlockEditor from './OrderingBlock.jsx';
+import HotspotBlockEditor from './HotspotBlock.jsx';
 import { BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
 
 // block-type -> editor component. Component references can't live in the
@@ -36,6 +40,10 @@ export const BLOCK_EDITORS = {
   embed: EmbedBlockEditor,
   video: VideoBlockEditor,
   audio: AudioBlockEditor,
+  flashcards: FlashcardsBlockEditor,
+  matching: MatchingBlockEditor,
+  ordering: OrderingBlockEditor,
+  hotspot: HotspotBlockEditor,
 };
 
 // Dev-time completeness check (Phase 4.5b): the exact bug class this

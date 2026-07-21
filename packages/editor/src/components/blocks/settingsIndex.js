@@ -6,6 +6,8 @@ import { TwoColumnBlockSettings } from './TwoColumnBlock.jsx';
 import { TableBlockSettings } from './TableBlock.jsx';
 import { VideoBlockSettings } from './VideoBlock.jsx';
 import { AudioBlockSettings } from './AudioBlock.jsx';
+import { MatchingBlockSettings } from './MatchingBlock.jsx';
+import { HotspotBlockSettings } from './HotspotBlock.jsx';
 
 // block-type -> settings-panel component (right panel, shown when that
 // block is selected). Types without extra settings simply have no entry.
@@ -18,4 +20,6 @@ export const BLOCK_SETTINGS = {
   table: TableBlockSettings,
   video: VideoBlockSettings,
   audio: AudioBlockSettings,
+  matching: MatchingBlockSettings,
+  hotspot: HotspotBlockSettings,
 };

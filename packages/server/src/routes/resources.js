@@ -94,8 +94,16 @@ export async function upsertGeneratedResource({ courseId, filename, filePath, la
 
 router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
   const result = await pool.query(
-    `SELECT resource_id, filename, file_path, label, size_bytes, created_at AS uploaded_at, source, resource_kind
-     FROM resources WHERE course_id = $1 AND organisation_id = $2 ORDER BY created_at ASC`,
+    `SELECT r.resource_id, r.filename, r.file_path, r.label, r.size_bytes, r.created_at AS uploaded_at, r.source, r.resource_kind
+     FROM resources r
+     JOIN courses c ON c.id = r.course_id
+     WHERE r.course_id = $1
+       AND r.organisation_id = $2
+       AND (
+         r.source <> 'generated'
+         OR COALESCE((c.course_json->'meta'->'pdf_settings'->>'enabled')::boolean, true)
+       )
+     ORDER BY r.created_at ASC`,
     [req.params.courseId, DEV_ORG_ID]
   );
   res.json(result.rows.map((row) => ({ ...row, size_bytes: Number(row.size_bytes) })));

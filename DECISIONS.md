@@ -160,3 +160,4 @@ Format: Date | Decision | Reason
 - Upload mnemonify-sample-launcher.zip to Ethos UAT when site is restored
 - Confirm course loads, completes, and reports score correctly
 - Document any Ethos-specific quirks in DECISIONS.md
+2026-07-20 | Phase 5 PDF verification: found and fixed artifact cross-deletion between standard and worksheet jobs. The worksheet pipeline reused a cleanup query that deleted every generated resource kind before rendering, so starting an asynchronous worksheet export removed an already-published combined PDF and page PDFs from both the database and Resources modal. The root cause was cleanup being scoped to `source = 'generated'` but not to the artifact kinds owned by the current job. Cleanup now replaces only `worksheet_pdf` for worksheet jobs and only `combined_pdf`/`page_pdf` for standard jobs, allowing the two asynchronous pipelines to coexist without stale duplicates.

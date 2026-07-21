@@ -58,7 +58,11 @@ export async function generateCoursePdfs(courseId, { worksheet = false } = {}) {
   const settings = course.course_json.meta?.pdf_settings || {};
   if (!worksheet && settings.enabled === false) return { skipped: true };
   const mode = worksheet ? 'combined' : (settings.mode || 'both');
-  await pool.query(`DELETE FROM resources WHERE course_id = $1 AND source = 'generated' AND resource_kind IN ('combined_pdf', 'page_pdf', 'worksheet_pdf')`, [courseId]);
+  const kindsToReplace = worksheet ? ['worksheet_pdf'] : ['combined_pdf', 'page_pdf'];
+  await pool.query(
+    `DELETE FROM resources WHERE course_id = $1 AND source = 'generated' AND resource_kind = ANY($2::text[])`,
+    [courseId, kindsToReplace],
+  );
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   try {
     const pages = course.course_json.pages || [];

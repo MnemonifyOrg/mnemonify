@@ -406,6 +406,72 @@ Player: items render in shuffled order at load; Submit compares final positions 
 
 All four block types plug into the existing trigger engine, media manager (n/a for these), and design system without any new engine capability — they are new block types in the registry (Phase 4.5b), not new architectural concepts.
 
+### 3.12 Scoring, publish settings, system variables, interpolation, question banks (Phase 5.5)
+
+**Course-level publish settings** (course.meta.publish_settings):
+
+```json
+"publish_settings": {
+  "completion_criteria": "viewed_all_pages",
+  "report_status_as": "both",
+  "success_enabled": true,
+  "passing_score_pct": 80
+}
+```
+
+- `completion_criteria`: `"viewed_all_pages"` | `"passed_assessment"` | `"either"`
+- `report_status_as`: `"completion_only"` | `"success_only"` | `"both"` — maps directly to whether cmi.completion_status, cmi.success_status, or both are meaningfully set at course end (Phase 2's SCORM module already sets both fields when available; this setting controls whether success_status is computed at all, or left as `"unknown"`)
+- `success_enabled` / `passing_score_pct`: only meaningful if at least one Scored interaction exists in the course; if none exist, success/passing simply doesn't apply regardless of this setting, and the SCORM module reports completion_status only
+
+**Scored flag on interaction blocks:** knowledge_check, matching, ordering, and hotspot (quiz mode) content objects all gain:
+
+```json
+"scored": true
+```
+
+Default `true` (matches existing implicit behavior for knowledge_check pre-Phase-5.5). When `false`: the block still evaluates and displays correct/incorrect feedback to the learner exactly as normal, but is excluded from the ScoreRaw/ScoreMax tally (P1-65) and from success/passing determination.
+
+**System score variables:** maintained by the player itself, not stored in course.variables (they are computed, not authored). Reserved names, validated against at variable-creation time so an author cannot create a conflicting custom variable:
+
+- `ScoreRaw` — count of correctly-answered Scored interactions across the whole course, live-updating
+- `ScoreMax` — total count of Scored interactions in the course
+- `ScorePercent` — `ScoreRaw / ScoreMax * 100`, rounded
+- `ScorePassed` — boolean, `ScorePercent >= publish_settings.passing_score_pct` (only meaningful once a passing score is configured)
+
+These feed the SCORM module's cmi.score.* and cmi.success_status fields directly at course completion, and are also usable inside the trigger engine's condition builder (e.g. "if ScorePercent >= 70, show congratulations block") and in text interpolation (below), the same as any author-created variable — they're just read-only.
+
+**Live variable interpolation in rich text:** the existing rich_text array format (Section 3.2) gains a new segment type alongside `text` and `asset_link`:
+
+```json
+{ "t": "variable", "var_name": "ScorePercent" }
+```
+
+At render time, the player looks up the current value of `var_name` (checking system variables first, then course.variables) and substitutes it live. This re-renders reactively whenever the underlying variable changes (same reactivity model already used for P1-55's self-owned block visibility conditions). Works for both author-created and system score variables identically — no special-casing needed at the render layer, only at variable-name validation time (to reserve system names).
+
+**Question banks:**
+
+```json
+"question_banks": [
+  {
+    "bank_id": "bnk_case_reviews",
+    "questions": [
+      { "question_id": "bq_01", "content": { /* same shape as a knowledge_check's content */ }, "scored": true }
+    ]
+  }
+]
+```
+
+A course-level array, sibling to `variables` and `assets`. A new block type references a bank:
+
+```json
+{
+  "type": "question_bank_draw",
+  "content": { "bank_id": "bnk_case_reviews", "draw_count": 5 }
+}
+```
+
+At course launch, the player selects `draw_count` random questions from the referenced bank (seeded once per learner attempt — store the seed or the drawn question_ids in SCORM suspend_data so revisiting a page mid-attempt shows the SAME drawn questions, not a re-randomized set). Each drawn question renders and scores exactly like an inline knowledge_check block. The same bank can be referenced by multiple `question_bank_draw` blocks at different points in the course (e.g. five per-case quizzes and one larger final-assessment draw all pulling from the same or different banks), which is what makes cross-course reuse and a cumulative final assessment possible.
+
 ## 4. Trigger and Variable Engine (player core)
 
 A small event bus inside the player. Nothing else in the player mutates state.

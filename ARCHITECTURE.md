@@ -210,7 +210,7 @@ Rules:
 - rows is a 2D array of strings. All rows must have the same column count.
 - has_header_row: first row renders as th elements.
 - has_header_col: first cell of each row renders as th.
-- Cell content is plain text only. No rich text, no nested blocks. One narrow, deliberate exception (Phase 3.5 QA fix): a cell string may contain inline `<sup>`/`<sub>` tags and nothing else -- no bold/italic/underline, no line breaks -- for pathology lab notation like 10³. Authored via the same X²/X₂ toolbar as text blocks, sanitized to that two-tag allowlist on every save and re-sanitized defensively on every render (`packages/{editor,player}/src/lib/richText.js`, `SUP_SUB_TAGS`). See DECISIONS.md.
+- Cell content is plain text only. No rich text, no nested blocks.
 - Player renders as a standard HTML table with overflow-x: auto wrapper for narrow screens.
 - Editor: add/remove row, add/remove column, each cell is a contentEditable field.
 
@@ -263,7 +263,7 @@ These fields enter the schema now because retrofitting them after Phase 4 means 
     "question_image_id": "ast_x",
     "options": [
       {
-        "id": "opt_a",
+        "option_id": "opt_a",
         "label": { "rich_text": [] },
         "image_id": null,
         "correct": false,
@@ -323,6 +323,88 @@ Design:
 ### 3.10 Save-before-export pattern
 
 Any operation that reads course content from the server (Word export, PDF preview, publish) must first await a forced save of the current editor state. The client calls saveNow() (which bypasses the 5-second debounce and immediately PATCHes the current course_json to the API) and awaits its promise before triggering the export or publish request. A "Saving..." indicator shows if the save takes more than 500ms. This prevents a race condition where in-flight edits are missing from exported content.
+
+### 3.11 Flashcards, Matching, Ordering, Image Hotspot block schemas (Phase 5)
+
+**Flashcards** (P1-59) — a study aid, not an assessment. No scoring, no trigger events beyond standard onClick if needed later.
+
+```json
+{
+  "type": "flashcards",
+  "content": {
+    "cards": [
+      {
+        "card_id": "crd_01",
+        "front": { "rich_text": [], "image_id": null },
+        "back": { "rich_text": [], "image_id": null }
+      }
+    ]
+  }
+}
+```
+
+Player: one card visible at a time, click/tap flips front↔back, Previous/Next navigate the deck, a position indicator shows "Card N of M." Enter/Space flips the focused card; arrows or Tab-reachable buttons navigate.
+
+**Matching** (P1-60) — fixed prompts on the left, each with a dropdown of shuffled answer options on the right.
+
+```json
+{
+  "type": "matching",
+  "content": {
+    "prompts": [
+      { "prompt_id": "mp_01", "text": { "rich_text": [] }, "correct_option_id": "mo_02" }
+    ],
+    "options": [
+      { "option_id": "mo_01", "text": { "rich_text": [] } },
+      { "option_id": "mo_02", "text": { "rich_text": [] } }
+    ],
+    "allow_retry": true
+  }
+}
+```
+
+Player: Submit checks all pairs at once; per-row correct/incorrect feedback after submit, matching the existing knowledge-check visual pattern. Score (correct pairs / total) reports to the trigger engine the same way a knowledge check does — same SET_VAR/onCorrect/onIncorrect wiring, no new engine concept.
+
+**Ordering** (P1-61) — a shuffled vertical list; Up/Down buttons (and keyboard equivalents) reorder.
+
+```json
+{
+  "type": "ordering",
+  "content": {
+    "items": [
+      { "item_id": "ord_01", "text": { "rich_text": [] }, "correct_position": 0 },
+      { "item_id": "ord_02", "text": { "rich_text": [] }, "correct_position": 1 }
+    ]
+  }
+}
+```
+
+Player: items render in shuffled order at load; Submit compares final positions against `correct_position`. Scoring is partial credit: (items in correct position) / (total items). Feedback after submit highlights each item's correctness individually, not just a single pass/fail.
+
+**Image Hotspot** (P1-62) — rectangular regions only in v1; author picks a mode per block.
+
+```json
+{
+  "type": "hotspot",
+  "content": {
+    "image_asset_id": "ast_x",
+    "mode": "exploratory",
+    "regions": [
+      {
+        "region_id": "hs_01",
+        "shape": "rect",
+        "x_pct": 20.0, "y_pct": 15.0, "width_pct": 30.0, "height_pct": 25.0,
+        "label": { "rich_text": [] },
+        "correct": null
+      }
+    ]
+  }
+}
+```
+
+`mode` is `"exploratory"` or `"quiz"`. In exploratory mode, `correct` is unused/null — every region simply reveals its `label` content on click via the existing modal system. In quiz mode, `correct` is `true`/`false` per region, and the block tracks which correct/incorrect regions the learner has clicked, reporting a result to the trigger engine the same way a knowledge check does. Region coordinates are stored as percentages of the image's dimensions so hotspots stay correctly positioned across responsive breakpoints. Regions are keyboard-reachable in `region_id` order; Enter/Space activates a focused region in addition to click/tap.
+
+All four block types plug into the existing trigger engine, media manager (n/a for these), and design system without any new engine capability — they are new block types in the registry (Phase 4.5b), not new architectural concepts.
 
 ## 4. Trigger and Variable Engine (player core)
 
@@ -530,7 +612,7 @@ Carousel block builder shows media library picker with checkboxes. Multi-select 
 | Block type | Default |
 |---|---|
 | text, heading, image, list, accordion, tabs, carousel, references | true |
-| knowledge_check, embed, video, audio, button, interactive_video overlays | false |
+| knowledge_check, embed, button, interactive_video overlays | false |
 
 ## 12. PDF as Publish-Time Build Artifact
 
@@ -761,7 +843,7 @@ The server extracts the document text and table structure using mammoth.js, then
    - Diagnostic Images with Image Name references → image blocks (filenames flagged for upload)
    - Discussion, Diagnosis, Take Home Points → text and heading blocks
    - References → references block
-3. Return a complete Mnemonify course JSON (schema version 1, valid against packages/schema/course.schema.json)
+3. Return a complete Mnemonify course JSON, valid against the CURRENT schema version at generation time (packages/schema/course.schema.json — never hardcode a specific version number; a freshly generated document must be born at whatever schema_version is current when it's created, since it has no prior stored state to migrate from)
 4. Flag any sections it could not confidently map, with a reason
 
 The server validates the returned JSON against the schema. The editor presents a pre-import review screen showing: mapped blocks (count and types), flagged sections (with Claude's reason), and any image filenames that need to be uploaded separately. Author confirms and the draft course is created. Always produces a draft, never auto-publishes.

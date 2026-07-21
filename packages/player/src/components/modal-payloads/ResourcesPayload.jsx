@@ -11,12 +11,7 @@ function formatFileSize(bytes) {
   return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
-// Manually-attached course resources (Step 2, Phase 4 usability-fix
-// session) -- distinct from the still-unbuilt Phase 5 auto-generated PDF
-// pipeline (P1-18/19, ARCHITECTURE.md 12). The two are expected to coexist
-// in this same modal once Phase 5 lands (an auto-generated summary PDF
-// listed alongside whatever's manually attached here), not replace one
-// another -- see DECISIONS.md. Each resource downloads via a real
+// Manual attachments and generated publish artifacts share this modal. Each resource downloads via a real
 // <a download> so the browser saves the file to disk rather than
 // navigating the player tab away from the course, per the in-player
 // containment rule (ARCHITECTURE.md 5.2) -- `download` forces
@@ -36,6 +31,7 @@ export default function ResourcesPayload({ payload }) {
           <li key={resource.resource_id} className="modal-payload__resource-row">
             <div className="modal-payload__resource-info">
               <span className="modal-payload__resource-label">{resource.label || resource.filename}</span>
+              {resource.source === 'generated' && <span className="modal-payload__resource-size">Generated publish artifact</span>}
               <span className="modal-payload__resource-size">{formatFileSize(resource.size_bytes)}</span>
             </div>
             <a

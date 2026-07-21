@@ -246,10 +246,12 @@ Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM
 integration (2), full editor + templates + media (3), player chrome +
 usability fixes + Phase 4.5 foundations + Phase 4.6 UX polish (4).
 Interactive video (Phase 5 sub-area 1) is complete and live-verified;
-captions/transcripts (sub-area 2) are implemented with local Whisper but
-still need desktop-browser verification; PDF artifacts (sub-area 3) have
-not started. See REQUIREMENTS.md's phase table (row "5") for the full
-scope and acceptance bar. Any Phase 5 work must build on
+captions/transcripts (sub-area 2) are implemented with local Whisper and
+live-verified through the desktop browser; PDF publish artifacts (sub-area
+3) are implemented with headless Puppeteer and still need a desktop-browser
+author/player pass for the final UI/resource-modal acceptance check. See
+REQUIREMENTS.md's phase table (row "5") for the full scope and acceptance
+bar. Any Phase 5 work must build on
 top of three foundational systems from 4.5, not route around them: **any
 schema change** goes through the 4.5a sequential migration service
 (`packages/server/src/migrate.js` + a new numbered fixture, never a direct

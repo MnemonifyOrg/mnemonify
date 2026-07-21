@@ -4,7 +4,7 @@ import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
 
 // Native HTML5 controls plus the Phase 5 transcript panel. Existing media
 // manager behavior remains shared with VideoBlock.
-export default function AudioBlock({ block, assets, onTrigger }) {
+export default function AudioBlock({ block, assets, onTrigger, printMode }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
   const { transcript } = useCaptions(asset?.asset_id);
   const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger);
@@ -65,7 +65,8 @@ export default function AudioBlock({ block, assets, onTrigger }) {
           🔇 Unmute
         </button>
       )}
-      <TranscriptPanel transcript={transcript} />
+      {printMode && transcript?.content?.trim() && <div className="media-transcript media-transcript--print"><strong>Audio transcript:</strong><div className="media-transcript__content">{transcript.content}</div></div>}
+      {!printMode && <TranscriptPanel transcript={transcript} />}
     </div>
   );
 }

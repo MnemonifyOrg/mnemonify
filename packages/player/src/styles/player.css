@@ -857,6 +857,26 @@ input:focus-visible {
   background: var(--color-bg-secondary);
 }
 
+@media print {
+  @page { margin: 0.55in; }
+  html, body { background: #fff !important; color: #111 !important; }
+  .player-shell__body { display: block; }
+  .player, .player__page { max-width: none; width: 100%; padding: 0; display: block; background: #fff; }
+  .player-shell > :not(.player-shell__body), .player-shell__body > nav, .player__course-footer, .block-video__player, .block-audio__player, .block-video__unmute, .block-audio__unmute, .continue-button, .media-transcript summary, .no-print { display: none !important; }
+  .player__page-title { margin: 0 0 0.25in; }
+  .block { break-inside: avoid; margin-bottom: 0.18in; }
+  .block-two-column { display: block !important; }
+  .block-two-column__slot { width: 100% !important; }
+  .block-table__scroll { overflow: visible !important; }
+  .block-reflection__ruled-space { min-height: 1.5in; border-bottom: 1px solid #777; background: repeating-linear-gradient(to bottom, transparent 0, transparent 0.28in, #bbb 0.29in, transparent 0.3in); }
+  .media-transcript--print { display: block !important; border: 0; padding: 0; }
+  .block-carousel--print { display: block; }
+  .block-carousel--print figure { margin: 0 0 0.18in; break-inside: avoid; }
+  .block-carousel--print img { max-width: 100%; height: auto; }
+  .block-carousel--print figcaption { text-align: center; font-size: 0.9em; }
+  .block-knowledge-check--worksheet { display: block !important; }
+}
+
 /* Image lightbox payload: pan/zoom on a static image via CSS transform
    only (scale()/translate()) -- no canvas, no tile loading. This is a
    lightweight zoom for a single-resolution image, not the Phase 7

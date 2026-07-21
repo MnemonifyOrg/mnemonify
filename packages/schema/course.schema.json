@@ -85,6 +85,15 @@
         "resources": {
           "type": "array",
           "items": { "$ref": "#/definitions/resource" }
+        },
+        "pdf_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "mode": { "enum": ["combined", "per_page", "both"], "default": "both" },
+            "resources_page": { "type": "boolean", "default": true }
+          }
         }
       }
     },

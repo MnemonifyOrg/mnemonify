@@ -67,6 +67,11 @@
         "enabled": true
       },
       "custom": []
+    },
+    "pdf_settings": {
+      "enabled": true,
+      "mode": "both",
+      "resources_page": true
     }
   },
   "variables": [

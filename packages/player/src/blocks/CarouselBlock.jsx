@@ -7,7 +7,7 @@ import { useState } from 'react';
 // the editor's CarouselBlockEditor exactly: `{ asset_ids: [...] }`,
 // resolved against the course's shared `assets` array (captions live on
 // the asset itself, same as a standalone image block).
-export default function CarouselBlock({ block, assets, onOpenModal, onTrigger }) {
+export default function CarouselBlock({ block, assets, onOpenModal, onTrigger, printMode }) {
   const assetIds = block.content.asset_ids || [];
   const images = assetIds.map((id) => assets.find((a) => a.asset_id === id)).filter(Boolean);
   const [index, setIndex] = useState(0);
@@ -23,6 +23,8 @@ export default function CarouselBlock({ block, assets, onOpenModal, onTrigger })
   const current = images[index];
   const resolvedSrc = current.src.startsWith('/') || current.src.startsWith('http') ? current.src : `/${current.src}`;
   const hasMultiple = images.length > 1;
+
+  if (printMode) return <div className="block block-carousel block-carousel--print">{images.map((image) => <figure key={image.asset_id}><img src={image.src.startsWith('/') || image.src.startsWith('http') ? image.src : `/${image.src}`} alt={image.alt || ''} />{image.caption && <figcaption>{image.caption}</figcaption>}</figure>)}</div>;
 
   function goTo(newIndex) {
     setIndex(((newIndex % images.length) + images.length) % images.length);

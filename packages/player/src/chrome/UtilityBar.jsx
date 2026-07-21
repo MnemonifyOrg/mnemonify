@@ -38,11 +38,8 @@ export default function UtilityBar({ utilityBar, resources, courseTitle, onOpenM
     items.push({
       id: 'resources',
       label: 'Resources',
-      // Manually-attached resources (Step 2, Phase 4 usability-fix
-      // session) -- distinct from the still-unbuilt Phase 5 auto-generated
-      // PDF pipeline (P1-18/19). The two are expected to coexist in this
-      // same modal once Phase 5 lands (an auto-generated summary PDF
-      // alongside whatever's manually attached here) -- see DECISIONS.md.
+      // Manual attachments and generated publish PDFs are merged by App.jsx
+      // before reaching this shared modal payload (P1-18/19/58).
       onClick: () =>
         onOpenModal({
           type: 'resources',

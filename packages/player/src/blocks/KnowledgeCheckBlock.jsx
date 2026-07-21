@@ -22,7 +22,7 @@ function KcImage({ assetId, assets, onOpenModal }) {
   );
 }
 
-export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal }) {
+export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, printMode, worksheetMode }) {
   const [selectedId, setSelectedId] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const {
@@ -81,6 +81,9 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     }
   }
 
+  if (printMode && worksheetMode) {
+    return <div className="block block-knowledge-check block-knowledge-check--worksheet"><p className="knowledge-check__question"><RichText value={question} /></p><ul className="knowledge-check__options">{options.map((option) => <li key={option.id} className="knowledge-check__worksheet-option">□ <RichText value={option.text} /></li>)}</ul></div>;
+  }
   return (
     <div className="block block-knowledge-check">
       <KcImage assetId={questionImageId} assets={assets} onOpenModal={onOpenModal} />

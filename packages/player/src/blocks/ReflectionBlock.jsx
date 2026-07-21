@@ -7,7 +7,7 @@ import { useState } from 'react';
 // telemetry event payload. Do not wire this textarea's value into any API
 // call, App.jsx's suspend_data serialization, or an onTrigger/telemetry
 // event -- that would defeat the entire point of this block existing.
-export default function ReflectionBlock({ block }) {
+export default function ReflectionBlock({ block, printMode }) {
   const { prompt } = block.content;
   const [response, setResponse] = useState('');
 
@@ -18,13 +18,14 @@ export default function ReflectionBlock({ block }) {
           <span key={i}>{segment.v}</span>
         ))}
       </p>
-      <textarea
+      {!printMode && <textarea
         className="block-reflection__textarea"
         value={response}
         onChange={(e) => setResponse(e.target.value)}
         placeholder="Type your reflection here. This is private and not saved or submitted anywhere."
         rows={4}
-      />
+      />}
+      {printMode && <div className="block-reflection__ruled-space" aria-label="Reflection response space" />}
     </div>
   );
 }

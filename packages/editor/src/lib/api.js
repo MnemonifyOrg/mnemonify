@@ -8,6 +8,8 @@ export const api = {
   getCourse: (id) => client.get(`/api/courses/${id}`).then((r) => r.data),
   createCourse: (payload) => client.post('/api/courses', payload).then((r) => r.data),
   updateCourse: (id, payload) => client.patch(`/api/courses/${id}`, payload).then((r) => r.data),
+  generatePublishArtifacts: (id) => client.post(`/api/courses/${id}/publish-artifacts`).then((r) => r.data),
+  exportWorksheet: (id) => client.post(`/api/courses/${id}/worksheet-export`).then((r) => r.data),
   deleteCourse: (id) => client.delete(`/api/courses/${id}`),
   duplicateCourse: (id) => client.post(`/api/courses/${id}/duplicate`).then((r) => r.data),
   saveAsTemplate: (id, payload) => client.post(`/api/courses/${id}/save-as-template`, payload).then((r) => r.data),

@@ -4,7 +4,7 @@ import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
 // Minimal video block (Phase 4 Part 3 -- ARCHITECTURE.md Section 6). Native
 // Native HTML5 controls and native caption track; captions/transcripts are
 // fetched by asset_id so the player does not duplicate course JSON data.
-export default function VideoBlock({ block, assets, onTrigger, onTimeReached }) {
+export default function VideoBlock({ block, assets, onTrigger, onTimeReached, printMode }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
   const { caption, transcript } = useCaptions(asset?.asset_id);
   const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger, onTimeReached);
@@ -46,7 +46,8 @@ export default function VideoBlock({ block, assets, onTrigger, onTimeReached }) 
           🔇 Unmute
         </button>
       )}
-      <TranscriptPanel transcript={transcript} />
+      {printMode && transcript?.content?.trim() && <div className="media-transcript media-transcript--print"><strong>Video transcript:</strong><div className="media-transcript__content">{transcript.content}</div></div>}
+      {!printMode && <TranscriptPanel transcript={transcript} />}
     </div>
   );
 }

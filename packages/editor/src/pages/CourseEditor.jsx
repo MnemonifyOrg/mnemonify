@@ -248,6 +248,7 @@ export default function CourseEditor() {
     setPublishing(true);
     try {
       const updated = await api.updateCourse(course.id, { status: 'published' });
+      api.generatePublishArtifacts(course.id).catch((err) => console.error('[course-editor] PDF generation could not be queued:', err));
       setCourse((prev) => ({ ...prev, status: updated.status }));
       const warningCount = freshFindings.length;
       setPublishNotice({
@@ -260,6 +261,12 @@ export default function CourseEditor() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  async function handleExportWorksheet() {
+    await saveNow();
+    await api.exportWorksheet(course.id);
+    setPublishNotice({ type: 'success', message: 'Worksheet generation started. It will appear in Resources when ready.' });
   }
 
   function pushUndoSnapshot(previousJson) {
@@ -894,6 +901,7 @@ export default function CourseEditor() {
           items={[
             { label: 'Media Library', onClick: () => setShowMediaLibrary(true) },
             { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
+            { label: 'Export Worksheet', onClick: handleExportWorksheet },
             course.is_template && {
               label: showExportSaving ? 'Saving before export...' : 'Export Word',
               onClick: handleExportWord,

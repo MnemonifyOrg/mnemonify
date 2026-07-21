@@ -13,7 +13,7 @@ import CarouselBlock from './CarouselBlock.jsx';
 import VideoBlock from './VideoBlock.jsx';
 import AudioBlock from './AudioBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
-import { BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
+import { BLOCK_TYPES, BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
 // block-type -> player component. Component references can't live in the
 // shared, framework-free packages/schema/block-registry.js (see that
@@ -48,7 +48,7 @@ if (import.meta.env?.DEV) {
   }
 }
 
-export default function BlockRenderer({ block, assets, onTrigger, onTimeReached, isPreview, onOpenModal, blockVisibility, variables }) {
+export default function BlockRenderer({ block, assets, onTrigger, onTimeReached, isPreview, onOpenModal, blockVisibility, variables, printMode = false, worksheetMode = false }) {
   // block.faculty_notes is intentionally never passed to any block
   // component below, in any context (SCORM, standalone, preview, review).
   // It is editor/instructor-only content (ARCHITECTURE.md 3.8) -- the
@@ -79,6 +79,9 @@ export default function BlockRenderer({ block, assets, onTrigger, onTimeReached,
     isVisible = override !== undefined ? override : block.visibility?.initial !== 'hidden';
   }
   if (!isVisible) return null;
+  const includeInPdf = block.include_in_pdf ?? BLOCK_REGISTRY[block.type]?.includeInPdfDefault ?? true;
+  if (printMode && !worksheetMode && !includeInPdf) return null;
+  if (printMode && worksheetMode && ['embed', 'button'].includes(block.type)) return null;
   return (
     <Component
       block={block}
@@ -89,6 +92,8 @@ export default function BlockRenderer({ block, assets, onTrigger, onTimeReached,
       onOpenModal={onOpenModal}
       blockVisibility={blockVisibility}
       variables={variables}
+      printMode={printMode}
+      worksheetMode={worksheetMode}
     />
   );
 }

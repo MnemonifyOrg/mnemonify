@@ -78,6 +78,29 @@ async function insertResource({ courseId, filename, filePath, label, sizeBytes }
   return { ...row, size_bytes: Number(row.size_bytes) };
 }
 
+export async function upsertGeneratedResource({ courseId, filename, filePath, label, sizeBytes, resourceKind }) {
+  await pool.query(
+    `DELETE FROM resources WHERE course_id = $1 AND source = 'generated' AND resource_kind = $2 AND filename = $3`,
+    [courseId, resourceKind, filename]
+  );
+  const resourceId = `res_${uuidv4().slice(0, 8)}`;
+  const result = await pool.query(
+    `INSERT INTO resources (organisation_id, course_id, resource_id, filename, file_path, label, size_bytes, source, resource_kind)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'generated', $8) RETURNING *`,
+    [DEV_ORG_ID, courseId, resourceId, filename, filePath, label || filename, sizeBytes, resourceKind]
+  );
+  return { ...result.rows[0], size_bytes: Number(result.rows[0].size_bytes) };
+}
+
+router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    `SELECT resource_id, filename, file_path, label, size_bytes, created_at AS uploaded_at, source, resource_kind
+     FROM resources WHERE course_id = $1 AND organisation_id = $2 ORDER BY created_at ASC`,
+    [req.params.courseId, DEV_ORG_ID]
+  );
+  res.json(result.rows.map((row) => ({ ...row, size_bytes: Number(row.size_bytes) })));
+}));
+
 const singleUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_RESOURCE_BYTES },

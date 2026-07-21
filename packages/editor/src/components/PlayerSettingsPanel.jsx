@@ -51,6 +51,19 @@ function ContactSection({ contact, onChange }) {
   );
 }
 
+function PdfSection({ settings, onChange }) {
+  const value = { enabled: true, mode: 'both', resources_page: true, ...(settings || {}) };
+  return <div className="settings-panel__section">
+    <h4>PDF publishing</h4>
+    <label className="settings-panel__checkbox-row"><input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} /> Generate PDF artifacts when publishing</label>
+    {value.enabled && <>
+      <label>PDF mode</label>
+      <select className="input" value={value.mode} onChange={(e) => onChange({ ...value, mode: e.target.value })}><option value="combined">One combined PDF</option><option value="per_page">One PDF per page</option><option value="both">Combined and per-page PDFs</option></select>
+      <label className="settings-panel__checkbox-row"><input type="checkbox" checked={value.resources_page} onChange={(e) => onChange({ ...value, resources_page: e.target.checked })} /> Show generated PDFs in Resources</label>
+    </>}
+  </div>;
+}
+
 function ResourceRow({ resource, onUpdateLabel, onRemove }) {
   return (
     <li className="player-settings__resource-row">
@@ -264,6 +277,7 @@ export default function PlayerSettingsPanel({
     <div>
       <h3 className="settings-panel__player-heading">Player</h3>
       <ContactSection contact={utilityBar.contact} onChange={(contact) => updateUtilityBar({ contact })} />
+      <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />
       <ResourcesSection
         resourcesEnabled={utilityBar.resources?.enabled}
         resources={meta.resources || []}

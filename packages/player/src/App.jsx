@@ -44,6 +44,7 @@ function isDesktopViewport() {
 
 export default function App() {
   const [course, setCourse] = useState(null);
+  const [courseResources, setCourseResources] = useState([]);
   const [variables, setVariables] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
@@ -153,6 +154,8 @@ export default function App() {
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
+      const isPrint = params.get('print') === '1';
+      const printPageId = params.get('page_id');
       let learnerId = null;
 
       try {
@@ -167,7 +170,7 @@ export default function App() {
           if (cancelled) return;
           loadedCourse = record.course_json;
           restoredVariables = initialVariables(loadedCourse);
-          restoredPageId = loadedCourse.pages[0].page_id;
+          restoredPageId = printPageId || loadedCourse.pages[0].page_id;
         } else {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
@@ -225,6 +228,12 @@ export default function App() {
       answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
       setVariables(restoredVariables);
       setCourse(loadedCourse);
+      if (isPreview && params.get('courseId')) {
+        fetch(`${window.location.origin}/api/courses/${params.get('courseId')}/resources`)
+          .then((response) => (response.ok ? response.json() : []))
+          .then((resources) => { if (!cancelled) setCourseResources(resources); })
+          .catch(() => {});
+      }
       setCurrentPageId(restoredPageId);
       setCompletedPageIds(restoredCompletedPageIds);
       setVisitedPageIds(restoredCompletedPageIds.includes(restoredPageId) ? restoredCompletedPageIds : [...restoredCompletedPageIds, restoredPageId]);
@@ -238,6 +247,7 @@ export default function App() {
 
   useEffect(() => {
     if (!course) return;
+    window.__MNEMONIFY_BOOTED__ = true;
     // Per-course customizable interactive color (meta.theme.accent, see
     // ARCHITECTURE.md 3.3). Overrides brand.css's --color-primary default
     // -- named --color-primary (not --color-accent) so it doesn't collide
@@ -569,6 +579,13 @@ export default function App() {
 
   const page = course.pages.find((p) => p.page_id === currentPageId);
   const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
+  const params = new URLSearchParams(window.location.search);
+  const isPrintMode = params.get('print') === '1';
+  const isWorksheet = params.get('worksheet') === '1';
+  const visibleResources = [
+    ...(course.meta.resources || []),
+    ...(course.meta.pdf_settings?.resources_page === false ? [] : courseResources),
+  ];
   const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
   const isLastPage = currentIndex === course.pages.length - 1;
   const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, variables) : false;
@@ -580,7 +597,7 @@ export default function App() {
         onToggleDrawer={handleToggleDrawer}
         drawerOpen={navDrawerOpen}
         utilityBar={course.meta.utility_bar}
-        resources={course.meta.resources}
+        resources={visibleResources}
         onOpenModal={handleOpenModal}
         onJumpToPage={handleJumpToPage}
       />
@@ -596,7 +613,7 @@ export default function App() {
           open={navDrawerOpen}
           onClose={() => setNavDrawerOpen(false)}
           utilityBar={course.meta.utility_bar}
-          resources={course.meta.resources}
+          resources={visibleResources}
           courseTitle={course.meta.title}
           onOpenModal={handleOpenModal}
           onJumpToPage={handleJumpToPage}
@@ -621,6 +638,8 @@ export default function App() {
                 onOpenModal={handleOpenModal}
                 blockVisibility={blockVisibility}
                 variables={variables}
+                printMode={isPrintMode}
+                worksheetMode={isWorksheet}
               />
             ))}
             <ContinueButton
@@ -638,7 +657,7 @@ export default function App() {
       </div>
       <UtilityBar
         utilityBar={course.meta.utility_bar}
-        resources={course.meta.resources}
+        resources={visibleResources}
         courseTitle={course.meta.title}
         onOpenModal={handleOpenModal}
         onJumpToPage={handleJumpToPage}

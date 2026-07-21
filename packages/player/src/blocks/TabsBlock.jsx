@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables }) {
+export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables, printMode, worksheetMode }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const items = block.content.items;
 
@@ -55,7 +55,7 @@ export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onO
       {items.map((item, index) => {
         const tabId = `${block.block_id}-tab-${index}`;
         const panelId = `${block.block_id}-tabpanel-${index}`;
-        if (activeIndex !== index) return null;
+        if (!printMode && activeIndex !== index) return null;
         return (
           <div key={index} className="tabs__panel" id={panelId} role="tabpanel" aria-labelledby={tabId}>
             {(item.body_blocks || []).map((childBlock) => (
@@ -68,6 +68,8 @@ export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onO
                 onOpenModal={onOpenModal}
                 blockVisibility={blockVisibility}
                 variables={variables}
+                printMode={printMode}
+                worksheetMode={worksheetMode}
               />
             ))}
           </div>

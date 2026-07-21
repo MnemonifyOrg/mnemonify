@@ -7,6 +7,8 @@ export function useCaptions(assetId) {
     let active = true;
     setCaptionData({ caption: null, transcript: null });
     if (!assetId) return () => { active = false; };
+    window.__MNEMONIFY_CAPTIONS_PENDING__ = (window.__MNEMONIFY_CAPTIONS_PENDING__ || 0) + 1;
+    const finish = () => { window.__MNEMONIFY_CAPTIONS_PENDING__ = Math.max(0, (window.__MNEMONIFY_CAPTIONS_PENDING__ || 1) - 1); };
     fetch(`/api/assets/${assetId}/captions`)
       .then((response) => (response.ok ? response.json() : []))
       .then((rows) => {
@@ -16,7 +18,8 @@ export function useCaptions(assetId) {
           transcript: rows.find((row) => row.kind === 'transcript' && row.status === 'ready') || null,
         });
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(finish);
     return () => { active = false; };
   }, [assetId]);
 

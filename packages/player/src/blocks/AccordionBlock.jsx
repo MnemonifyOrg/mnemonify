@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function AccordionBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables }) {
+export default function AccordionBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables, printMode, worksheetMode }) {
   const [openIndex, setOpenIndex] = useState(null);
 
   function toggle(index) {
@@ -20,7 +20,7 @@ export default function AccordionBlock({ block, assets, onTrigger, onTimeReached
       {block.content.items.map((item, index) => {
         const panelId = `${block.block_id}-panel-${index}`;
         const triggerId = `${block.block_id}-trigger-${index}`;
-        const isOpen = openIndex === index;
+        const isOpen = printMode || openIndex === index;
         return (
           <div className="accordion-item" key={index}>
             <h3 style={{ margin: 0 }}>
@@ -49,6 +49,8 @@ export default function AccordionBlock({ block, assets, onTrigger, onTimeReached
                     onOpenModal={onOpenModal}
                     blockVisibility={blockVisibility}
                     variables={variables}
+                    printMode={printMode}
+                    worksheetMode={worksheetMode}
                   />
                 ))}
               </div>

@@ -4,6 +4,7 @@ import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
 import { templatizeCourse } from '../lib/templatize.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { migrateCourse, MigrationError } from '@mnemonify/schema/migrations/index.js';
+import { queueCoursePdfs } from '../lib/pdfPipeline.js';
 
 const router = express.Router();
 
@@ -129,7 +130,30 @@ router.patch('/courses/:id', asyncHandler(async (req, res) => {
     res.status(404).json({ error: 'Course not found' });
     return;
   }
+  if (status === 'published') queueCoursePdfs(req.params.id);
   res.json(result.rows[0]);
+}));
+
+router.post('/courses/:id/publish-artifacts', asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+  if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
+  const queued = queueCoursePdfs(req.params.id);
+  res.status(202).json({ queued });
+}));
+
+// The current editor has no separate review-publish endpoint yet; keep the
+// same queue available for the review-link flow when that UI is introduced.
+router.post('/courses/:id/review-publish-artifacts', asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+  if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
+  res.status(202).json({ queued: queueCoursePdfs(req.params.id) });
+}));
+
+router.post('/courses/:id/worksheet-export', asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+  if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
+  const queued = queueCoursePdfs(req.params.id, { worksheet: true });
+  res.status(202).json({ queued });
 }));
 
 router.delete('/courses/:id', asyncHandler(async (req, res) => {

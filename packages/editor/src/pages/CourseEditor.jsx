@@ -109,6 +109,28 @@ export default function CourseEditor() {
     api.getCourse(id).then((c) => {
       setCourse(c);
       setActivePageId(c.course_json.pages?.[0]?.page_id || null);
+      api.listAssets(id).then((dbAssets) => {
+        const metadataById = new Map(dbAssets.map((asset) => [asset.asset_id, asset]));
+        setCourse((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            course_json: {
+              ...current.course_json,
+              assets: (current.course_json.assets || []).map((asset) => {
+                const dbAsset = metadataById.get(asset.asset_id);
+                if (!dbAsset) return asset;
+                return {
+                  ...asset,
+                  ...(dbAsset.caption_status ? { caption_status: dbAsset.caption_status } : {}),
+                  ...(dbAsset.caption_review_status ? { caption_review_status: dbAsset.caption_review_status } : {}),
+                  ...(dbAsset.transcript_status ? { transcript_status: dbAsset.transcript_status } : {}),
+                };
+              }),
+            },
+          };
+        });
+      }).catch((error) => console.warn('[course-editor] could not load media metadata:', error));
     });
   }, [id]);
 
@@ -1051,6 +1073,7 @@ export default function CourseEditor() {
           </button>
           {!effectiveRightCollapsed && (
             <SettingsPanel
+              courseId={course.id}
               selectedBlock={selectedBlock}
               meta={json.meta}
               page={page}

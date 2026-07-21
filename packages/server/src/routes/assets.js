@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
 import { DEV_ORG_ID } from '../lib/devUser.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
+import { queueTranscription } from '../lib/captionPipeline.js';
 
 const router = express.Router();
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
@@ -109,6 +110,9 @@ router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
       alt,
       caption,
     });
+    if (kind === 'video' || kind === 'audio') {
+      await queueTranscription(asset);
+    }
     res.status(201).json(asset);
   } catch (err) {
     console.error('[assets] upload failed:', err);
@@ -174,7 +178,15 @@ router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 },
 
 router.get('/assets/:courseId', asyncHandler(async (req, res) => {
   const result = await pool.query(
-    `SELECT * FROM assets WHERE course_id = $1 AND organisation_id = $2 ORDER BY created_at ASC`,
+    `SELECT a.*,
+            cap.status AS caption_status, cap.review_status AS caption_review_status,
+            tr.status AS transcript_status
+       FROM assets a
+       LEFT JOIN captions cap ON cap.organisation_id = a.organisation_id AND cap.course_id = a.course_id
+         AND cap.asset_id = a.asset_id AND cap.kind = 'caption'
+       LEFT JOIN captions tr ON tr.organisation_id = a.organisation_id AND tr.course_id = a.course_id
+         AND tr.asset_id = a.asset_id AND tr.kind = 'transcript'
+      WHERE a.course_id = $1 AND a.organisation_id = $2 ORDER BY a.created_at ASC`,
     [req.params.courseId, DEV_ORG_ID]
   );
   res.json(result.rows);
@@ -223,6 +235,7 @@ router.delete('/assets/:assetId', asyncHandler(async (req, res) => {
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
+  await pool.query(`DELETE FROM captions WHERE organisation_id = $1 AND asset_id = $2`, [DEV_ORG_ID, asset.asset_id]);
   await pool.query(`DELETE FROM assets WHERE id = $1`, [asset.id]);
   res.status(204).end();
 }));

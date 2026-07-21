@@ -1428,6 +1428,56 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+.settings-panel__advanced-media {
+  margin-top: 1rem;
+  border-top: 1px solid var(--color-border, #d1d5db);
+  padding-top: 0.75rem;
+}
+
+.settings-panel__advanced-media > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.caption-editor {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.caption-editor__status-row,
+.caption-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.caption-editor__cues {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.caption-editor__cue {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.caption-editor__cue textarea {
+  grid-column: 1 / -1;
+}
+
+.caption-editor__upload {
+  display: inline-block;
+}
+
+.caption-editor__transcript-label {
+  font-weight: 600;
+}
 .settings-panel__timeline-add label,
 .settings-panel__timeline .settings-panel__trigger-item label {
   display: inline-flex;

@@ -309,6 +309,7 @@ const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Course Heal
 // the panel more than a tab switcher does.
 export default function SettingsPanel({
   selectedBlock,
+  courseId,
   meta,
   page,
   pages,
@@ -394,6 +395,7 @@ export default function SettingsPanel({
         {groups.basic.includes('content') && SettingsFields ? (
           <SettingsFields
             block={selectedBlock}
+            courseId={courseId}
             assets={assets}
             pageBlocks={page?.blocks || []}
             pages={pages}

@@ -29,6 +29,10 @@ export const api = {
     client.post('/api/assets/bulk', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
   updateAsset: (assetId, payload) => client.patch(`/api/assets/${assetId}`, payload).then((r) => r.data),
   deleteAsset: (assetId) => client.delete(`/api/assets/${assetId}`),
+  listCaptions: (assetId) => client.get(`/api/assets/${assetId}/captions`).then((r) => r.data),
+  updateCaption: (assetId, kind, payload) => client.patch(`/api/assets/${assetId}/captions/${kind}`, payload).then((r) => r.data),
+  uploadCaption: (assetId, formData) =>
+    client.post(`/api/assets/${assetId}/captions/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
 
   // Resources (manually-attached course documents, distinct from assets --
   // Phase 4 usability-fix session Step 2)

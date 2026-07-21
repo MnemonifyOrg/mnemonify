@@ -467,6 +467,23 @@ input:focus-visible {
   color: var(--color-text-secondary);
   margin-bottom: var(--space-2);
 }
+
+.media-transcript {
+  margin-top: var(--space-3, 0.75rem);
+  border-top: 1px solid var(--color-border, #d1d5db);
+  padding-top: var(--space-2, 0.5rem);
+}
+
+.media-transcript summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.media-transcript__content {
+  margin-top: var(--space-2, 0.5rem);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
 .block-table th,
 .block-table td {
   border: 1px solid var(--color-border);

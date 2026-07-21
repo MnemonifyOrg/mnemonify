@@ -1,10 +1,12 @@
 import { useMediaBlock } from './useMediaBlock.js';
+import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
 
 // Minimal video block (Phase 4 Part 3 -- ARCHITECTURE.md Section 6). Native
-// HTML5 controls only, no custom scrubber. Captions/transcripts/timeline
-// triggers are explicitly Phase 5 scope, not built here -- see DECISIONS.md.
+// Native HTML5 controls and native caption track; captions/transcripts are
+// fetched by asset_id so the player does not duplicate course JSON data.
 export default function VideoBlock({ block, assets, onTrigger, onTimeReached }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
+  const { caption, transcript } = useCaptions(asset?.asset_id);
   const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger, onTimeReached);
 
   if (!asset) {
@@ -36,12 +38,15 @@ export default function VideoBlock({ block, assets, onTrigger, onTimeReached }) 
         onPause={handlePause}
         onSeeked={handleSeeked}
         onEnded={handleEnded}
-      />
+      >
+        {caption && <track kind="captions" src={`/api/assets/${asset.asset_id}/captions/caption.vtt`} srcLang="en" label="English" />}
+      </video>
       {autoplay && muted && (
         <button type="button" className="block-video__unmute" onClick={unmute}>
           🔇 Unmute
         </button>
       )}
+      <TranscriptPanel transcript={transcript} />
     </div>
   );
 }

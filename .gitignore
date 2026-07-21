@@ -4,3 +4,4 @@ dist/
 *.log
 .env
 packages/server/uploads/
+packages/server/.venv/

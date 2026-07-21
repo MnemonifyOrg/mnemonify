@@ -244,11 +244,12 @@ npm run build --workspace=packages/player
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM
 integration (2), full editor + templates + media (3), player chrome +
-usability fixes + Phase 4.5 foundations + Phase 4.6 UX polish (4). Phase 5
-— states, expanded block types, interactive video, captions, translation,
-PDF artifacts, analytics, and the Word importers (Smart Import + AI
-Import) — has not been started; see REQUIREMENTS.md's phase table (row
-"5") for the full scope and acceptance bar. Any Phase 5 work must build on
+usability fixes + Phase 4.5 foundations + Phase 4.6 UX polish (4).
+Interactive video (Phase 5 sub-area 1) is complete and live-verified;
+captions/transcripts (sub-area 2) are implemented with local Whisper but
+still need desktop-browser verification; PDF artifacts (sub-area 3) have
+not started. See REQUIREMENTS.md's phase table (row "5") for the full
+scope and acceptance bar. Any Phase 5 work must build on
 top of three foundational systems from 4.5, not route around them: **any
 schema change** goes through the 4.5a sequential migration service
 (`packages/server/src/migrate.js` + a new numbered fixture, never a direct

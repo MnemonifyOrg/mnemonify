@@ -254,6 +254,18 @@
         },
         "caption": {
           "type": "string"
+        },
+        "caption_status": {
+          "type": "string",
+          "enum": ["generating", "ready", "failed"]
+        },
+        "caption_review_status": {
+          "type": "string",
+          "enum": ["draft", "reviewed"]
+        },
+        "transcript_status": {
+          "type": "string",
+          "enum": ["generating", "ready", "failed"]
         }
       }
     },

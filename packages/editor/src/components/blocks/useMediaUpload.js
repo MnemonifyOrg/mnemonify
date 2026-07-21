@@ -27,6 +27,8 @@ export function useMediaUpload({ block, onChange, courseId, onAddCourseAsset, ki
         src: `uploads/${uploaded.file_path}`,
         alt: file.name,
         caption: '',
+        ...(kind === 'video' ? { caption_status: 'generating', caption_review_status: 'draft' } : {}),
+        transcript_status: 'generating',
       };
       onAddCourseAsset(assetEntry);
       onChange({ ...block, content: { ...block.content, asset_id: assetEntry.asset_id } });

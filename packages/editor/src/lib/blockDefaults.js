@@ -66,8 +66,8 @@ function defaultContent(type) {
       return { url: '', label: '', sandbox: DEFAULT_EMBED_SANDBOX };
     case 'video':
     case 'audio':
-      // Minimal media block content (Phase 4 Part 3) -- no captions/
-      // transcript/timeline fields, those are Phase 5. See DECISIONS.md.
+      // Media content stays small; captions/transcripts are asset-linked in
+      // the server-side captions table and timeline triggers live on video.
       return { asset_id: null, autoplay: false, loop: false };
     case 'two_column':
       return {};

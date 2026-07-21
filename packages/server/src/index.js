@@ -11,6 +11,7 @@ import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
 import pageTemplatesRouter from './routes/pageTemplates.js';
 import analyticsRouter from './routes/analytics.js';
+import captionsRouter from './routes/captions.js';
 import pool from './db.js';
 import { DEV_ORG_ID } from './lib/devUser.js';
 import { asyncHandler } from './lib/asyncHandler.js';
@@ -64,6 +65,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api', coursesRouter);
 app.use('/api', assetsRouter);
+app.use('/api', captionsRouter);
 app.use('/api', resourcesRouter);
 app.use('/api', usersRouter);
 app.use('/api', wordRouter);

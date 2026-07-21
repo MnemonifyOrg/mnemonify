@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useMediaBlock } from './useMediaBlock.js';
+import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
 
-// Minimal audio block (Phase 4 Part 3 -- ARCHITECTURE.md Section 6). Native
-// HTML5 controls only. Transcript is explicitly Phase 5 scope, not built
-// here -- see DECISIONS.md.
+// Native HTML5 controls plus the Phase 5 transcript panel. Existing media
+// manager behavior remains shared with VideoBlock.
 export default function AudioBlock({ block, assets, onTrigger }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
+  const { transcript } = useCaptions(asset?.asset_id);
   const { mediaRef, muted, handlePlay, handlePause, handleSeeked, handleEnded, unmute } = useMediaBlock(block, onTrigger);
   const containerRef = useRef(null);
 
@@ -64,6 +65,7 @@ export default function AudioBlock({ block, assets, onTrigger }) {
           🔇 Unmute
         </button>
       )}
+      <TranscriptPanel transcript={transcript} />
     </div>
   );
 }

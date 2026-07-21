@@ -303,14 +303,68 @@ export function ruleCarouselImageMissingAlt(course) {
   return findings;
 }
 
-// Rule 10 (video captions) is intentionally NOT implemented -- there is
-// no caption field anywhere in the schema yet (ARCHITECTURE.md 3.8's
-// video/audio content shape is `{asset_id, autoplay, loop}` only;
-// captions are explicitly Phase 5, REQUIREMENTS.md P1-23). Building a
-// rule against a field that doesn't exist would mean either silently
-// no-op-ing forever or inventing a field ahead of the schema that owns
-// it. See DECISIONS.md -- flagged for Phase 5 to add alongside the
-// caption field itself.
+// Rule 10: uploaded videos need ready captions. Caption status is
+// denormalized onto the course asset by the editor from the server-side
+// captions table so this pure analyzer can remain synchronous and free of
+// database calls.
+export function ruleVideoMissingCaptions(course) {
+  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
+  const findings = [];
+  for (const { block, page } of collectAllBlocks(course)) {
+    if (block.type !== 'video' || !block.content?.asset_id) continue;
+    const asset = assetsById.get(block.content.asset_id);
+    if (asset && asset.caption_status === 'ready') continue;
+    if (!asset) continue; // broken asset is reported by the reference rule.
+    findings.push({
+      ruleId: 'a11y.video_captions_missing',
+      severity: 'warning',
+      message: `${labelFor(block, page)} has no generated or uploaded captions ready for review.`,
+      entityType: 'block',
+      entityId: block.block_id,
+      location: blockLocation(page, block),
+    });
+  }
+  return findings;
+}
+
+export function ruleVideoCaptionsUnreviewed(course) {
+  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
+  const findings = [];
+  for (const { block, page } of collectAllBlocks(course)) {
+    if (block.type !== 'video' || !block.content?.asset_id) continue;
+    const asset = assetsById.get(block.content.asset_id);
+    if (!asset || asset.caption_status !== 'ready' || asset.caption_review_status === 'reviewed') continue;
+    findings.push({
+      ruleId: 'a11y.video_captions_unreviewed',
+      severity: 'warning',
+      message: `${labelFor(block, page)} has captions that have not been marked reviewed.`,
+      entityType: 'block',
+      entityId: block.block_id,
+      location: blockLocation(page, block),
+    });
+  }
+  return findings;
+}
+
+export function ruleAudioMissingTranscript(course) {
+  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
+  const findings = [];
+  for (const { block, page } of collectAllBlocks(course)) {
+    if (block.type !== 'audio' || !block.content?.asset_id) continue;
+    const asset = assetsById.get(block.content.asset_id);
+    if (asset && asset.transcript_status === 'ready') continue;
+    if (!asset) continue;
+    findings.push({
+      ruleId: 'a11y.audio_transcript_missing',
+      severity: 'warning',
+      message: `${labelFor(block, page)} has no transcript ready for learners.`,
+      entityType: 'block',
+      entityId: block.block_id,
+      location: blockLocation(page, block),
+    });
+  }
+  return findings;
+}
 
 // Rule 11: a table has more than one row of actual data and no caption.
 // "More than one row" excludes the header row when has_header_row is
@@ -489,6 +543,9 @@ export const RULES = [
   rulePageGroupMissingPage,
   ruleImageMissingAlt,
   ruleCarouselImageMissingAlt,
+  ruleVideoMissingCaptions,
+  ruleVideoCaptionsUnreviewed,
+  ruleAudioMissingTranscript,
   ruleTableMissingCaption,
   ruleUnusedVariable,
   ruleUnusedAsset,

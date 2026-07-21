@@ -1,4 +1,5 @@
 import { useMediaUpload } from './useMediaUpload.js';
+import CaptionEditor from '../CaptionEditor.jsx';
 
 export default function AudioBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
@@ -32,7 +33,7 @@ export default function AudioBlockEditor({ block, assets, onChange, courseId, on
   );
 }
 
-export function AudioBlockSettings({ block, onChange }) {
+export function AudioBlockSettings({ block, assets, courseId, onChange, onUpdateCourseAsset }) {
   function toggle(field) {
     onChange({ ...block, content: { ...block.content, [field]: !block.content[field] } }, { forceSnapshot: true });
   }
@@ -47,6 +48,17 @@ export function AudioBlockSettings({ block, onChange }) {
         <input type="checkbox" checked={!!block.content.loop} onChange={() => toggle('loop')} />
         Loop
       </label>
+      {assets?.some((asset) => asset.asset_id === block.content.asset_id) && (
+        <details className="settings-panel__advanced-media">
+          <summary>Transcript</summary>
+          <CaptionEditor
+            asset={assets.find((asset) => asset.asset_id === block.content.asset_id)}
+            courseId={courseId}
+            audioOnly
+            onUpdateCourseAsset={onUpdateCourseAsset}
+          />
+        </details>
+      )}
     </>
   );
 }

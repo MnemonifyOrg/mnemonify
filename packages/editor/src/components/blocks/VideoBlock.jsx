@@ -1,5 +1,6 @@
 import { useMediaUpload } from './useMediaUpload.js';
 import TimelineTriggersSection from '../TimelineTriggersSection.jsx';
+import CaptionEditor from '../CaptionEditor.jsx';
 
 export default function VideoBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
@@ -33,7 +34,7 @@ export default function VideoBlockEditor({ block, assets, onChange, courseId, on
   );
 }
 
-export function VideoBlockSettings({ block, onChange, pageBlocks, pages, variables, onOpenVariableManager }) {
+export function VideoBlockSettings({ block, assets, courseId, onChange, onUpdateCourseAsset, pageBlocks, pages, variables, onOpenVariableManager }) {
   // Autoplay/loop are discrete toggles, not continuous typing -- each
   // click is its own forced undo/redo snapshot (same pattern as
   // ImageBlockSettings' size/alignment buttons).
@@ -59,6 +60,16 @@ export function VideoBlockSettings({ block, onChange, pageBlocks, pages, variabl
         onChangeBlock={onChange}
         onOpenVariableManager={onOpenVariableManager}
       />
+      {assets?.some((asset) => asset.asset_id === block.content.asset_id) && (
+        <details className="settings-panel__advanced-media">
+          <summary>Captions and transcript</summary>
+          <CaptionEditor
+            asset={assets.find((asset) => asset.asset_id === block.content.asset_id)}
+            courseId={courseId}
+            onUpdateCourseAsset={onUpdateCourseAsset}
+          />
+        </details>
+      )}
     </>
   );
 }

@@ -53,6 +53,13 @@ still fail in the genuinely wired-together system. This happened three
 times in a row during the analytics telemetry work before the real bugs
 were found.
 
+This limitation applies specifically to the Codex CLI/background-session
+surface. Codex's desktop app can provide an active browser connector, and
+that was used successfully for live Phase 5 Interactive Video verification;
+however, it requires the user to be actively available during the session
+and must not be assumed in future tasks without first confirming the active
+Codex surface and its connected tools.
+
 ### Case study: the analytics telemetry debugging session
 
 This is the concrete sequence, recorded so future agents do not repeat the

@@ -13,9 +13,8 @@ import InfoTooltip from './InfoTooltip.jsx';
 import { SYSTEM_VARIABLE_DEFINITIONS } from '@mnemonify/schema/system-variables.js';
 import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
+import ObjectivesPanel from './ObjectivesPanel.jsx';
 
-// Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
-// P1-37/P1-38) -- deliberately no management UI here yet.
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
 }
@@ -313,7 +312,7 @@ function AdvancedSection({ blockId, children }) {
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Question Banks', 'Course Health'];
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Question Banks', 'Course Health'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -391,6 +390,8 @@ export default function SettingsPanel({
           />
         ) : activeTab === 'Variables' ? (
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
+        ) : activeTab === 'Objectives' ? (
+          <ObjectivesPanel objectives={meta.objectives || []} onChange={(objectives) => onChangeMeta({ ...meta, objectives })} />
         ) : activeTab === 'Question Banks' ? (
           <QuestionBankManagerPanel
             questionBanks={questionBanks}
@@ -400,6 +401,7 @@ export default function SettingsPanel({
             onAddCourseAssets={onAddCourseAssets}
             onUpdateCourseAsset={onUpdateCourseAsset}
             variables={variables}
+            objectives={meta.objectives || []}
           />
         ) : activeTab === 'Course Health' ? (
           <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />
@@ -429,8 +431,11 @@ export default function SettingsPanel({
             assets={assets}
             pageBlocks={page?.blocks || []}
             pages={pages}
+            page={page}
+            pageGroups={meta.page_groups || []}
             questionBanks={questionBanks}
             variables={conditionVariables}
+            objectives={meta.objectives || []}
             onChange={onChangeBlock}
             onUpdateCourseAsset={onUpdateCourseAsset}
             onOpenVariableManager={onOpenVariableManager}

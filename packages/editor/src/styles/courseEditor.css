@@ -1365,6 +1365,46 @@
   margin: var(--space-1) 0 var(--space-2);
 }
 
+.objective-multi-select {
+  margin: var(--space-3) 0;
+}
+.objective-multi-select__input {
+  min-height: 4.5rem;
+}
+.objective-multi-select__status {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: calc(var(--space-1) * -1);
+}
+.objectives-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.objectives-panel__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.settings-panel__optional {
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+.page-list__group-header .objective-multi-select {
+  margin: 0 var(--space-2);
+  min-width: 11rem;
+}
+.page-list__group-header .objective-multi-select__input {
+  min-height: 2.2rem;
+  max-height: 2.2rem;
+}
+.page-list__group-header .objective-multi-select .settings-panel__hint,
+.page-list__group-header .objective-multi-select__status {
+  display: none;
+}
+
 /* Player tab (Step 1, Phase 4 usability-fix session) */
 .settings-panel__player-heading {
   margin: 0 0 var(--space-3);

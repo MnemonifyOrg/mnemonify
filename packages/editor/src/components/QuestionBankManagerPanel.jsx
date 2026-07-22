@@ -6,6 +6,7 @@ function emptyQuestion() {
   return {
     question_id: genBankQuestionId(),
     scored: true,
+    objective_ids: [],
     content: {
       scored: true,
       question: '',
@@ -17,7 +18,7 @@ function emptyQuestion() {
   };
 }
 
-export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [] }) {
+export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
   const banks = questionBanks || [];
   const [selectedBankId, setSelectedBankId] = useState(banks[0]?.bank_id || null);
   const selectedBank = banks.find((bank) => bank.bank_id === selectedBankId) || banks[0];
@@ -42,8 +43,8 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
     updateBanks(banks.filter((bank) => bank.bank_id !== selectedBank.bank_id));
   }
 
-  function updateQuestion(questionId, content) {
-    updateBank({ questions: selectedBank.questions.map((question) => (question.question_id === questionId ? { ...question, content, scored: content.scored !== false } : question)) });
+  function updateQuestion(questionId, content, objectiveIds) {
+    updateBank({ questions: selectedBank.questions.map((question) => (question.question_id === questionId ? { ...question, content, objective_ids: objectiveIds, scored: content.scored !== false } : question)) });
   }
 
   function moveQuestion(index, delta) {
@@ -87,13 +88,14 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
                   </span>
                 </div>
                 <KnowledgeCheckBlockEditor
-                  block={{ block_id: `blk_${question.question_id}`, type: 'knowledge-check', content: question.content, triggers: [] }}
+                  block={{ block_id: 'blk_' + question.question_id, type: 'knowledge-check', content: question.content, objective_ids: question.objective_ids || [], triggers: [] }}
                   assets={assets}
                   courseId={courseId}
-                  onChange={(updated) => updateQuestion(question.question_id, updated.content)}
+                  onChange={(updated) => updateQuestion(question.question_id, updated.content, updated.objective_ids || [])}
                   onAddCourseAssets={onAddCourseAssets}
                   onUpdateCourseAsset={onUpdateCourseAsset}
                   variables={variables}
+                  objectives={objectives}
                 />
               </div>
             ))}

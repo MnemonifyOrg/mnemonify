@@ -3,6 +3,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { genGroupId } from '../lib/idGen.js';
+import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
 
 const GROUP_DROP_PREFIX = 'group-drop:';
 const groupDropId = (groupId) => `${GROUP_DROP_PREFIX}${groupId}`;
@@ -88,7 +89,7 @@ function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, o
   );
 }
 
-function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete }) {
+function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete, objectives, onAssignObjectives }) {
   const [renaming, setRenaming] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.group_id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -120,6 +121,16 @@ function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete })
           {group.title}
         </span>
       )}
+      <div onClick={(event) => event.stopPropagation()}>
+        <ObjectiveMultiSelect
+          objectives={objectives}
+          value={group.objective_ids || []}
+          onChange={(objectiveIds) => onAssignObjectives(group.group_id, objectiveIds)}
+          label="Assign objectives"
+          ariaLabel={'Assign objectives to ' + group.title}
+          hint="Optional module filter for question-bank draws."
+        />
+      </div>
       <div className="page-list__actions">
         <button className="btn-text" title="Rename module" onClick={() => setRenaming(true)}>
           ✎
@@ -245,6 +256,15 @@ export default function PageList({
     onChangeMeta({ ...meta, page_groups: groups.filter((g) => g.group_id !== groupId) }, { forceSnapshot: true });
   }
 
+  function handleAssignObjectives(groupId, objectiveIds) {
+    onChangeMeta(
+      { ...meta, page_groups: groups.map((group) => (
+        group.group_id === groupId ? { ...group, objective_ids: objectiveIds } : group
+      )) },
+      { forceSnapshot: true }
+    );
+  }
+
   // Removes the page from whichever group currently holds it (if any),
   // then adds it to the target group -- a page can only ever belong to
   // one module at a time, so reassigning is "remove from old, add to
@@ -294,6 +314,8 @@ export default function PageList({
                     onToggleCollapse={() => toggleGroupCollapse(group.group_id)}
                     onRename={handleRenameGroup}
                     onDelete={handleDeleteGroup}
+                    objectives={meta.objectives || []}
+                    onAssignObjectives={handleAssignObjectives}
                   />
                 </SortableContext>
                 {!collapsed && (

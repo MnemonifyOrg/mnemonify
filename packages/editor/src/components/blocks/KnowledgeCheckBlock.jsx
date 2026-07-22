@@ -4,6 +4,7 @@ import EditableRichField from './EditableRichField.jsx';
 import { genOptionId } from '../../lib/idGen.js';
 import VariablePicker from '../VariablePicker.jsx';
 import { insertVariableAtSelection } from '../../lib/richText.js';
+import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -28,7 +29,7 @@ function KcImageField({ assetId, assets, label, onPick, onRemove }) {
   );
 }
 
-export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [] }) {
+export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
   const { question = '', options = [] } = block.content;
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
@@ -45,6 +46,10 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
+  }
+
+  function setObjectiveIds(objectiveIds) {
+    onChange({ ...block, objective_ids: objectiveIds });
   }
 
   function updateOption(id, patch) {
@@ -152,6 +157,16 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   return (
     <div className="knowledge-check-block-editor" ref={containerRef} style={{ position: 'relative' }}>
+      {objectives.length > 0 && (
+        <ObjectiveMultiSelect
+          objectives={objectives}
+          value={block.objective_ids || []}
+          onChange={setObjectiveIds}
+          label="Question objectives"
+          ariaLabel="Question objectives"
+          hint="Optional. Map this question to one or more course objectives."
+        />
+      )}
       {toolbarPos && (
         <div
           className="rich-text-toolbar knowledge-check-block-editor__toolbar"
@@ -308,16 +323,25 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   );
 }
 
-export function KnowledgeCheckBlockSettings({ block, onChange }) {
+export function KnowledgeCheckBlockSettings({ block, onChange, objectives = [] }) {
   const showFeedback = block.content.show_feedback !== false;
   return (
-    <label className="settings-panel__checkbox-row">
-      <input
-        type="checkbox"
-        checked={showFeedback}
-        onChange={(e) => onChange({ ...block, content: { ...block.content, show_feedback: e.target.checked } })}
+    <>
+      <label className="settings-panel__checkbox-row">
+        <input
+          type="checkbox"
+          checked={showFeedback}
+          onChange={(e) => onChange({ ...block, content: { ...block.content, show_feedback: e.target.checked } })}
+        />
+        Show feedback after answering
+      </label>
+      <ObjectiveMultiSelect
+        objectives={objectives}
+        value={block.objective_ids || []}
+        onChange={(objectiveIds) => onChange({ ...block, objective_ids: objectiveIds })}
+        label="Question objectives"
+        ariaLabel="Question objectives"
       />
-      Show feedback after answering
-    </label>
+    </>
   );
 }

@@ -67,6 +67,7 @@ The `schema` package is shared by all three parts. Any schema change happens the
 ```
 Course
   meta (title, version, settings, theme, nav_mode, pdf_settings, utility_bar)
+    objectives[]         <- optional course-level learning objectives
   variables[]            <- course-level, shared across all pages
   assets[]               <- images, media, captions, with ids, alt text, captions
   translations{}         <- per-language content overrides keyed by BCP-47 code
@@ -96,7 +97,19 @@ Course
   "theme": { "accent": "#0f766e", "font_pair": "default" },
   "nav_mode": "linear",
   "page_groups": [
-    { "group_id": "grp_01", "title": "Case 1", "page_ids": ["pg_01", "pg_02"] }
+    {
+      "group_id": "grp_01",
+      "title": "Case 1",
+      "page_ids": ["pg_01", "pg_02"],
+      "objective_ids": ["obj_01"]
+    }
+  ],
+  "objectives": [
+    {
+      "objective_id": "obj_01",
+      "label": "Identify features of MDS with del(5q)",
+      "description": "Recognize the defining morphologic and molecular features."
+    }
   ],
   "pdf_settings": {
     "enabled": true,
@@ -226,7 +239,11 @@ These fields enter the schema now because retrofitting them after Phase 4 means 
   "footer": { "rich_text": [ { "t": "text", "v": "© 2026 Example Org" } ] },
   "page_numbering": false,
   "objectives": [
-    { "objective_id": "obj_01", "text": "Identify features of MDS with del(5q)", "standard_code": "" }
+    {
+      "objective_id": "obj_01",
+      "label": "Identify features of MDS with del(5q)",
+      "description": "Recognize the defining morphologic and molecular features."
+    }
   ],
   "concepts": [
     { "concept_id": "cpt_01", "name": "Immunohistochemistry interpretation" }
@@ -236,7 +253,8 @@ These fields enter the schema now because retrofitting them after Phase 4 means 
 
 - `header` / `footer`: rendered on every page in the player and included in PDF export. Optional; omit or leave empty to render nothing.
 - `page_numbering`: when true, nav drawer and player chrome show "Page N of M", recalculated on page add/delete/reorder.
-- `objectives`: `standard_code` is free text — Common Core, NGSS, state standards, or CME/accreditation codes all fit. No UI in Phase 3.5; the field simply exists.
+- `objectives`: optional course-level objects with required `objective_id` and `label`, plus optional `description`. This is the author-facing shape specified by P1-68. The existing P1-37 schema hook remains readable for backward compatibility; courses that omit objectives require no migration and behave exactly as before.
+- `page_groups[].objective_ids`: optional references to course-level objective ids. A group/module does not own or duplicate objectives; this is membership/assignment only. An empty or omitted array means the module has no objective filter.
 - `concepts`: enables concept-level analytics and remediation later without a migration.
 
 **Block-level additions (every block type):**
@@ -251,7 +269,7 @@ These fields enter the schema now because retrofitting them after Phase 4 means 
 ```
 
 - `faculty_notes`: **never rendered in any player context, in any mode.** Visible only in the editor, in review mode, and in the instructor guide export (P2-20). This is a hard rule — the player's block renderer must not read this field at all.
-- `objective_ids` / `concept_ids`: optional arrays referencing course-level ids.
+- `objective_ids` / `concept_ids`: optional arrays referencing course-level ids. For a `knowledge_check` block, `objective_ids` maps the question to one or more learning objectives. The same field is used on each reusable question-bank question so inline and bank-sourced questions share one mapping shape. Other block types may retain the field for future objective coverage and compatibility, but P1-68's selection behavior applies to questions.
 
 **Knowledge check answer-level feedback:**
 
@@ -460,7 +478,12 @@ At render time, the player looks up the current value of `var_name` (checking sy
   {
     "bank_id": "bnk_case_reviews",
     "questions": [
-      { "question_id": "bq_01", "content": { /* same shape as a knowledge_check's content */ }, "scored": true }
+      {
+        "question_id": "bq_01",
+        "content": { /* same shape as a knowledge_check's content */ },
+        "scored": true,
+        "objective_ids": ["obj_01"]
+      }
     ]
   }
 ]
@@ -471,11 +494,22 @@ A course-level array, sibling to `variables` and `assets`. A new block type refe
 ```json
 {
   "type": "question_bank_draw",
-  "content": { "bank_id": "bnk_case_reviews", "draw_count": 5 }
+  "content": {
+    "bank_id": "bnk_case_reviews",
+    "draw_count": 5,
+    "objective_fallback": "draw_fewer"
+  }
 }
 ```
 
-At course launch, the player selects `draw_count` random questions from the referenced bank (seeded once per learner attempt — store the seed or the drawn question_ids in SCORM suspend_data so revisiting a page mid-attempt shows the SAME drawn questions, not a re-randomized set). Each drawn question renders and scores exactly like an inline knowledge_check block. The same bank can be referenced by multiple `question_bank_draw` blocks at different points in the course (e.g. five per-case quizzes and one larger final-assessment draw all pulling from the same or different banks), which is what makes cross-course reuse and a cumulative final assessment possible.
+At course launch, the player selects `draw_count` random questions from the eligible pool (seeded once per learner attempt — store the seed or the drawn question_ids in SCORM suspend_data so revisiting a page mid-attempt shows the SAME drawn questions, not a re-randomized set). Each drawn question renders and scores exactly like an inline knowledge_check block. The same bank can be referenced by multiple `question_bank_draw` blocks at different points in a course (e.g. five per-case quizzes and one larger final-assessment draw all pulling from the same or different banks), which is what makes cross-course reuse and a cumulative final assessment possible.
+
+For a draw block inside a module/group with `objective_ids`, the eligible pool is the bank's questions whose `objective_ids` intersect the module's assigned objectives. Questions with no objective ids are treated as unmapped; questions mapped only to other objectives remain outside the filtered pool. If the filtered pool is smaller than `draw_count`, the editor prompts the author at that draw insertion with two choices:
+
+- `objective_fallback: "draw_fewer"`: draw as many matching questions as are available.
+- `objective_fallback: "include_unmapped"`: draw all possible matching questions and use unmapped questions to fill the remainder, up to `draw_count`.
+
+`objective_fallback` is serialized only on that `question_bank_draw` block instance so a published course has a deterministic per-insertion decision. It is not a course-level or question-bank setting and is never used as a default for another insertion. If the draw is not in a module with assigned objectives, the full bank remains eligible and this fallback is irrelevant. A module with no assigned objectives therefore preserves the P1-67 behavior exactly.
 
 ## 4. Trigger and Variable Engine (player core)
 

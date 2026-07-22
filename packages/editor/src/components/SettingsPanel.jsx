@@ -12,6 +12,7 @@ import ConditionBuilder from './ConditionBuilder.jsx';
 import InfoTooltip from './InfoTooltip.jsx';
 import { SYSTEM_VARIABLE_DEFINITIONS } from '@mnemonify/schema/system-variables.js';
 import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
+import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -52,7 +53,7 @@ function CourseSettings({ meta, onChangeMeta }) {
       </label>
       <select
         className="input"
-        value={meta.nav_mode || 'linear'}
+        value={resolveNavMode(meta)}
         onChange={(e) => onChangeMeta({ ...meta, nav_mode: e.target.value })}
       >
         <option value="linear">Linear</option>

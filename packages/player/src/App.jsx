@@ -15,6 +15,7 @@ import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVa
 import RichText from './blocks/RichText.jsx';
 import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js';
 import { resetPageScroll } from './engine/scroll.js';
+import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -552,7 +553,7 @@ export default function App() {
     return getNavigationPageStatus({
       pageId,
       pages: course.pages,
-      navMode: course.meta.nav_mode || 'free',
+      navMode: resolveNavMode(course.meta),
       completedPageIds,
       visitedPageIds,
     });

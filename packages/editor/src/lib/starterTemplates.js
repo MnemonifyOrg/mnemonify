@@ -1,4 +1,5 @@
 import { genBlockId, genPageId } from './idGen.js';
+import { DEFAULT_NAV_MODE } from '@mnemonify/schema/navigation.js';
 
 // Hardcoded starter templates shown on first login when no real templates
 // exist yet (GET /api/templates returns an empty array). These are not
@@ -15,6 +16,7 @@ function baseCourse(title, blocks) {
       course_id: `crs_${Math.random().toString(36).slice(2, 8)}`,
       title,
       theme: { accent: '#0891B2', font_pair: 'default' },
+      nav_mode: DEFAULT_NAV_MODE,
       completion_rule: 'viewed_all_pages',
     },
     variables: [],

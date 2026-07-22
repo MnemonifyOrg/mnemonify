@@ -76,7 +76,7 @@
         },
         "nav_mode": {
           "enum": ["linear", "free"],
-          "default": "free"
+          "default": "linear"
         },
         "page_display": {
           "enum": ["flat", "grouped"],

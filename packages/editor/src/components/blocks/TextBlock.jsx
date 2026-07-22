@@ -2,9 +2,11 @@ import { useRef } from 'react';
 import EditableRichField from './EditableRichField.jsx';
 import TextColorPicker from './TextColorPicker.jsx';
 import VariablePicker from '../VariablePicker.jsx';
+import { insertVariableAtSelection } from '../../lib/richText.js';
 
 export default function TextBlockEditor({ block, onChange, variables = [] }) {
   const ref = useRef(null);
+  const selectionRef = useRef(null);
 
   function format(command) {
     document.execCommand(command);
@@ -30,10 +32,11 @@ export default function TextBlockEditor({ block, onChange, variables = [] }) {
           X<sub>2</sub>
         </button>
         <TextColorPicker />
-        <VariablePicker variables={variables} onInsert={(name) => { ref.current?.focus(); document.execCommand('insertHTML', false, `<span class="rich-variable-chip" data-mnemonify-variable="${name}">${name}</span>`); }} />
+        <VariablePicker variables={variables} onInsert={(name) => insertVariableAtSelection(ref, selectionRef, name)} />
       </div>
       <EditableRichField
         fieldRef={ref}
+        selectionRef={selectionRef}
         className="editable-field text-block-editor__body"
         placeholder="Click to add text..."
         value={block.content.rich_text || ''}

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import EditableRichField from './EditableRichField.jsx';
 import TextColorPicker from './TextColorPicker.jsx';
 import VariablePicker from '../VariablePicker.jsx';
+import { insertVariableAtSelection } from '../../lib/richText.js';
 
 // Item 8 asked for a color control "in the toolbar, alongside
 // Bold/Italic/Underline/Sup/Sub" -- headings had no formatting toolbar at
@@ -11,6 +12,7 @@ import VariablePicker from '../VariablePicker.jsx';
 // rather than a color-only control bolted onto an otherwise-bare field.
 export default function HeadingBlockEditor({ block, onChange, variables = [] }) {
   const ref = useRef(null);
+  const selectionRef = useRef(null);
 
   function format(command) {
     document.execCommand(command);
@@ -36,10 +38,11 @@ export default function HeadingBlockEditor({ block, onChange, variables = [] }) 
           X<sub>2</sub>
         </button>
         <TextColorPicker />
-        <VariablePicker variables={variables} onInsert={(name) => { ref.current?.focus(); document.execCommand('insertHTML', false, `<span class="rich-variable-chip" data-mnemonify-variable="${name}">${name}</span>`); }} />
+        <VariablePicker variables={variables} onInsert={(name) => insertVariableAtSelection(ref, selectionRef, name)} />
       </div>
       <EditableRichField
         fieldRef={ref}
+        selectionRef={selectionRef}
         className="editable-field heading-block-editor"
         data-level={block.content.level || 2}
         placeholder="Click to add heading..."

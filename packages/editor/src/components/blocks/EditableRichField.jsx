@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { richSegmentsToEditableHtml, editableHtmlToRichValue, RICH_TEXT_TAGS } from '../../lib/richText.js';
+import { captureRichTextSelection, richSegmentsToEditableHtml, editableHtmlToRichValue, RICH_TEXT_TAGS } from '../../lib/richText.js';
 
 // Shared contentEditable field for every block editor that stores
 // inline-formatted content (bold/italic/underline/superscript/subscript,
@@ -28,6 +28,7 @@ export default function EditableRichField({
   className,
   placeholder,
   fieldRef,
+  selectionRef,
   onBlur,
   onFocus,
   Tag = 'div',
@@ -49,9 +50,14 @@ export default function EditableRichField({
   }
 
   function handleBlur(e) {
+    captureRichTextSelection(e.currentTarget, selectionRef);
     const nextValue = editableHtmlToRichValue(e.currentTarget.innerHTML, allowedTags);
     if (JSON.stringify(nextValue) !== JSON.stringify(value || '')) onCommit(nextValue);
     onBlur?.(e);
+  }
+
+  function rememberSelection(e) {
+    captureRichTextSelection(e.currentTarget, selectionRef);
   }
 
   return (
@@ -62,7 +68,13 @@ export default function EditableRichField({
       suppressContentEditableWarning
       data-placeholder={placeholder}
       onBlur={handleBlur}
-      onFocus={onFocus}
+      onFocus={(e) => {
+        if (!selectionRef?.current || selectionRef.current.element !== e.currentTarget) rememberSelection(e);
+        onFocus?.(e);
+      }}
+      onKeyUp={rememberSelection}
+      onMouseUp={rememberSelection}
+      onSelect={rememberSelection}
       {...rest}
     />
   );

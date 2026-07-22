@@ -47,7 +47,7 @@ export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onO
               onClick={() => switchTo(index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
             >
-              <RichText value={item.label} />
+              <RichText value={item.label} variables={variables} />
             </button>
           );
         })}

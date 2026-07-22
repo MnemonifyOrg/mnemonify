@@ -78,6 +78,8 @@ function defaultContent(type) {
       return { scored: true, items: [{ item_id: genOrderingItemId(), text: '', correct_position: 0 }, { item_id: genOrderingItemId(), text: '', correct_position: 1 }] };
     case 'hotspot':
       return { image_asset_id: null, mode: 'exploratory', scored: true, regions: [] };
+    case 'question_bank_draw':
+      return { bank_id: '', draw_count: 1 };
     case 'two_column':
       return {};
     default:
@@ -127,7 +129,7 @@ export function createInnerBlock(type, parentBlockId, side) {
 // schema_version const and packages/schema/migrations/index.js's
 // CURRENT_VERSION -- a freshly created course starts at the latest version,
 // never needs migrating. See DECISIONS.md (Phase 4.5a).
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 4;
 
 export function createBlankCourseJson(title) {
   return {
@@ -140,6 +142,7 @@ export function createBlankCourseJson(title) {
       publish_settings: { completion_criteria: 'viewed_all_pages', report_status_as: 'both', success_enabled: true, passing_score_pct: 80 },
     },
     variables: [],
+    question_banks: [],
     assets: [],
     pages: [{ page_id: genPageId(), title: 'Page 1', blocks: [] }],
   };

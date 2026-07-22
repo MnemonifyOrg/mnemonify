@@ -17,6 +17,7 @@ export function collectKnowledgeChecks(course) {
   const result = [];
   for (const page of course?.pages || []) {
     walkBlocks(page.blocks, (block) => {
+      result.push(...drawnQuestionBlocks(block));
       if (block.type === 'knowledge-check' && block.block_id) result.push(block);
     });
   }
@@ -44,6 +45,73 @@ export function recordInteractionState(state, block, payload = {}) {
   };
 }
 
+export function questionBlockId(drawBlockId, questionId) {
+  return `${drawBlockId}__${questionId}`;
+}
+
+function drawnQuestionBlocks(block) {
+  return (block.content?.drawn_questions || []).map((question) => ({
+    block_id: questionBlockId(block.block_id, question.question_id),
+    type: 'knowledge-check',
+    content: { ...(question.content || {}), scored: question.scored !== false },
+    triggers: [],
+  }));
+}
+
+function shuffled(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function mapBlocks(blocks, transform) {
+  return (blocks || []).map((block) => {
+    let next = transform(block);
+    if (next.content?.items) {
+      next = { ...next, content: { ...next.content, items: next.content.items.map((item) => ({ ...item, body_blocks: mapBlocks(item.body_blocks, transform) })) } };
+    }
+    if (next.left) next = { ...next, left: mapBlocks([next.left], transform)[0] };
+    if (next.right) next = { ...next, right: mapBlocks([next.right], transform)[0] };
+    return next;
+  });
+}
+
+export function prepareQuestionBankDraws(course, restoredDraws = {}) {
+  const banks = new Map((course?.question_banks || []).map((bank) => [bank.bank_id, bank]));
+  const questionBankDraws = {};
+  const pages = (course?.pages || []).map((page) => ({
+    ...page,
+    blocks: mapBlocks(page.blocks, (block) => {
+      if (block.type !== 'question_bank_draw') return block;
+      const bank = banks.get(block.content?.bank_id);
+      const questions = bank?.questions || [];
+      const validIds = new Set(questions.map((question) => question.question_id));
+      const requested = Number(block.content?.draw_count) || 0;
+      const restored = Array.isArray(restoredDraws[block.block_id])
+        ? restoredDraws[block.block_id].filter((id) => validIds.has(id))
+        : [];
+      const selected = [...new Set(restored)].slice(0, requested);
+      if (selected.length < Math.min(requested, questions.length)) {
+        const remaining = shuffled(questions.filter((question) => !selected.includes(question.question_id)));
+        selected.push(...remaining.slice(0, Math.min(requested, questions.length) - selected.length).map((question) => question.question_id));
+      }
+      questionBankDraws[block.block_id] = selected;
+      return {
+        ...block,
+        content: {
+          ...block.content,
+          drawn_question_ids: selected,
+          drawn_questions: selected.map((id) => questions.find((question) => question.question_id === id)).filter(Boolean),
+        },
+      };
+    }),
+  }));
+  return { course: { ...course, pages }, questionBankDraws };
+}
+
 export function isScoredInteraction(block) {
   return Boolean(
     block &&
@@ -58,6 +126,12 @@ export function collectScoredInteractions(course) {
   const seen = new Set();
   function walk(blocks) {
     for (const block of blocks || []) {
+      for (const drawn of drawnQuestionBlocks(block)) {
+        if (isScoredInteraction(drawn) && !seen.has(drawn.block_id)) {
+          seen.add(drawn.block_id);
+          result.push(drawn);
+        }
+      }
       if (isScoredInteraction(block) && !seen.has(block.block_id)) {
         seen.add(block.block_id);
         result.push(block);

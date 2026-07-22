@@ -11,17 +11,12 @@ import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import { configureAnalytics, track } from './engine/analytics.js';
 import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
-import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState } from './engine/scoring.js';
+import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws, collectKnowledgeChecks } from './engine/scoring.js';
+import RichText from './blocks/RichText.jsx';
 
-function RichTextPreview({ field }) {
+function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
-  return (
-    <>
-      {field.rich_text.map((segment, i) => (
-        <span key={i}>{segment.v}</span>
-      ))}
-    </>
-  );
+  return <RichText value={field.rich_text} variables={variables} />;
 }
 
 function initialVariables(course) {
@@ -45,10 +40,6 @@ function publishSettings(course) {
 // Total knowledge checks across every page, not just the current one --
 // used for the 'passed_final_quiz' completion rule and SCORM scoring,
 // both of which are course-wide, not page-scoped.
-function countKnowledgeChecks(course) {
-  return course.pages.reduce((sum, page) => sum + page.blocks.filter((b) => b.type === 'knowledge-check').length, 0);
-}
-
 function isDesktopViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches;
 }
@@ -59,6 +50,7 @@ export default function App() {
   const [variables, setVariables] = useState({});
   const [scoreState, setScoreState] = useState({ scoreMax: 0, scoreRaw: 0, completedInteractionIds: [] });
   const [interactionStates, setInteractionStates] = useState({});
+  const [questionBankDraws, setQuestionBankDraws] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
   const [currentPageId, setCurrentPageId] = useState(null);
@@ -89,6 +81,7 @@ export default function App() {
   const pageEnterTimesRef = useRef(new Map());
   const scoreStateRef = useRef(scoreState);
   const interactionStatesRef = useRef(interactionStates);
+  const questionBankDrawsRef = useRef(questionBankDraws);
 
   function runtimeVariables(courseArg = course, scoreArg = scoreStateRef.current) {
     return { ...variables, ...scoreVariables(courseArg, scoreArg) };
@@ -143,6 +136,8 @@ export default function App() {
       pageId: currentPageIdArg,
       completedPageIds: completedPageIdsArg,
       scoreState: scoreArg,
+      interactionStates: interactionStatesRef.current,
+      questionBankDraws: questionBankDrawsRef.current,
     });
     if (settings.report_status_as !== 'success_only') await scorm2004.setCompletion('completed');
     if (settings.report_status_as !== 'completion_only') await scorm2004.setSuccess(hasScored ? (score.ScorePassed ? 'passed' : 'failed') : 'unknown');
@@ -164,6 +159,8 @@ export default function App() {
       let restoredCompletedPageIds = [];
       let restoredScoreState = createScoreState(bundledCourse);
       let restoredInteractionStates = {};
+      let restoredQuestionBankDraws = {};
+      let restoredInteractionStatePayload = {};
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -203,16 +200,8 @@ export default function App() {
             restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
             restoredCompletedPageIds = suspend.completedPageIds || [];
             restoredScoreState = createScoreState(loadedCourse, suspend.scoreState);
-            restoredInteractionStates = restoreInteractionStates(loadedCourse, suspend.interactionStates);
-
-            await scorm2004.setLocation(restoredPageId);
-            await scorm2004.setSuspendData({
-              variables: restoredVariables,
-              pageId: restoredPageId,
-              completedPageIds: restoredCompletedPageIds,
-              scoreState: restoredScoreState,
-              interactionStates: restoredInteractionStates,
-            });
+            restoredInteractionStatePayload = suspend.interactionStates || {};
+            restoredQuestionBankDraws = suspend.questionBankDraws || {};
           }
         }
       } catch (err) {
@@ -227,6 +216,25 @@ export default function App() {
         restoredCompletedPageIds = [];
         restoredScoreState = createScoreState(bundledCourse);
         restoredInteractionStates = {};
+        restoredQuestionBankDraws = {};
+        restoredInteractionStatePayload = {};
+      }
+
+      const prepared = prepareQuestionBankDraws(loadedCourse, restoredQuestionBankDraws);
+      loadedCourse = prepared.course;
+      restoredQuestionBankDraws = prepared.questionBankDraws;
+      restoredScoreState = createScoreState(loadedCourse, restoredScoreState);
+      restoredInteractionStates = restoreInteractionStates(loadedCourse, restoredInteractionStatePayload);
+      if (scormAvailable) {
+        await scorm2004.setLocation(restoredPageId);
+        await scorm2004.setSuspendData({
+          variables: restoredVariables,
+          pageId: restoredPageId,
+          completedPageIds: restoredCompletedPageIds,
+          scoreState: restoredScoreState,
+          interactionStates: restoredInteractionStates,
+          questionBankDraws: restoredQuestionBankDraws,
+        });
       }
 
       // Defensive fallback if a prior save references a page_id that no
@@ -246,12 +254,14 @@ export default function App() {
         learnerId,
       });
       setIsScorm(scormAvailable);
-      answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
+      answeredRef.current = { total: collectKnowledgeChecks(loadedCourse).length, correct: 0, answeredCount: 0 };
       scoreStateRef.current = restoredScoreState;
       interactionStatesRef.current = restoredInteractionStates;
+      questionBankDrawsRef.current = restoredQuestionBankDraws;
       setVariables(stripSystemVariables(restoredVariables));
       setScoreState(restoredScoreState);
       setInteractionStates(restoredInteractionStates);
+      setQuestionBankDraws(restoredQuestionBankDraws);
       setCourse(loadedCourse);
       if (isPreview && params.get('courseId')) {
         fetch(`${window.location.origin}/api/courses/${params.get('courseId')}/resources`)
@@ -427,19 +437,19 @@ export default function App() {
     if (!course) return;
     console.log('[player] variable state:', variables);
     if (isScorm) {
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates, questionBankDraws });
     }
-  }, [variables, course, isScorm, currentPageId, completedPageIds, scoreState, interactionStates]);
+  }, [variables, course, isScorm, currentPageId, completedPageIds, scoreState, interactionStates, questionBankDraws]);
 
   useEffect(() => {
     function handleBeforeUnload() {
       if (!course || completedRef.current) return;
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates, questionBankDraws });
       scorm2004.terminate('suspend');
     }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [course, variables, currentPageId, completedPageIds, scoreState, interactionStates]);
+  }, [course, variables, currentPageId, completedPageIds, scoreState, interactionStates, questionBankDraws]);
 
   function handleOpenModal(payload) {
     setModalPayload(payload);
@@ -668,7 +678,7 @@ export default function App() {
             {/* Course-wide header, rendered above the content on every page. */}
             {course.meta.header && (
               <div className="player__course-header">
-                <RichTextPreview field={course.meta.header} />
+                <RichTextPreview field={course.meta.header} variables={playerVariables} />
               </div>
             )}
             <h1 className="player__page-title">{page.title}</h1>
@@ -684,6 +694,7 @@ export default function App() {
                 blockVisibility={blockVisibility}
                 variables={playerVariables}
                 interactionStates={interactionStates}
+                course={course}
                 printMode={isPrintMode}
                 worksheetMode={isWorksheet}
               />
@@ -695,7 +706,7 @@ export default function App() {
             />
             {course.meta.footer && (
               <div className="player__course-footer">
-                <RichTextPreview field={course.meta.footer} />
+                <RichTextPreview field={course.meta.footer} variables={playerVariables} />
               </div>
             )}
           </div>

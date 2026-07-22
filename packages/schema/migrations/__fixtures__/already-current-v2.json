@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "meta": {
     "course_id": "crs_fxcurrent",
     "title": "Already Current v2 Course",
@@ -14,6 +14,7 @@
   },
   "variables": [{ "variable_id": "var_fx01", "name": "readIntro", "type": "boolean", "default": false }],
   "assets": [],
+  "question_banks": [],
   "pages": [
     {
       "page_id": "pg_01",

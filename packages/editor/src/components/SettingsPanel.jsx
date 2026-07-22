@@ -11,6 +11,7 @@ import TriggersSection from './TriggersSection.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 import InfoTooltip from './InfoTooltip.jsx';
 import { SYSTEM_VARIABLE_DEFINITIONS } from '@mnemonify/schema/system-variables.js';
+import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -311,7 +312,7 @@ function AdvancedSection({ blockId, children }) {
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Course Health'];
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Question Banks', 'Course Health'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -327,9 +328,11 @@ export default function SettingsPanel({
   page,
   pages,
   variables,
+  questionBanks,
   onChangeMeta,
   onChangePage,
   onChangeVariables,
+  onChangeQuestionBanks,
   onRenameVariable,
   onChangeBlock,
   assets,
@@ -343,6 +346,7 @@ export default function SettingsPanel({
   findings,
   onNavigateToFinding,
   onOpenAltTextReview,
+  onAddCourseAssets,
 }) {
   const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
@@ -386,6 +390,16 @@ export default function SettingsPanel({
           />
         ) : activeTab === 'Variables' ? (
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
+        ) : activeTab === 'Question Banks' ? (
+          <QuestionBankManagerPanel
+            questionBanks={questionBanks}
+            assets={assets}
+            courseId={courseId}
+            onChangeQuestionBanks={onChangeQuestionBanks}
+            onAddCourseAssets={onAddCourseAssets}
+            onUpdateCourseAsset={onUpdateCourseAsset}
+            variables={variables}
+          />
         ) : activeTab === 'Course Health' ? (
           <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />
         ) : (
@@ -414,6 +428,7 @@ export default function SettingsPanel({
             assets={assets}
             pageBlocks={page?.blocks || []}
             pages={pages}
+            questionBanks={questionBanks}
             variables={conditionVariables}
             onChange={onChangeBlock}
             onUpdateCourseAsset={onUpdateCourseAsset}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import RichText from './RichText.jsx';
 
 // Hard privacy rule, not an oversight (REQUIREMENTS.md P1-46 / ARCHITECTURE.md
 // 3.8): reflection text lives in this component's React state only, for the
@@ -7,16 +8,14 @@ import { useState } from 'react';
 // telemetry event payload. Do not wire this textarea's value into any API
 // call, App.jsx's suspend_data serialization, or an onTrigger/telemetry
 // event -- that would defeat the entire point of this block existing.
-export default function ReflectionBlock({ block, printMode }) {
+export default function ReflectionBlock({ block, variables, printMode }) {
   const { prompt } = block.content;
   const [response, setResponse] = useState('');
 
   return (
     <div className="block block-reflection">
       <p className="block-reflection__prompt">
-        {(prompt?.rich_text || []).map((segment, i) => (
-          <span key={i}>{segment.v}</span>
-        ))}
+        <RichText value={prompt?.rich_text || prompt?.text || ''} variables={variables} />
       </p>
       {!printMode && <textarea
         className="block-reflection__textarea"

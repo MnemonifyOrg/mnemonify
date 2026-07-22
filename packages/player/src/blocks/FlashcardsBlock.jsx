@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import RichText from './RichText.jsx';
 
-function CardSide({ side, assets }) {
+function CardSide({ side, assets, variables }) {
   const image = assets?.find((asset) => asset.asset_id === side?.image_id);
-  return <div className="flashcards__side"><RichText value={side?.rich_text?.[0]?.v || side?.text || ''} />{image && <img src={image.src.startsWith('/') || image.src.startsWith('http') ? image.src : `/${image.src}`} alt={image.alt || ''} />}</div>;
+  return <div className="flashcards__side"><RichText value={side?.rich_text || side?.text || ''} variables={variables} />{image && <img src={image.src.startsWith('/') || image.src.startsWith('http') ? image.src : `/${image.src}`} alt={image.alt || ''} />}</div>;
 }
 
-export default function FlashcardsBlock({ block, assets }) {
+export default function FlashcardsBlock({ block, assets, variables }) {
   const cards = block.content.cards || [];
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -19,8 +19,8 @@ export default function FlashcardsBlock({ block, assets }) {
   return <div className="block flashcards">
     <button type="button" className="flashcards__card" onClick={flip} aria-label={`${flipped ? 'Back' : 'Front'} of card ${index + 1}`}>
       <span className={`flashcards__card-inner ${flipped ? 'flashcards__card-inner--flipped' : ''}`}>
-        <span className="flashcards__face flashcards__face--front"><CardSide side={card.front} assets={assets} /></span>
-        <span className="flashcards__face flashcards__face--back"><CardSide side={card.back} assets={assets} /></span>
+        <span className="flashcards__face flashcards__face--front"><CardSide side={card.front} assets={assets} variables={variables} /></span>
+        <span className="flashcards__face flashcards__face--back"><CardSide side={card.back} assets={assets} variables={variables} /></span>
       </span>
       {!hasFlipped && <span className="flashcards__hint" aria-hidden="true">Click to flip</span>}
     </button>

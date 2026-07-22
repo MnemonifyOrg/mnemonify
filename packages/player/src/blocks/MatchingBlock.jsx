@@ -3,7 +3,7 @@ import RichText from './RichText.jsx';
 
 function shuffle(items) { return [...items].sort(() => Math.random() - 0.5); }
 
-export default function MatchingBlock({ block, onTrigger }) {
+export default function MatchingBlock({ block, onTrigger, variables }) {
   const prompts = block.content.prompts || [];
   const options = useMemo(() => shuffle(block.content.options || []), [block.content.options]);
   const [answers, setAnswers] = useState({});

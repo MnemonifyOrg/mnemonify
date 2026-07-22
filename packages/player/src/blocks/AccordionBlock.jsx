@@ -33,7 +33,7 @@ export default function AccordionBlock({ block, assets, onTrigger, onTimeReached
                 aria-controls={panelId}
                 onClick={() => toggle(index)}
               >
-                <span><RichText value={item.title} /></span>
+                <span><RichText value={item.title} variables={variables} /></span>
                 <span className="accordion-item__icon" aria-hidden="true">▾</span>
               </button>
             </h3>

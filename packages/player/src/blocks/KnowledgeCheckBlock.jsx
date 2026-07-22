@@ -22,7 +22,7 @@ function KcImage({ assetId, assets, onOpenModal }) {
   );
 }
 
-export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, interactionStates, printMode, worksheetMode }) {
+export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, interactionStates, variables, printMode, worksheetMode }) {
   const restoredState = interactionStates?.[block.block_id];
   const [selectedId, setSelectedId] = useState(restoredState?.selectedId || null);
   const [submitted, setSubmitted] = useState(restoredState?.submitted === true);
@@ -83,13 +83,13 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
   }
 
   if (printMode && worksheetMode) {
-    return <div className="block block-knowledge-check block-knowledge-check--worksheet"><p className="knowledge-check__question"><RichText value={question} /></p><ul className="knowledge-check__options">{options.map((option) => <li key={option.id} className="knowledge-check__worksheet-option">□ <RichText value={option.text} /></li>)}</ul></div>;
+    return <div className="block block-knowledge-check block-knowledge-check--worksheet"><p className="knowledge-check__question"><RichText value={question} variables={variables} /></p><ul className="knowledge-check__options">{options.map((option) => <li key={option.id} className="knowledge-check__worksheet-option">□ <RichText value={option.text} variables={variables} /></li>)}</ul></div>;
   }
   return (
     <div className="block block-knowledge-check">
       <KcImage assetId={questionImageId} assets={assets} onOpenModal={onOpenModal} />
       <p className="knowledge-check__question">
-        <RichText value={question} />
+<RichText value={question} variables={variables} />
       </p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
         <legend className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
@@ -118,7 +118,7 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
               />
               <label htmlFor={`${block.block_id}-${option.id}`}>
                 <KcImage assetId={option.image_id} assets={assets} onOpenModal={onOpenModal} />
-                <RichText value={option.text} />
+<RichText value={option.text} variables={variables} />
               </label>
             </li>
           ))}
@@ -152,13 +152,11 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
             onOpenModal={onOpenModal}
           />
           {selectedOption?.feedback?.rich_text?.length ? (
-            selectedOption.feedback.rich_text.map((segment, i) =>
-              segment.t === 'html' ? <RichText key={i} value={segment.v} /> : <span key={i}>{segment.v}</span>
-            )
+            <RichText value={selectedOption.feedback.rich_text} variables={variables} />
           ) : selectedOption?.correct ? (
-            correct_feedback ? <RichText value={correct_feedback} /> : 'Correct.'
+            correct_feedback ? <RichText value={correct_feedback} variables={variables} /> : 'Correct.'
           ) : incorrect_feedback ? (
-            <RichText value={incorrect_feedback} />
+<RichText value={incorrect_feedback} variables={variables} />
           ) : (
             'Not quite — review the case findings and try again.'
           )}

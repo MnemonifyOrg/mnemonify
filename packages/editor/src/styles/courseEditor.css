@@ -634,6 +634,22 @@
   height: 1.75rem;
   padding: 0;
 }
+.rich-text-variable-picker {
+  width: auto;
+  min-width: 10rem;
+  height: 1.75rem;
+  padding: 0 var(--space-1);
+}
+.rich-variable-chip {
+  display: inline-block;
+  padding: 0 0.3em;
+  border: 1px solid var(--color-accent, #0891B2);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--color-accent, #0891B2) 12%, white);
+  color: var(--color-accent, #0891B2);
+  font: inherit;
+  white-space: nowrap;
+}
 
 .text-color-picker {
   display: flex;

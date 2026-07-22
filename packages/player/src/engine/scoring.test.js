@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createScoreState, recordInteractionScore, scoreVariables, restoreInteractionStates, recordInteractionState } from './scoring.js';
+import { createScoreState, recordInteractionScore, scoreVariables, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws } from './scoring.js';
 
 const course = {
   meta: { publish_settings: { success_enabled: true, passing_score_pct: 70 } },
@@ -48,5 +48,35 @@ describe('knowledge-check resume state', () => {
     expect(state).toEqual({
       'kc-1': { submitted: true, selectedId: 'answer-a', correct: true },
     });
+  });
+});
+
+describe('question bank draw persistence and scoring', () => {
+  const bankCourse = {
+    meta: { publish_settings: { success_enabled: true, passing_score_pct: 70 } },
+    question_banks: [{ bank_id: 'bank-1', questions: Array.from({ length: 8 }, (_, index) => ({
+      question_id: `q-${index + 1}`,
+      scored: index < 6,
+      content: { scored: index < 6, question: `Question ${index + 1}`, options: [] },
+    })) }],
+    pages: [{ blocks: [{ block_id: 'draw-1', type: 'question_bank_draw', content: { bank_id: 'bank-1', draw_count: 5 } }] }],
+  };
+
+  it('selects once, restores the same ids, and includes drawn scored questions in ScoreMax', () => {
+    const first = prepareQuestionBankDraws(bankCourse);
+    expect(first.questionBankDraws['draw-1']).toHaveLength(5);
+    const resumed = prepareQuestionBankDraws(bankCourse, first.questionBankDraws);
+    expect(resumed.questionBankDraws).toEqual(first.questionBankDraws);
+    const score = createScoreState(first.course);
+    expect(score.scoreMax).toBe(first.questionBankDraws['draw-1'].filter((id) => Number(id.split('-')[1]) <= 6).length);
+  });
+
+  it('cannot count a restored drawn interaction twice', () => {
+    const prepared = prepareQuestionBankDraws(bankCourse, { 'draw-1': ['q-1', 'q-2', 'q-3', 'q-4', 'q-5'] });
+    let state = createScoreState(prepared.course, { completedInteractionIds: ['draw-1__q-1'], scoreRaw: 1 });
+    const drawn = prepared.course.pages[0].blocks[0].content.drawn_questions[0];
+    const synthetic = { block_id: 'draw-1__q-1', type: 'knowledge-check', content: drawn.content };
+    state = recordInteractionScore(prepared.course, state, synthetic, { correct: true });
+    expect(state.scoreRaw).toBe(1);
   });
 });

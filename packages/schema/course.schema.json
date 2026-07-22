@@ -4,11 +4,11 @@
   "title": "Mnemonify Course Document",
   "description": "Schema for a Mnemonify course JSON document. See ARCHITECTURE.md Section 3 for the authoritative document model.",
   "type": "object",
-  "required": ["schema_version", "meta", "variables", "assets", "pages"],
+  "required": ["schema_version", "meta", "variables", "assets", "question_banks", "pages"],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 3
+      "const": 4
     },
     "meta": { "$ref": "#/definitions/meta" },
     "variables": {
@@ -18,6 +18,10 @@
     "assets": {
       "type": "array",
       "items": { "$ref": "#/definitions/asset" }
+    },
+    "question_banks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/question_bank" }
     },
     "pages": {
       "type": "array",
@@ -122,12 +126,57 @@
     },
     "rich_text_segment": {
       "type": "object",
-      "required": ["t", "v"],
+      "required": ["t"],
       "additionalProperties": false,
       "properties": {
-        "t": { "type": "string" },
+        "t": { "enum": ["text", "html", "asset_link", "variable"] },
         "v": { "type": "string" },
-        "asset_id": { "type": "string" }
+        "asset_id": { "type": "string" },
+        "var_name": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "t": { "const": "variable" } } },
+          "then": { "required": ["var_name"] },
+          "else": { "required": ["v"] }
+        }
+      ]
+    },
+    "question_bank": {
+      "type": "object",
+      "required": ["bank_id", "questions"],
+      "additionalProperties": false,
+      "properties": {
+        "bank_id": { "type": "string", "pattern": "^bnk_[a-zA-Z0-9_]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "questions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/question_bank_question" }
+        }
+      }
+    },
+    "question_bank_question": {
+      "type": "object",
+      "required": ["question_id", "content", "scored"],
+      "additionalProperties": false,
+      "properties": {
+        "question_id": { "type": "string", "pattern": "^bq_[a-zA-Z0-9_]+$" },
+        "content": { "$ref": "#/definitions/knowledge_check_content" },
+        "scored": { "type": "boolean" }
+      }
+    },
+    "knowledge_check_content": {
+      "type": "object",
+      "required": ["question", "options"],
+      "additionalProperties": true,
+      "properties": {
+        "scored": { "type": "boolean" },
+        "question": { "type": ["string", "array"] },
+        "question_image_id": { "type": ["string", "null"] },
+        "options": { "type": "array", "minItems": 2, "items": { "type": "object" } },
+        "correct_feedback": { "type": ["string", "array"] },
+        "incorrect_feedback": { "type": ["string", "array"] },
+        "show_feedback": { "type": "boolean" }
       }
     },
     "objective": {
@@ -404,6 +453,26 @@
               "content": {
                 "type": "object",
                 "properties": { "scored": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "question_bank_draw" }
+            }
+          },
+          "then": {
+            "properties": {
+              "content": {
+                "type": "object",
+                "required": ["bank_id", "draw_count"],
+                "additionalProperties": false,
+                "properties": {
+                  "bank_id": { "type": "string", "pattern": "^bnk_[a-zA-Z0-9_]+$" },
+                  "draw_count": { "type": "integer", "minimum": 1 }
+                }
               }
             }
           }

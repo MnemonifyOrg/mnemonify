@@ -3,7 +3,7 @@ import RichText from './RichText.jsx';
 
 function shuffle(items) { return [...items].sort(() => Math.random() - 0.5); }
 
-export default function OrderingBlock({ block, onTrigger }) {
+export default function OrderingBlock({ block, onTrigger, variables }) {
   const [items, setItems] = useState(() => shuffle(block.content.items || []));
   const [result, setResult] = useState(null);
   function move(index, delta) { const next = [...items]; const target = index + delta; if (target < 0 || target >= next.length) return; [next[index], next[target]] = [next[target], next[index]]; setItems(next); setResult(null); }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { sanitizeRichHtml, RICH_TEXT_TAGS } from '../../lib/richText.js';
+import { richSegmentsToEditableHtml, editableHtmlToRichValue, RICH_TEXT_TAGS } from '../../lib/richText.js';
 
 // Shared contentEditable field for every block editor that stores
 // inline-formatted content (bold/italic/underline/superscript/subscript,
@@ -35,7 +35,7 @@ export default function EditableRichField({
   ...rest
 }) {
   const localRef = useRef(null);
-  const initialHtml = sanitizeRichHtml(value || '', allowedTags);
+  const initialHtml = richSegmentsToEditableHtml(value, allowedTags);
 
   useEffect(() => {
     if (localRef.current) localRef.current.innerHTML = initialHtml;
@@ -49,8 +49,8 @@ export default function EditableRichField({
   }
 
   function handleBlur(e) {
-    const html = sanitizeRichHtml(e.currentTarget.innerHTML, allowedTags);
-    if (html !== initialHtml) onCommit(html);
+    const nextValue = editableHtmlToRichValue(e.currentTarget.innerHTML, allowedTags);
+    if (JSON.stringify(nextValue) !== JSON.stringify(value || '')) onCommit(nextValue);
     onBlur?.(e);
   }
 

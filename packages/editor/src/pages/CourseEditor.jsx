@@ -376,6 +376,10 @@ export default function CourseEditor() {
     updateCourseJson((json) => ({ ...json, variables: newVariables }), options);
   }
 
+  function handleChangeQuestionBanks(newQuestionBanks, options) {
+    updateCourseJson((json) => ({ ...json, question_banks: newQuestionBanks }), options);
+  }
+
   function renameVariable(oldName, nextVariable) {
     function renameCondition(condition) {
       if (!condition) return condition;
@@ -1072,6 +1076,7 @@ export default function CourseEditor() {
               <BlockCanvas
                 page={page}
                 pages={json.pages}
+                variables={json.variables || []}
                 assets={json.assets}
                 courseId={course.id}
                 onAddCourseAsset={handleAddCourseAsset}
@@ -1111,12 +1116,15 @@ export default function CourseEditor() {
               page={page}
               pages={json.pages}
               variables={json.variables || []}
+              questionBanks={json.question_banks || []}
               assets={json.assets}
               onChangeMeta={handleChangeMeta}
               onChangePage={handleChangePage}
               onChangeVariables={handleChangeVariables}
+              onChangeQuestionBanks={handleChangeQuestionBanks}
               onRenameVariable={renameVariable}
               onUpdateCourseAsset={handleUpdateCourseAsset}
+              onAddCourseAssets={handleAddCourseAssets}
               onAddCourseResource={handleAddCourseResource}
               onRemoveCourseResource={handleRemoveCourseResource}
               onUpdateCourseResource={handleUpdateCourseResource}

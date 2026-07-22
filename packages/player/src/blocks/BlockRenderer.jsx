@@ -16,6 +16,7 @@ import FlashcardsBlock from './FlashcardsBlock.jsx';
 import MatchingBlock from './MatchingBlock.jsx';
 import OrderingBlock from './OrderingBlock.jsx';
 import HotspotBlock from './HotspotBlock.jsx';
+import QuestionBankDrawBlock from './QuestionBankDrawBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
@@ -43,6 +44,7 @@ const REGISTRY = {
   matching: MatchingBlock,
   ordering: OrderingBlock,
   hotspot: HotspotBlock,
+  question_bank_draw: QuestionBankDrawBlock,
 };
 
 // Dev-time completeness check (Phase 4.5b) -- same purpose as the

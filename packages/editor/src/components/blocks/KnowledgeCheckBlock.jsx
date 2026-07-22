@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import EditableRichField from './EditableRichField.jsx';
 import { genOptionId } from '../../lib/idGen.js';
+import VariablePicker from '../VariablePicker.jsx';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -26,7 +27,7 @@ function KcImageField({ assetId, assets, label, onPick, onRemove }) {
   );
 }
 
-export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset }) {
+export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [] }) {
   const { question = '', options = [] } = block.content;
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
@@ -38,6 +39,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   // Which image slot the media library picker is currently filling --
   // { kind: 'question' | 'option' | 'optionFeedback' | 'correct' | 'incorrect', optionId? }
   const [imagePickerTarget, setImagePickerTarget] = useState(null);
+  const activeFieldRef = useRef(null);
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -140,6 +142,11 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
     document.execCommand(command);
   }
 
+  function insertVariable(name) {
+    activeFieldRef.current?.focus();
+    document.execCommand('insertHTML', false, `<span class="rich-variable-chip" data-mnemonify-variable="${name}">${name}</span>`);
+  }
+
   return (
     <div className="knowledge-check-block-editor" ref={containerRef} style={{ position: 'relative' }}>
       {toolbarPos && (
@@ -162,6 +169,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
           <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
             X<sub>2</sub>
           </button>
+          <VariablePicker variables={variables} onInsert={insertVariable} />
         </div>
       )}
 
@@ -169,7 +177,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
         className="editable-field knowledge-check-block-editor__question"
         placeholder="Click to add your question..."
         value={question}
-        onFocus={handleFieldFocus}
+        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
         onBlur={handleFieldBlur}
         onCommit={(html) => setContent({ question: html })}
       />
@@ -192,7 +200,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
                   className="editable-field"
                   placeholder="Click to add answer option..."
                   value={option.text}
-                  onFocus={handleFieldFocus}
+                  onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
                   onBlur={handleFieldBlur}
                   onCommit={(html) => updateOption(option.id, { text: html })}
                 />
@@ -222,7 +230,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
                     className="editable-field kc-option-feedback-field"
                     placeholder="Shown instead of the general feedback when this option is selected..."
                     value={option.feedback?.rich_text?.[0]?.v || ''}
-                    onFocus={handleFieldFocus}
+                    onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
                     onBlur={handleFieldBlur}
                     onCommit={(html) => updateOptionFeedback(option.id, html)}
                   />
@@ -249,7 +257,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       <EditableRichField
         className="editable-field"
         value={block.content.correct_feedback || ''}
-        onFocus={handleFieldFocus}
+        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
         onBlur={handleFieldBlur}
         onCommit={(html) => setContent({ correct_feedback: html })}
       />
@@ -265,7 +273,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       <EditableRichField
         className="editable-field"
         value={block.content.incorrect_feedback || ''}
-        onFocus={handleFieldFocus}
+        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
         onBlur={handleFieldBlur}
         onCommit={(html) => setContent({ incorrect_feedback: html })}
       />

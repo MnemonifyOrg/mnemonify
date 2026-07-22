@@ -34,7 +34,7 @@ function useScrollHint(scrollRef, rows) {
   return overflowing;
 }
 
-export default function TableBlock({ block }) {
+export default function TableBlock({ block, variables }) {
   const { caption, has_header_row: hasHeaderRow, has_header_col: hasHeaderCol, rows = [] } = block.content;
   const scrollRef = useRef(null);
   const overflowing = useScrollHint(scrollRef, rows);
@@ -51,7 +51,7 @@ export default function TableBlock({ block }) {
                 <tr key={rowIndex}>
                   {row.map((cell, colIndex) => {
                     const isHeaderCol = hasHeaderCol && colIndex === 0;
-                    const content = <RichText value={cell} allowedTags={CELL_TAGS} />;
+                    const content = <RichText value={cell} variables={variables} allowedTags={CELL_TAGS} />;
                     if (isHeaderRow) {
                       return (
                         <th key={colIndex} scope="col">

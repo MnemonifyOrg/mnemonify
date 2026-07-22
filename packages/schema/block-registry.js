@@ -222,6 +222,15 @@ export const BLOCK_REGISTRY = {
     includeInPdfDefault: false,
     hasSettings: true,
   },
+  question_bank_draw: {
+    type: 'question_bank_draw',
+    displayName: 'Question Bank',
+    category: 'Interactive',
+    validEvents: [],
+    canContainBlocks: false,
+    includeInPdfDefault: false,
+    hasSettings: true,
+  },
 };
 
 // Backfill settingsGroups onto every entry from its own hasSettings/

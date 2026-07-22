@@ -47,6 +47,7 @@ function BlockWrapper({
   onAddCourseAssets,
   onUpdateCourseAsset,
   pages,
+  variables,
   activePageId,
   onMoveBlockToPage,
   onCopyBlockToPage,
@@ -128,6 +129,7 @@ function BlockWrapper({
           onAddCourseAsset={onAddCourseAsset}
           onAddCourseAssets={onAddCourseAssets}
           onUpdateCourseAsset={onUpdateCourseAsset}
+          variables={variables}
         />
       </div>
       {moveCopyMode && (
@@ -150,6 +152,7 @@ function BlockWrapper({
 export default function BlockCanvas({
   page,
   pages,
+  variables,
   selectedBlockId,
   onSelectBlock,
   onChangeBlock,
@@ -192,6 +195,7 @@ export default function BlockCanvas({
                 onAddCourseAsset={onAddCourseAsset}
                 onAddCourseAssets={onAddCourseAssets}
                 onUpdateCourseAsset={onUpdateCourseAsset}
+                variables={variables}
                 selected={block.block_id === selectedBlockId}
                 onSelect={onSelectBlock}
                 onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}

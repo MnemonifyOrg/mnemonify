@@ -152,3 +152,32 @@ function astToHtml(ast) {
 export function sanitizeRichHtml(html, allowedTags = RICH_TEXT_TAGS) {
   return astToHtml(htmlToRichAst(html, allowedTags));
 }
+
+export function richSegmentsToEditableHtml(value, allowedTags = RICH_TEXT_TAGS) {
+  if (!Array.isArray(value)) return sanitizeRichHtml(value || '', allowedTags);
+  return value.map((segment) => {
+    if (segment?.t === 'variable') {
+      const name = String(segment.var_name || '');
+      return `<span class="rich-variable-chip" data-mnemonify-variable="${escapeHtml(name)}">${escapeHtml(name)}</span>`;
+    }
+    return sanitizeRichHtml(segment?.v || '', allowedTags);
+  }).join('');
+}
+
+export function editableHtmlToRichValue(html, allowedTags = RICH_TEXT_TAGS) {
+  const source = String(html || '');
+  const marker = /<span[^>]*data-mnemonify-variable=["']([^"']+)["'][^>]*>[^<]*<\/span>/gi;
+  const segments = [];
+  let last = 0;
+  let match;
+  while ((match = marker.exec(source))) {
+    const literal = sanitizeRichHtml(source.slice(last, match.index), allowedTags);
+    if (literal) segments.push({ t: 'html', v: literal });
+    segments.push({ t: 'variable', var_name: match[1] });
+    last = marker.lastIndex;
+  }
+  if (!segments.length) return sanitizeRichHtml(source, allowedTags);
+  const tail = sanitizeRichHtml(source.slice(last), allowedTags);
+  if (tail) segments.push({ t: 'html', v: tail });
+  return segments;
+}

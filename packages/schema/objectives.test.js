@@ -52,6 +52,36 @@ test('accepts new label/description objectives, group assignment, inline mapping
   assert.equal(result.valid, true, result.errors.join('; '));
 });
 
+test('accepts an objective-aware question-bank draw fallback', () => {
+  const result = validateCourse(course({
+    meta: {
+      course_id: 'crs_objectives',
+      title: 'Objectives',
+      theme: { accent: '#0f766e' },
+      page_groups: [{ group_id: 'grp_one', title: 'Module One', page_ids: ['pg_one'], objective_ids: ['obj_one'] }],
+    },
+    question_banks: [{
+      bank_id: 'bnk_one',
+      questions: [{
+        question_id: 'bq_one',
+        content: { question: 'What is it?', options: [{ id: 'opt_a', text: 'A', correct: true }, { id: 'opt_b', text: 'B', correct: false }] },
+        scored: true,
+        objective_ids: ['obj_one'],
+      }],
+    }],
+    pages: [{
+      page_id: 'pg_one',
+      title: 'One',
+      blocks: [{
+        block_id: 'blk_draw',
+        type: 'question_bank_draw',
+        content: { bank_id: 'bnk_one', draw_count: 1, objective_fallback: 'include_unmapped' },
+      }],
+    }],
+  }));
+  assert.equal(result.valid, true, result.errors.join('; '));
+});
+
 test('accepts legacy text objectives and courses with no objectives unchanged', () => {
   assert.equal(validateCourse(course()).valid, true);
   assert.equal(validateCourse(course({

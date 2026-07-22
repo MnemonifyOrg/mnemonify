@@ -79,4 +79,50 @@ describe('question bank draw persistence and scoring', () => {
     state = recordInteractionScore(prepared.course, state, synthetic, { correct: true });
     expect(state.scoreRaw).toBe(1);
   });
+
+  it('filters drawn questions by the containing module objectives', () => {
+    const objectiveCourse = {
+      meta: {
+        page_groups: [{ group_id: 'grp-one', page_ids: ['pg-one'], objective_ids: ['obj-one'] }],
+      },
+      question_banks: [{
+        bank_id: 'bank-objectives',
+        questions: [
+          { question_id: 'q-match', scored: true, objective_ids: ['obj-one'], content: { question: 'Match', options: [] } },
+          { question_id: 'q-other', scored: true, objective_ids: ['obj-two'], content: { question: 'Other', options: [] } },
+          { question_id: 'q-unmapped', scored: true, content: { question: 'Unmapped', options: [] } },
+        ],
+      }],
+      pages: [{
+        page_id: 'pg-one',
+        blocks: [{ block_id: 'draw-objectives', type: 'question_bank_draw', content: { bank_id: 'bank-objectives', draw_count: 2, objective_fallback: 'draw_fewer' } }],
+      }],
+    };
+
+    const prepared = prepareQuestionBankDraws(objectiveCourse);
+    expect(prepared.course.pages[0].blocks[0].content.drawn_question_ids).toEqual(['q-match']);
+  });
+
+  it('includes only unmapped questions when the per-draw fallback requests a full draw', () => {
+    const objectiveCourse = {
+      meta: {
+        page_groups: [{ group_id: 'grp-one', page_ids: ['pg-one'], objective_ids: ['obj-one'] }],
+      },
+      question_banks: [{
+        bank_id: 'bank-objectives',
+        questions: [
+          { question_id: 'q-match', scored: true, objective_ids: ['obj-one'], content: { question: 'Match', options: [] } },
+          { question_id: 'q-other', scored: true, objective_ids: ['obj-two'], content: { question: 'Other', options: [] } },
+          { question_id: 'q-unmapped', scored: true, content: { question: 'Unmapped', options: [] } },
+        ],
+      }],
+      pages: [{
+        page_id: 'pg-one',
+        blocks: [{ block_id: 'draw-objectives', type: 'question_bank_draw', content: { bank_id: 'bank-objectives', draw_count: 2, objective_fallback: 'include_unmapped' } }],
+      }],
+    };
+
+    const prepared = prepareQuestionBankDraws(objectiveCourse);
+    expect(new Set(prepared.course.pages[0].blocks[0].content.drawn_question_ids)).toEqual(new Set(['q-match', 'q-unmapped']));
+  });
 });

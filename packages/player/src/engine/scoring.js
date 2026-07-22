@@ -1,4 +1,5 @@
 import { isReservedSystemVariableName } from '@mnemonify/schema/system-variables.js';
+import { resolveQuestionBankDrawPool } from '@mnemonify/schema/objectives.js';
 
 export const SCOREABLE_BLOCK_TYPES = new Set(['knowledge-check', 'matching', 'ordering', 'hotspot']);
 
@@ -87,9 +88,11 @@ export function prepareQuestionBankDraws(course, restoredDraws = {}) {
     blocks: mapBlocks(page.blocks, (block) => {
       if (block.type !== 'question_bank_draw') return block;
       const bank = banks.get(block.content?.bank_id);
-      const questions = bank?.questions || [];
-      const validIds = new Set(questions.map((question) => question.question_id));
+      const group = (course?.meta?.page_groups || []).find((candidate) => candidate.page_ids?.includes(page.page_id));
       const requested = Number(block.content?.draw_count) || 0;
+      const pool = resolveQuestionBankDrawPool(bank, group, requested, block.content?.objective_fallback || 'draw_fewer');
+      const questions = pool.eligibleQuestions;
+      const validIds = new Set(questions.map((question) => question.question_id));
       const restored = Array.isArray(restoredDraws[block.block_id])
         ? restoredDraws[block.block_id].filter((id) => validIds.has(id))
         : [];

@@ -489,7 +489,8 @@
                 "additionalProperties": false,
                 "properties": {
                   "bank_id": { "type": "string", "pattern": "^bnk_[a-zA-Z0-9_]+$" },
-                  "draw_count": { "type": "integer", "minimum": 1 }
+                  "draw_count": { "type": "integer", "minimum": 1 },
+                  "objective_fallback": { "enum": ["draw_fewer", "include_unmapped"] }
                 }
               }
             }

@@ -258,7 +258,115 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 | P1-66 | **Live variable interpolation in rich text:** any text field (text block, heading, knowledge-check feedback, etc.) can contain a live reference to a variable — author-created or system (P1-65) — which renders as that variable's current value at runtime, updating reactively as the value changes. This is what makes a "Results Summary" page possible: an author builds an ordinary page with a heading ("Your Score") and a text block containing "{ScorePercent}}% ({ScoreRaw} of {ScoreMax} correct)" — no dedicated Results block type needed, this is just an authoring capability layered onto the existing rich-text/variable system |
 | P1-67 | **Question banks:** a reusable pool of interchangeable questions (initially knowledge-check-shaped: question, options, feedback, Scored/Unscored), stored at the course level. A "Question Bank" block placed on any page references a bank and a draw count (e.g. "5 of 10"); at course launch, that many questions are randomly selected from the bank for that learner's attempt, staying stable across page revisits within the same session (seeded once per attempt, not re-randomized on every visit). The same bank can be drawn from at multiple points in a course (e.g. a per-case quiz and a cumulative final assessment both pulling from banks), supporting reuse across a module or the whole course |
 | P1-68 | **Course learning objectives and objective-to-question mapping:** An `Objectives` course-level panel/tab lets authors create, edit, and delete optional objectives, each with an `objective_id`, required `label`, and optional `description`. Module/group settings expose an optional multi-select of those objectives, and the knowledge-check/question-bank question editor exposes the same multi-select so one question can assess multiple objectives. A Question Bank draw inserted into a module with assigned objectives filters its eligible pool to questions matching at least one assigned objective. If that filtered pool is smaller than the requested draw count, the author is prompted at that insertion point to either draw fewer questions or include unmapped questions to fill the remainder. The choice is local to that draw insertion, never a course-wide or bank-wide default. Courses with no objectives, unassigned modules, or untagged questions retain the existing Question Bank behavior. All fields are optional and existing courses without objectives behave exactly as they do today. |
+| P1-69 | **Multi-select knowledge check:** Knowledge checks can be configured as "select all that apply" with all-or-nothing scoring. Authors choose multiple correct options and either summary or per-option feedback; existing single-select knowledge checks remain backward compatible. |
+| P1-70 | **Named version history:** Authors can manually save named snapshots of a course and restore any snapshot. Restoring creates a new version and never deletes or rewrites existing history; auto-versioning and diffing are out of scope. |
+| P1-71 | **Searchable shareable glossary:** A course may attach one library glossary and add course-specific terms. Authors confirm suggested links in course text; learners get term tooltips and a searchable panel containing the combined attached and course-specific glossary. |
+| P1-72 | **Question bank editor redesign:** The question-bank editor uses a large master-detail modal instead of a cramped side panel, with question search/filtering and bulk delete/objective/tag assignment within one bank. |
+| P1-73 | **Question bank export/import:** Authors can export a bank as full-fidelity Mnemonify JSON or an interoperability format such as QTI/GIFT, and import by merging into an existing bank or creating a new one. Missing objectives and variables are reported explicitly and never auto-created. |
+| P1-74 | **Linked question-to-bank:** A page question/block and a bank entry can reference one shared entity. Add-to-bank and drag-to-bank create the link; edits require confirmation before propagating; deletion offers unlink or delete-everywhere. The linking model applies to all registered block types and is fully linked or unlinked, never partially linked. |
 | P1-50 | **Traditional SCORM ZIP export mode:** Alongside the dynamic launcher (P1-25), authors can publish a fully self-contained SCORM 2004 3rd Ed package with the player bundle, course JSON, and all assets inside the zip. No dependency on Mnemonify servers at learner launch. Required for locked-down LMS environments that block externally loaded content. Author chooses mode at publish; dynamic remains the default and the strategic differentiator |
+
+### P1-69 — Multi-select knowledge check
+
+**Problem:** Authors need a "select all that apply" question type where multiple options can be correct, while preserving the current single-select radio behavior for existing courses.
+
+**Authoring requirements:**
+
+- The knowledge-check settings expose a `Select all that apply` toggle. It defaults off.
+- With the toggle off, the existing single `correct_option_id` authoring flow and radio controls remain unchanged.
+- With the toggle on, answer options use checkboxes and the author can mark any number of options as correct.
+- A `Feedback style` setting appears only for multi-select questions, with `Summary` and `Per-option` choices. The default is `Summary`.
+
+**Player and scoring requirements:**
+
+- Learners see checkboxes for multi-select questions and may submit any selected set.
+- Scoring is all-or-nothing: the learner receives full credit only when the selected option-id set exactly equals the configured correct set. There is no partial credit.
+- Summary feedback reports the overall result as correct or incorrect.
+- Per-option feedback marks each option's learner-selected and author-correct status after submission, while still reporting one overall correct/incorrect result for scoring.
+- A scored multi-select question contributes one interaction to `ScoreMax` and contributes one point to `ScoreRaw` only when the exact set is correct. An unscored question behaves identically for feedback but does not affect aggregate scoring.
+- Variable interpolation, question-bank draws, resume state, and objective mapping use the same paths and identity rules as single-select knowledge checks.
+
+**Out of scope:** partial credit, minimum/maximum selection rules, and new answer-shuffling constraints.
+
+### P1-70 — Named version history
+
+**Problem:** Authors need named draft/alpha/beta/gold/final snapshots that can be restored without losing the intervening work or prior history.
+
+**Functional requirements:**
+
+- A `Version History` toolbar action opens a modal listing saved versions with name, timestamp, and author.
+- `Save as version` prompts for a required author-chosen name and stores an immutable snapshot of the current course JSON and associated versioned assets.
+- Saving is manual only. Autosave and ordinary editing do not create named versions.
+- Restoring a version replaces the current editable course state with that snapshot and immediately creates a new history entry identifying the restore source. The restored source and every intervening version remain browsable.
+- A restored version can itself be renamed/saved again as a new version; no history row is overwritten or silently archived.
+- Version permissions follow course author/editor permissions, and published learner assignments continue to follow the existing publish/version-assignment rules.
+
+**Out of scope:** visual or field-level diffing, auto-versioning, and destructive history cleanup.
+
+### P1-71 — Searchable shareable glossary
+
+**Problem:** Authors need a reusable vocabulary that can be connected to course text and explored by learners without silently changing authored content.
+
+**Authoring requirements:**
+
+- Glossaries are library assets. A course may attach zero or one library glossary.
+- Authors can add, edit, and delete course-specific terms independently of the attached library glossary.
+- A course-specific term can be explicitly published/shared into the organisation's glossary library; sharing is an author action, not an automatic side effect.
+- The authoring UI scans rich-text content for matching attached-library or course-specific terms and presents link suggestions with the affected location and definition. No suggestion is linked until the author accepts it; the author can reject individual suggestions.
+- Accepted links are represented as rich-text glossary references, not as raw text syntax, so later edits can preserve term identity.
+
+**Learner requirements:**
+
+- A linked term shows a quick definition preview on hover or keyboard focus.
+- Activating the term opens the in-player glossary panel, which provides a searchable list of all terms from the attached library plus course-specific terms.
+- Glossary definitions use the existing rich-text rendering and sanitization rules. The glossary panel and tooltip never navigate the learner outside the player.
+
+**Out of scope:** attaching more than one library glossary to a course and silent automatic linking.
+
+### P1-72 — Question bank editor redesign
+
+**Problem:** The current question-bank side panel does not provide enough room for authoring or managing a substantial bank.
+
+**Functional requirements:**
+
+- Replace the side-panel bank editor with a large modal overlay; the page editor remains visible but dimmed behind it.
+- Use a master-detail layout: the left pane lists bank questions and the right pane renders the existing full-size knowledge-check authoring fields for the selected question.
+- The question list supports text search and filters for question type and objective tag.
+- Multi-select supports bulk delete and bulk assignment/removal of objectives and author-defined tags for the selected questions.
+- Existing add, edit, remove, reorder, image, feedback, Scored/Unscored, and question-bank draw behavior remains available.
+- The modal is keyboard operable and preserves unsaved edits according to the existing editor autosave/dirty-state rules.
+
+**Out of scope:** searching across multiple banks and bulk actions spanning multiple banks.
+
+### P1-73 — Question bank export/import
+
+**Export requirements:**
+
+- Each bank can be exported as native Mnemonify JSON containing the bank metadata, stable question ids, all rich text and media references, scoring state, objectives, tags, and other supported fields.
+- Each bank can also be exported in a standard interoperability format selected by the author, initially QTI or GIFT as supported by the implementation. The export must clearly indicate when Mnemonify-only fields cannot be represented.
+
+**Import requirements:**
+
+- The author chooses whether to merge imported questions into an existing target bank or create a new bank before committing the import.
+- Import uses a review step that shows the questions to be added, the target bank, any id collisions, and all unresolved references.
+- If questions reference objectives or variables absent from the target course, the review lists each missing objective/variable by name and location. The author can correct or cancel the import; the system never silently drops a reference or auto-creates a missing object.
+- Native Mnemonify imports preserve all fields supported by the source version. Standard-format imports map what the format supports and report lossy or unsupported fields before commit.
+- Imported question ids are made unique within the target course; existing questions are not silently overwritten.
+
+**Out of scope:** automatic objective/variable creation and a guarantee that standard-format exports can round-trip every Mnemonify field.
+
+### P1-74 — Linked question-to-bank
+
+**Functional requirements:**
+
+- An author can link a page block to a bank through an `Add to bank` action on the block or by dragging the block into a bank target in the bank side panel. Both actions use the same link-creation operation.
+- A linked entity has one canonical content and identity. It can be used on a page and in one or more bank contexts without creating independent copies.
+- Editing any usage opens an explicit confirmation step summarizing the affected usages. Only after confirmation does the edit propagate to all linked usages. Cancel leaves every usage unchanged.
+- Deleting an on-page usage prompts for `Unlink` or `Delete everywhere`. Unlink materializes independent page/bank copies and removes the shared relationship; Delete everywhere removes the shared entity and all usages after confirmation.
+- Linking is all-or-nothing for a block's supported content and settings. Partial linking of text, scoring, feedback, or other fields is not supported.
+- The model works for every registered block type, not only knowledge checks. Existing unlinked blocks and bank questions remain valid.
+
+**Out of scope:** partial-field linking and silent propagation without author confirmation.
 
 ### P2: Future considerations (design for, do not build)
 
@@ -333,7 +441,7 @@ During development, the practical metric per phase is: the phase acceptance crit
 | 4.5 | Foundations for Course Health (informed by ARCHITECTURE-AUDIT.md and the strategic docs) | **4.5a Identity + migration:** stable IDs on every addressable entity (answer options, nested accordion/tab items, feedback variants, objectives, mappings); sequential schema migration service with the first real migration; historical fixtures migrate automatically. **4.5b Block registry + dependency index:** block behavior consolidated into a central registry (all block-discovery surfaces derive from it); derived dependency index enabling safe-delete, "used by", broken-reference detection. **4.5c Minimal technical Course Analyzer:** ~15 deterministic high-confidence rules (schema validity, broken references, missing alt text/captions, unused variables/assets), finding model, panel that navigates to the affected object, pre-publish error gating. No profiles/snapshots/pedagogical rules yet — those are the later "Learning Alignment" grouping |
 | 4.6 | UX polish pass (informed by UX-AUDIT.md, Priority 1 items only) | Basic/Advanced settings grouping (built on the 4.5b registry so it's consistent per block); collapsible page and settings panels + Focus Mode; between-block insertion controls; simplified primary toolbar (Preview consolidated, device widths inside preview; less-frequent actions under "More tools"); clearer module/page visual hierarchy; reduced border/icon density on unselected blocks; contextual "i" info tooltips; **Course Health finding grouping** (identical findings collapse into one entry with a count, e.g. "18 images missing alt text", rather than N separate rows — needed as findings scale); **bulk alt-text review screen** reachable from a grouped alt-text finding, showing every flagged image in one focused list (thumbnail, its existing caption as read-only reference text, an editable alt-text field the author fills or adapts) instead of hunting through pages one image at a time — explicitly does NOT auto-copy caption into alt text silently, since a screen reader announces both and silent duplication makes the listening experience worse, not better; author always makes the conscious edit. **Terminology decision:** keep all existing standard terminology as the visible labels (Trigger, Variables, Completion rule, etc.) — do NOT rename — and add accessible, keyboard-operable "i" info tooltips with teaching-oriented plain-language explanations (sourced from UX-AUDIT.md section 5's explanations) on domain-specific/advanced controls only. This serves both the first-time educator and the experienced-ID validation audience without a credibility tax. Intent-based Add Content (UX-AUDIT §6), plain-language logic recipes (UX-AUDIT §14), and AI-suggested alt text (a real future idea, needs an API integration and is properly Phase 5+ scope per the project's principle of keeping AI features optional and outside the free core) are explicitly DEFERRED — they are real features, not UX polish |
 | 5 | States, expanded block types, interactive video, captions, PDF artifacts, analytics (ANALYTICS TELEMETRY COMPLETE — see DECISIONS.md), Word importers. Translation parked to P3-1, revisit post-beta | 4-case pathology course with WSI in two-column layout, interactive video, auto-captions, PDF summary, and worksheet export passes full manual QA. Smart Import (rule-based) produces a usable draft from a real Word document with no API key. AI Import produces a usable draft from a real CAP storyboard. Flashcard (P1-59), matching (P1-60), ordering (P1-61), hotspot (P1-62), and reflection blocks all work and are keyboard operable. Text-to-speech works on text blocks |
-| 6 | Accounts, shared library, review and commenting, anonymous links, deployment | Team of 5 in shared workspace; reviewer completes comment round; anonymous share link works with aggregate-only results; both SCORM modes (dynamic and traditional ZIP) pass SCORM Cloud; deployed to Vercel + Railway + R2; one-click deploy verified by a non-technical tester |
+| 6 | Accounts, shared library, review and commenting, anonymous links, deployment, and the P1-69 through P1-74 authoring/reuse extensions | Team of 5 in shared workspace; reviewer completes comment round; anonymous share link works with aggregate-only results; both SCORM modes (dynamic and traditional ZIP) pass SCORM Cloud; multi-select scoring, named restore, glossary linking, redesigned bank workflow, bank import/export, and linked-entity propagation pass focused acceptance tests; deployed to Vercel + Railway + R2; one-click deploy verified by a non-technical tester |
 | 7 | Pathology signature: deep-zoom whole-slide viewer (P2-8) | Learner pans/zooms tiled slide; annotations reveal at zoom levels; reuses Phase 5 zoom engine |
 
 Accessibility (P1-11) is a build practice, not a phase. Semantic HTML, keyboard operability, and alt text fields are implemented from Phase 1, with a formal WCAG AA audit before public release.

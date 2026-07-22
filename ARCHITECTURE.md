@@ -70,6 +70,9 @@ Course
     objectives[]         <- optional course-level learning objectives
   variables[]            <- course-level, shared across all pages
   assets[]               <- images, media, captions, with ids, alt text, captions
+  question_banks[]       <- reusable bank questions and draw sources
+  linked_entities[]      <- optional canonical content shared by page/bank usages
+  glossary_terms[]       <- course-specific terms; meta.glossary_id attaches one library glossary
   translations{}         <- per-language content overrides keyed by BCP-47 code
   pages[]
     page meta (id, title, group)
@@ -511,6 +514,229 @@ For a draw block inside a module/group with `objective_ids`, the eligible pool i
 
 `objective_fallback` is serialized only on that `question_bank_draw` block instance so a published course has a deterministic per-insertion decision. It is not a course-level or question-bank setting and is never used as a default for another insertion. If the draw is not in a module with assigned objectives, the full bank remains eligible and this fallback is irrelevant. A module with no assigned objectives therefore preserves the P1-67 behavior exactly.
 
+### 3.13 Multi-select knowledge checks (P1-69)
+
+Knowledge-check content remains one interaction and keeps its existing
+single-select shape by default. The schema adds these optional fields to the
+knowledge-check content object:
+
+~~~json
+{
+  "multi_select": false,
+  "correct_option_id": "opt_a",
+  "correct_option_ids": [],
+  "feedback_mode": "summary"
+}
+~~~
+
+- "multi_select" defaults to false. When false, "correct_option_id" is the
+  authoritative answer and the existing radio-button behavior is unchanged.
+- When "multi_select" is true, "correct_option_ids" is the authoritative
+  non-empty array of option ids. "correct_option_id" is omitted or null and
+  must not be used for scoring.
+- "feedback_mode" is "summary" or "per_option" and defaults to "summary". It
+  controls post-submit presentation only; both modes use the same all-or-
+  nothing score.
+- A multi-select submission is correct only when its selected option-id set
+  exactly equals "correct_option_ids"; ordering does not matter. A scored
+  question contributes one possible point and at most one earned point.
+- Per-option feedback is derived at submit time from the selected set and the
+  correct set. It is not a second scoring model and does not change the
+  persisted answer identity.
+
+The existing single-select fields are not rewritten when a course is loaded.
+The schema migration only supplies the new defaults when needed, so old
+knowledge checks remain byte-compatible in meaning. Question-bank questions
+use the same content shape, including these fields. Objective ids, variable
+segments, answer-state persistence, and the score-state idempotency guard are
+shared with single-select knowledge checks.
+
+### 3.14 Named version history (P1-70)
+
+The existing immutable course_versions model is extended for manual named
+snapshots. A version record keeps the complete course JSON snapshot and asset
+references, and gains:
+
+~~~json
+{
+  "version_id": "ver_012",
+  "course_id": "crs_a1b2",
+  "kind": "named_snapshot",
+  "name": "Beta review",
+  "created_by": "usr_07",
+  "created_at": "2026-07-22T15:30:00Z",
+  "restored_from_version_id": null,
+  "course_json": { "schema_version": 1 },
+  "asset_manifest": []
+}
+~~~
+
+- "kind" distinguishes a manual named_snapshot from a published version;
+  existing published-version records remain valid.
+- "name", "created_by", and "created_at" are required for named snapshots.
+- "restored_from_version_id" is set when a restore creates a new version from
+  an earlier snapshot. It is lineage metadata, not a mutable pointer.
+- Saving a version and restoring a version are transactional operations. A
+  restore reads the immutable source snapshot, updates the current editable
+  course document, and inserts a new version record; it never updates or
+  deletes the source or any intervening version.
+- Autosave does not insert version rows. Publish continues to create the
+  existing publish snapshot and version-assignment behavior is unchanged.
+
+The editor's version-history modal reads an ordered list of records and
+displays name, timestamp, author, kind, and restore lineage. Permissions use
+the existing course author/editor authorization boundary.
+
+### 3.15 Searchable shareable glossary (P1-71)
+
+Glossaries are organisation-scoped library records. A course attaches at most
+one library glossary and may carry its own terms:
+
+~~~json
+{
+  "meta": {
+    "glossary_id": "glo_pathology"
+  },
+  "glossary_terms": [
+    {
+      "term_id": "term_course_01",
+      "term": "del(5q)",
+      "definition": { "rich_text": [ { "t": "text", "v": "A deletion..." } ] },
+      "source": "course",
+      "shared_library_term_id": null
+    }
+  ]
+}
+~~~
+
+Library records contain stable glossary_id and term_id values, term text,
+rich-text definition, optional pronunciation/synonyms metadata, and owning
+organisation. glossary_terms contains only course-specific terms; the player
+resolves the learner-facing glossary as the union of the attached library
+terms and these local terms, with a course-specific term taking precedence
+for the same normalized term text.
+
+Accepted links add a rich-text segment alongside text, asset_link, and
+variable:
+
+~~~json
+{ "t": "glossary_link", "term_id": "term_course_01", "v": "del(5q)" }
+~~~
+
+The "v" value preserves the displayed text while term_id preserves the
+definition identity. Detection and suggestion are authoring-time operations;
+the player renders only accepted glossary_link segments and never silently
+links matching plain text. A tooltip/focus preview and the full searchable
+glossary panel both resolve through the same union. Sharing a course term
+creates or promotes a library term explicitly and records
+shared_library_term_id; it does not mutate other courses silently.
+
+### 3.16 Question-bank editor redesign (P1-72)
+
+This feature is primarily an editor presentation and workflow change. It does
+not change the runtime question_banks or question_bank_draw block shape. The
+bank question object gains an optional author-managed tags array to support
+bank-local filtering and bulk assignment:
+
+~~~json
+{
+  "question_id": "bq_01",
+  "content": { "question": { "rich_text": [] }, "options": [] },
+  "scored": true,
+  "objective_ids": [ "obj_01" ],
+  "tags": [ "cytogenetics", "review" ]
+}
+~~~
+
+Missing tags is treated as an empty array. Search indexes question text,
+question type, objective_ids, and tags; bulk operations update only the
+selected bank questions. The large modal, master-detail selection, and dirty
+state behavior are editor concerns and are not serialized into published
+course JSON.
+
+### 3.17 Question-bank export and import (P1-73)
+
+Native exports use a versioned envelope so the importer can distinguish a
+Mnemonify document from a standard-format file:
+
+~~~json
+{
+  "format": "mnemonify.question_bank",
+  "format_version": 1,
+  "exported_at": "2026-07-22T15:30:00Z",
+  "bank": {
+    "bank_id": "bnk_case_reviews",
+    "title": "Case reviews",
+    "questions": []
+  }
+}
+~~~
+
+The native bank payload preserves all supported question fields, rich-text
+segments, asset references, scoring flags, objective ids, tags, and stable
+source ids. Standard QTI/GIFT exports are adapters over the same bank model;
+they may omit Mnemonify-specific feedback, assets, objectives, variables, or
+other fields and must report those omissions.
+
+Import is a staged operation. The parser first normalizes the source into an
+import-preview model, resolves references against the target course, and
+reports missing objective ids and variable names with question and field
+locations. The author then chooses merge into an existing bank or create_new
+and confirms the preview. Imported ids are regenerated when necessary to
+avoid collisions; existing questions are never overwritten. Missing
+references are retained as unresolved validation findings and cannot be
+silently dropped or auto-created. No import-preview state is part of the
+published course JSON.
+
+### 3.18 Linked question-to-bank entities (P1-74)
+
+Linked use requires a canonical course-level entity rather than two copies of
+the block content. The document adds an optional collection:
+
+~~~json
+{
+  "linked_entities": [
+    {
+      "entity_id": "ent_01",
+      "block_type": "knowledge_check",
+      "content": { "question": { "rich_text": [] }, "options": [] },
+      "metadata": { "scored": true, "objective_ids": [], "tags": [] }
+    }
+  ]
+}
+~~~
+
+Any registered block type may be represented by block_type and its complete
+content/settings payload. A page block usage and a bank entry can reference
+the same entity:
+
+~~~json
+{
+  "type": "knowledge_check",
+  "linked_entity_id": "ent_01"
+}
+~~~
+
+~~~json
+{
+  "question_id": "bq_01",
+  "linked_entity_id": "ent_01"
+}
+~~~
+
+When linked_entity_id is present, the entity is authoritative and an
+embedded duplicate content payload is not stored. Existing inline blocks and
+legacy bank questions without the reference remain valid. Linking from either
+the block action or bank drop target calls the same relationship operation.
+
+An edit is first held as an editor pending change. Confirmation applies one
+canonical update to the entity and all usages; cancellation leaves the entity
+and every usage untouched. Unlinking materializes independent content for the
+affected usage and removes only that relationship. Delete-everywhere removes
+the entity and all usages atomically after confirmation. This is deliberately
+whole-entity linking: there is no field-level relationship or independent
+scoring copy.
+
 ## 4. Trigger and Variable Engine (player core)
 
 A small event bus inside the player. Nothing else in the player mutates state.
@@ -669,9 +895,11 @@ Node.js + PostgreSQL. Core tables (all rows carry organisation_id):
 | organisations | tenant boundary from day one |
 | users | email + hashed password, role (admin/author) |
 | courses | course metadata + current JSON document (JSONB) |
-| course_versions | snapshot on every publish; version_id, published_at, publish_mode (push_all / lock_existing) |
+| course_versions | immutable publish and named-snapshot records; version_id, kind, name, created_by, created_at, restored_from_version_id, published_at, publish_mode (push_all / lock_existing), course_json, asset manifest |
 | version_assignments | learner_id + course_id + version_id; one record per learner per course |
 | assets | uploaded media metadata; files on disk in dev, S3-compatible later |
+| glossaries | organisation-scoped reusable glossary metadata and attachment library |
+| glossary_terms | glossary term text, rich-text definition, synonyms/pronunciation metadata, and stable term ids |
 | captions | WebVTT content per asset_id, source (whisper / manual), review_status |
 | review_links | tokenised share links, no reviewer account needed |
 | comments | pinned to course_id + block_id, threaded via parent_comment_id, status open/resolved |
@@ -831,7 +1059,14 @@ The server checks version_assignments, returns the correct version's player bund
 
 ### 15.3 Version history and rollback
 
-course_versions table retains all published versions. Admin can roll back to any prior version: this creates a new version record pointing to the prior snapshot's JSON and assets, then pushes to all (or a chosen segment). Rollback is always additive, never destructive.
+The course_versions table retains all published versions and P1-70 named
+snapshots. The version-history UI lists both kinds, with named snapshots
+identified by name, author, and creation time. Admin can roll back to any
+prior published version: this creates a new version record pointing to the
+prior snapshot's JSON and assets, then pushes to all (or a chosen segment).
+Named restore uses the same additive rule but updates the editable course
+state rather than publishing automatically. Rollback and restore are always
+additive, never destructive; no existing course_versions row is overwritten.
 
 ## 16. Onboarding
 

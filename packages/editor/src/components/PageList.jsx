@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { genGroupId } from '../lib/idGen.js';
 
 // Phase 4.6 Step 5: inline rename shared by both a page row and a group
@@ -29,9 +32,12 @@ function InlineRenameField({ value, onCommit, className, autoFocus }) {
 
 function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, onDelete, onSaveAsPageTemplate, onAssignGroup, showGroupPicker, canDelete }) {
   const [renaming, setRenaming] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.page_id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <li className={isActive ? 'page-list__item page-list__item--active' : 'page-list__item'}>
+    <li ref={setNodeRef} style={style} className={isActive ? 'page-list__item page-list__item--active' : 'page-list__item'}>
+      <span className="page-list__drag-handle" title="Drag to reorder pages" aria-label="Drag to reorder pages" {...attributes} {...listeners}>⠿</span>
       {renaming ? (
         <InlineRenameField
           value={page.title}
@@ -131,6 +137,7 @@ export default function PageList({
   onDeletePage,
   onSaveAsPageTemplate,
   onInsertFromTemplate,
+  onReorderPages,
 }) {
   // Collapse/expand is view state, not document state -- deliberately not
   // persisted into meta.page_groups (same "view state stays out of the
@@ -140,6 +147,32 @@ export default function PageList({
 
   const isGrouped = meta?.page_display === 'grouped';
   const groups = meta?.page_groups || [];
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  // Groups define membership and section order only. Within each section,
+  // preserve the authoritative course.pages[] order so the editor nav and
+  // player Continue sequence cannot diverge again.
+  function pagesForGroup(group) {
+    const memberIds = new Set(group.page_ids || []);
+    return pages.filter((page) => memberIds.has(page.page_id));
+  }
+
+  const groupedPages = groups.flatMap((group) => pagesForGroup(group));
+  const groupedIds = new Set(groups.flatMap((group) => group.page_ids || []));
+  const ungroupedPages = pages.filter((page) => !groupedIds.has(page.page_id));
+  const displayedPages = isGrouped ? [...groupedPages, ...ungroupedPages] : pages;
+
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = displayedPages.findIndex((page) => page.page_id === active.id);
+    const newIndex = displayedPages.findIndex((page) => page.page_id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    // In grouped mode the visible list is a flattened sequence of group
+    // memberships. Persist that exact sequence into course.pages[] so the
+    // player's array-driven Continue path follows the reordered nav.
+    onReorderPages(arrayMove(displayedPages, oldIndex, newIndex));
+  }
 
   function toggleGroupCollapse(groupId) {
     setCollapsedGroups((prev) => {
@@ -199,11 +232,13 @@ export default function PageList({
   }
 
   return (
-    <div className="page-list">
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={displayedPages.map((page) => page.page_id)} strategy={verticalListSortingStrategy}>
+      <div className="page-list">
       {isGrouped ? (
         <div className="page-list__grouped">
           {groups.map((group) => {
-            const groupPages = group.page_ids.map((id) => pages.find((p) => p.page_id === id)).filter(Boolean);
+            const groupPages = pagesForGroup(group);
             const collapsed = collapsedGroups.has(group.group_id);
             return (
               <div className="page-list__group" key={group.group_id}>
@@ -225,8 +260,7 @@ export default function PageList({
           })}
 
           {(() => {
-            const groupedIds = new Set(groups.flatMap((g) => g.page_ids));
-            const ungrouped = pages.filter((p) => !groupedIds.has(p.page_id));
+            const ungrouped = ungroupedPages;
             if (ungrouped.length === 0) return null;
             return (
               <div className="page-list__group page-list__group--ungrouped">
@@ -254,6 +288,8 @@ export default function PageList({
           + From Template
         </button>
       </div>
-    </div>
+      </div>
+      </SortableContext>
+    </DndContext>
   );
 }

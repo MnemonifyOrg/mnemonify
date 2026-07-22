@@ -380,6 +380,10 @@ export default function CourseEditor() {
     updateCourseJson((json) => ({ ...json, question_banks: newQuestionBanks }), options);
   }
 
+  function handleReorderPages(pages) {
+    updateCourseJson((json) => ({ ...json, pages }), { forceSnapshot: true });
+  }
+
   function renameVariable(oldName, nextVariable) {
     function renameCondition(condition) {
       if (!condition) return condition;
@@ -1038,6 +1042,7 @@ export default function CourseEditor() {
               onDeletePage={handleDeletePage}
               onSaveAsPageTemplate={setPageToSaveAsTemplate}
               onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
+              onReorderPages={handleReorderPages}
             />
           )}
         </nav>

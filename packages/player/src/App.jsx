@@ -13,6 +13,7 @@ import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
 import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws, collectKnowledgeChecks } from './engine/scoring.js';
 import RichText from './blocks/RichText.jsx';
+import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -541,17 +542,13 @@ export default function App() {
   }
 
   function getPageStatus(pageId) {
-    if (completedPageIds.includes(pageId)) return 'completed';
-    if (visitedPageIds.includes(pageId)) return 'in-progress';
-    const navMode = course.meta.nav_mode || 'free';
-    if (navMode === 'linear') {
-      const targetIndex = course.pages.findIndex((p) => p.page_id === pageId);
-      const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
-      const completedIndices = completedPageIds.map((id) => course.pages.findIndex((p) => p.page_id === id));
-      const furthestUnlockedIndex = Math.max(currentIndex, ...completedIndices, 0);
-      if (targetIndex > furthestUnlockedIndex) return 'locked';
-    }
-    return 'not-visited';
+    return getNavigationPageStatus({
+      pageId,
+      pages: course.pages,
+      navMode: course.meta.nav_mode || 'free',
+      completedPageIds,
+      visitedPageIds,
+    });
   }
 
   function handleDrawerNavigate(pageId) {

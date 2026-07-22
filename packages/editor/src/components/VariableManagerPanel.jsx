@@ -4,6 +4,7 @@ import { ValueInput } from './ConditionBuilder.jsx';
 import { genVariableId } from '../lib/idGen.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import InfoTooltip from './InfoTooltip.jsx';
+import { isReservedSystemVariableName } from '@mnemonify/schema/system-variables.js';
 
 const NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -11,6 +12,7 @@ function validateName(name, variables, editingName) {
   const trimmed = name.trim();
   if (!trimmed) return 'Name is required.';
   if (!NAME_PATTERN.test(trimmed)) return 'Use letters, numbers, and underscores only -- no spaces, must not start with a number.';
+  if (isReservedSystemVariableName(trimmed)) return "This name is reserved for the course's built-in score tracking.";
   const isDuplicate = variables.some((v) => v.name === trimmed && v.name !== editingName);
   if (isDuplicate) return 'A variable with this name already exists.';
   return '';
@@ -41,12 +43,11 @@ function VariableForm({ initial, variables, editingName, onSave, onCancel }) {
       <input
         className="input"
         value={name}
-        disabled={!!editingName}
         placeholder="e.g. readIntro"
         onChange={(e) => setName(e.target.value)}
       />
       {touched && error && <p className="variable-manager__error">{error}</p>}
-      {editingName && <p className="variable-manager__hint">A variable's name can't be changed once created -- it's how triggers reference it.</p>}
+      {editingName && <p className="variable-manager__hint">Renaming updates existing trigger and visibility references throughout this course.</p>}
 
       <label>Type</label>
       <select className="input" value={type} onChange={(e) => changeType(e.target.value)}>
@@ -77,10 +78,9 @@ function VariableForm({ initial, variables, editingName, onSave, onCancel }) {
 // DECISIONS.md) minted once on creation and preserved across edits --
 // triggers/conditions still reference variables by `name`, unchanged, since
 // rewiring that resolution path is a runtime-engine change out of 4.5a's
-// scope, not an identity one. Edit can change type/default but not name,
-// to avoid silently orphaning every trigger/condition that already
-// references it by name.
-export default function VariableManagerPanel({ variables, courseJson, onChangeVariables }) {
+// scope, not an identity one. Renames are coordinated by CourseEditor so
+// every existing trigger, page gate, and visibility condition is updated.
+export default function VariableManagerPanel({ variables, courseJson, onChangeVariables, onRenameVariable }) {
   const [adding, setAdding] = useState(false);
   const [editingName, setEditingName] = useState(null);
 
@@ -90,10 +90,9 @@ export default function VariableManagerPanel({ variables, courseJson, onChangeVa
   }
 
   function handleEdit(variable) {
-    onChangeVariables(
-      variables.map((v) => (v.name === editingName ? { ...variable, variable_id: v.variable_id || genVariableId() } : v)),
-      { forceSnapshot: true }
-    );
+    const nextVariable = { ...variable, variable_id: variables.find((v) => v.name === editingName)?.variable_id || genVariableId() };
+    if (nextVariable.name !== editingName && onRenameVariable) onRenameVariable(editingName, nextVariable);
+    else onChangeVariables(variables.map((v) => (v.name === editingName ? nextVariable : v)), { forceSnapshot: true });
     setEditingName(null);
   }
 

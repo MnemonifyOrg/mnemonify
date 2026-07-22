@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "meta": {
     "course_id": "crs_fs001",
     "title": "Frozen Section Interpretation: Case 1",
@@ -72,6 +72,12 @@
       "enabled": true,
       "mode": "both",
       "resources_page": true
+    },
+    "publish_settings": {
+      "completion_criteria": "either",
+      "report_status_as": "both",
+      "success_enabled": true,
+      "passing_score_pct": 70
     }
   },
   "variables": [
@@ -437,6 +443,7 @@
           "block_id": "blk_kc1",
           "type": "knowledge-check",
           "content": {
+            "scored": true,
             "question": "Based on the frozen section findings, what is the most appropriate intraoperative recommendation?",
             "options": [
               {
@@ -487,6 +494,19 @@
               ]
             },
             "storage_mode": "local"
+          },
+          "triggers": []
+        },
+        {
+          "block_id": "blk_kc_practice",
+          "type": "knowledge-check",
+          "content": {
+            "scored": false,
+            "question": "Practice: which finding should be documented in the report?",
+            "options": [
+              { "id": "opt_practice_a", "text": "The involved inked margin", "correct": true },
+              { "id": "opt_practice_b", "text": "The room temperature", "correct": false }
+            ]
           },
           "triggers": []
         }

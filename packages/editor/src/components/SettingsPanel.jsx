@@ -10,6 +10,7 @@ import CourseHealthPanel from './CourseHealthPanel.jsx';
 import TriggersSection from './TriggersSection.jsx';
 import ConditionBuilder from './ConditionBuilder.jsx';
 import InfoTooltip from './InfoTooltip.jsx';
+import { SYSTEM_VARIABLE_DEFINITIONS } from '@mnemonify/schema/system-variables.js';
 
 // Objectives and concepts are schema-only in this phase (REQUIREMENTS.md
 // P1-37/P1-38) -- deliberately no management UI here yet.
@@ -107,6 +108,18 @@ function CourseSettings({ meta, onChangeMeta }) {
         Show page numbers
       </label>
     </div>
+  );
+}
+
+function ScoredToggle({ block, onChange }) {
+  if (!['knowledge-check', 'matching', 'ordering', 'hotspot'].includes(block.type)) return null;
+  if (block.type === 'hotspot' && block.content?.mode !== 'quiz') return null;
+  return (
+    <label className="settings-panel__checkbox-row settings-panel__scored-toggle">
+      <input type="checkbox" checked={block.content?.scored !== false} onChange={(event) => onChange({ ...block, content: { ...block.content, scored: event.target.checked } })} />
+      Scored interaction
+      <InfoTooltip text="Scored interactions contribute one point to the course score. Unscored interactions still show feedback but do not affect the aggregate score." />
+    </label>
   );
 }
 
@@ -317,6 +330,7 @@ export default function SettingsPanel({
   onChangeMeta,
   onChangePage,
   onChangeVariables,
+  onRenameVariable,
   onChangeBlock,
   assets,
   onUpdateCourseAsset,
@@ -331,6 +345,7 @@ export default function SettingsPanel({
   onOpenAltTextReview,
 }) {
   const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
+  const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
 
   if (!selectedBlock) {
     return (
@@ -356,7 +371,7 @@ export default function SettingsPanel({
           <PageSettingsPanel
             page={page}
             pages={pages}
-            variables={variables}
+            variables={conditionVariables}
             onChangePage={onChangePage}
             onOpenVariableManager={onOpenVariableManager}
           />
@@ -370,7 +385,7 @@ export default function SettingsPanel({
             onUpdateCourseResource={onUpdateCourseResource}
           />
         ) : activeTab === 'Variables' ? (
-          <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} />
+          <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
         ) : activeTab === 'Course Health' ? (
           <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />
         ) : (
@@ -399,7 +414,7 @@ export default function SettingsPanel({
             assets={assets}
             pageBlocks={page?.blocks || []}
             pages={pages}
-            variables={variables}
+            variables={conditionVariables}
             onChange={onChangeBlock}
             onUpdateCourseAsset={onUpdateCourseAsset}
             onOpenVariableManager={onOpenVariableManager}
@@ -407,6 +422,7 @@ export default function SettingsPanel({
         ) : (
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}
+        <ScoredToggle block={selectedBlock} onChange={onChangeBlock} />
       </div>
 
       <AdvancedSection key={selectedBlock.block_id} blockId={selectedBlock.block_id}>
@@ -417,7 +433,7 @@ export default function SettingsPanel({
           <>
             <VisibilityConditionSection
               block={selectedBlock}
-              variables={variables}
+              variables={conditionVariables}
               onChangeBlock={onChangeBlock}
               onOpenVariableManager={onOpenVariableManager}
             />
@@ -429,7 +445,7 @@ export default function SettingsPanel({
             block={selectedBlock}
             pageBlocks={page?.blocks || []}
             pages={pages}
-            variables={variables}
+            variables={conditionVariables}
             onChangeBlock={onChangeBlock}
             onOpenVariableManager={onOpenVariableManager}
           />

@@ -15,6 +15,8 @@
   exists for them yet -- see DECISIONS.md).
 */
 
+import { isReservedSystemVariableName } from '@mnemonify/schema/system-variables.js';
+
 const VARIABLE_ACTIONS = new Set(['SET_VAR', 'ADJUST_VAR']);
 const EFFECT_ACTIONS = new Set(['SHOW_BLOCK', 'HIDE_BLOCK', 'JUMP_TO_PAGE', 'JUMP_TO_TIMESTAMP', 'OPEN_MODAL']);
 const IMPLEMENTED_ACTIONS = new Set([...VARIABLE_ACTIONS, ...EFFECT_ACTIONS]);
@@ -46,11 +48,13 @@ export function evaluateCondition(condition, variables) {
 
 export function applyAction(variables, action) {
   if (action.action === 'SET_VAR') {
+    if (isReservedSystemVariableName(action.var)) return variables;
     const next = { ...variables, [action.var]: action.value };
     console.log(`[trigger-engine] SET_VAR ${action.var}: ${variables[action.var]} -> ${action.value}`);
     return next;
   }
   if (action.action === 'ADJUST_VAR') {
+    if (isReservedSystemVariableName(action.var)) return variables;
     const prev = variables[action.var] ?? 0;
     const next = { ...variables, [action.var]: prev + action.value };
     console.log(`[trigger-engine] ADJUST_VAR ${action.var}: ${prev} -> ${next[action.var]}`);

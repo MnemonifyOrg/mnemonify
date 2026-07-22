@@ -423,6 +423,11 @@ All four block types plug into the existing trigger engine, media manager (n/a f
 - `report_status_as`: `"completion_only"` | `"success_only"` | `"both"` — maps directly to whether cmi.completion_status, cmi.success_status, or both are meaningfully set at course end (Phase 2's SCORM module already sets both fields when available; this setting controls whether success_status is computed at all, or left as `"unknown"`)
 - `success_enabled` / `passing_score_pct`: only meaningful if at least one Scored interaction exists in the course; if none exist, success/passing simply doesn't apply regardless of this setting, and the SCORM module reports completion_status only
 
+`publish_settings` is authoritative for new courses. The earlier
+`meta.completion_rule` field remains accepted for backward compatibility and
+is translated by the v3 document migration; `passed_final_quiz` maps to
+`completion_criteria: "passed_assessment"`.
+
 **Scored flag on interaction blocks:** knowledge_check, matching, ordering, and hotspot (quiz mode) content objects all gain:
 
 ```json

@@ -1,10 +1,16 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "meta": {
     "course_id": "crs_fxcurrent",
     "title": "Already Current v2 Course",
     "theme": { "accent": "#0891B2" },
-    "completion_rule": "viewed_all_pages"
+    "completion_rule": "viewed_all_pages",
+    "publish_settings": {
+      "completion_criteria": "viewed_all_pages",
+      "report_status_as": "both",
+      "success_enabled": true,
+      "passing_score_pct": 80
+    }
   },
   "variables": [{ "variable_id": "var_fx01", "name": "readIntro", "type": "boolean", "default": false }],
   "assets": [],

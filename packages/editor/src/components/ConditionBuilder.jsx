@@ -103,7 +103,7 @@ export default function ConditionBuilder({ variables, value, onChange, onOpenVar
                 <select className="input" value={row.var} onChange={(e) => changeRowVariable(index, e.target.value)}>
                   {variables.map((v) => (
                     <option key={v.name} value={v.name}>
-                      {v.name} ({v.type})
+                      {v.name} ({v.type}){v.readOnly ? ' — built-in' : ''}
                     </option>
                   ))}
                 </select>

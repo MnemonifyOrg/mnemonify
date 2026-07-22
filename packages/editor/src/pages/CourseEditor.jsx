@@ -376,6 +376,30 @@ export default function CourseEditor() {
     updateCourseJson((json) => ({ ...json, variables: newVariables }), options);
   }
 
+  function renameVariable(oldName, nextVariable) {
+    function renameCondition(condition) {
+      if (!condition) return condition;
+      if (condition.all) return { all: condition.all.map(renameCondition) };
+      if (condition.any) return { any: condition.any.map(renameCondition) };
+      return condition.var === oldName ? { ...condition, var: nextVariable.name } : condition;
+    }
+    function renameBlocks(blocks) {
+      return (blocks || []).map((block) => ({
+        ...block,
+        visibility_condition: block.visibility_condition ? renameCondition(block.visibility_condition) : block.visibility_condition,
+        triggers: (block.triggers || []).map((trigger) => ({ ...trigger, condition: renameCondition(trigger.condition), actions: (trigger.actions || []).map((action) => (action.var === oldName ? { ...action, var: nextVariable.name } : action)) })),
+        content: block.content?.items ? { ...block.content, items: block.content.items.map((item) => ({ ...item, body_blocks: renameBlocks(item.body_blocks) })) } : block.content,
+        ...(block.left ? { left: renameBlocks([block.left])[0] } : {}),
+        ...(block.right ? { right: renameBlocks([block.right])[0] } : {}),
+      }));
+    }
+    updateCourseJson((json) => ({
+      ...json,
+      variables: (json.variables || []).map((variable) => (variable.name === oldName ? nextVariable : variable)),
+      pages: (json.pages || []).map((page) => ({ ...page, continue_gate: renameCondition(page.continue_gate), triggers: (page.triggers || []).map((trigger) => ({ ...trigger, condition: renameCondition(trigger.condition), actions: (trigger.actions || []).map((action) => (action.var === oldName ? { ...action, var: nextVariable.name } : action)) })), blocks: renameBlocks(page.blocks) })),
+    }), { forceSnapshot: true });
+  }
+
   function handleChangePage(updatedPage, options) {
     updateCourseJson(
       (json) => ({
@@ -1091,6 +1115,7 @@ export default function CourseEditor() {
               onChangeMeta={handleChangeMeta}
               onChangePage={handleChangePage}
               onChangeVariables={handleChangeVariables}
+              onRenameVariable={renameVariable}
               onUpdateCourseAsset={handleUpdateCourseAsset}
               onAddCourseResource={handleAddCourseResource}
               onRemoveCourseResource={handleRemoveCourseResource}

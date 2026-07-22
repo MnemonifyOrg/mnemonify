@@ -251,6 +251,69 @@ function CustomItemsSection({ custom, pages, onChange }) {
   );
 }
 
+function countScoredInteractions(pages) {
+  let count = 0;
+  function walk(blocks) {
+    for (const block of blocks || []) {
+      if (['knowledge-check', 'matching', 'ordering'].includes(block.type) && block.content?.scored !== false) count += 1;
+      if (block.type === 'hotspot' && block.content?.mode === 'quiz' && block.content?.scored !== false) count += 1;
+      if (block.content?.items) block.content.items.forEach((item) => walk(item.body_blocks));
+      if (block.left) walk([block.left]);
+      if (block.right) walk([block.right]);
+    }
+  }
+  (pages || []).forEach((page) => walk(page.blocks));
+  return count;
+}
+
+function PublishSettingsSection({ meta, pages, onChangeMeta }) {
+  const settings = {
+    completion_criteria: 'viewed_all_pages',
+    report_status_as: 'both',
+    success_enabled: true,
+    passing_score_pct: 80,
+    ...(meta.publish_settings || {}),
+  };
+  const scoredCount = countScoredInteractions(pages);
+  const successReporting = settings.report_status_as !== 'completion_only';
+  function update(patch) {
+    onChangeMeta({ ...meta, publish_settings: { ...settings, ...patch } });
+  }
+  return (
+    <div className="settings-panel__section">
+      <h4>LMS publish settings</h4>
+      <label>Completion criteria</label>
+      <select className="input" value={settings.completion_criteria} onChange={(e) => update({ completion_criteria: e.target.value })}>
+        <option value="viewed_all_pages">Viewed all pages</option>
+        <option value="passed_assessment">Passed the assessment</option>
+        <option value="either">Either</option>
+      </select>
+      <label>Report status to LMS as</label>
+      <select className="input" value={settings.report_status_as} onChange={(e) => update({ report_status_as: e.target.value })}>
+        <option value="completion_only">Completion only</option>
+        <option value="success_only">Success only</option>
+        <option value="both">Both</option>
+      </select>
+      {scoredCount === 0 ? (
+        <p className="settings-panel__hint">No scored interactions in this course — success/passing reporting doesn't apply.</p>
+      ) : (
+        <>
+          <label className="settings-panel__checkbox-row">
+            <input type="checkbox" checked={settings.success_enabled !== false} onChange={(e) => update({ success_enabled: e.target.checked })} />
+            Enable success reporting
+          </label>
+          {successReporting && settings.success_enabled !== false && (
+            <>
+              <label>Passing score %</label>
+              <input type="number" className="input" min="0" max="100" value={settings.passing_score_pct} onChange={(e) => update({ passing_score_pct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // Player tab (Step 1, Phase 4 usability-fix session): consolidates the
 // utility_bar configuration (Contact/Resources/custom items, ARCHITECTURE.md
 // 3.3/5.1, P1-19) into one home. This is a relocation, not new functionality,
@@ -276,6 +339,7 @@ export default function PlayerSettingsPanel({
   return (
     <div>
       <h3 className="settings-panel__player-heading">Player</h3>
+      <PublishSettingsSection meta={meta} pages={pages} onChangeMeta={onChangeMeta} />
       <ContactSection contact={utilityBar.contact} onChange={(contact) => updateUtilityBar({ contact })} />
       <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />
       <ResourcesSection

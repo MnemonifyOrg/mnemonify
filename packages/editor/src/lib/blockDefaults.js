@@ -48,6 +48,7 @@ function defaultContent(type) {
       };
     case 'knowledge-check':
       return {
+        scored: true,
         question: '',
         options: [
           { id: genOptionId(), text: '', correct: true },
@@ -72,11 +73,11 @@ function defaultContent(type) {
     case 'flashcards':
       return { cards: [{ card_id: genCardId(), front: { rich_text: [{ t: 'text', v: '' }], image_id: null }, back: { rich_text: [{ t: 'text', v: '' }], image_id: null } }] };
     case 'matching':
-      return { prompts: [{ prompt_id: genMatchingPromptId(), text: '', correct_option_id: '' }], options: [{ option_id: genMatchingOptionId(), text: '' }, { option_id: genMatchingOptionId(), text: '' }], allow_retry: true };
+      return { scored: true, prompts: [{ prompt_id: genMatchingPromptId(), text: '', correct_option_id: '' }], options: [{ option_id: genMatchingOptionId(), text: '' }, { option_id: genMatchingOptionId(), text: '' }], allow_retry: true };
     case 'ordering':
-      return { items: [{ item_id: genOrderingItemId(), text: '', correct_position: 0 }, { item_id: genOrderingItemId(), text: '', correct_position: 1 }] };
+      return { scored: true, items: [{ item_id: genOrderingItemId(), text: '', correct_position: 0 }, { item_id: genOrderingItemId(), text: '', correct_position: 1 }] };
     case 'hotspot':
-      return { image_asset_id: null, mode: 'exploratory', regions: [] };
+      return { image_asset_id: null, mode: 'exploratory', scored: true, regions: [] };
     case 'two_column':
       return {};
     default:
@@ -126,7 +127,7 @@ export function createInnerBlock(type, parentBlockId, side) {
 // schema_version const and packages/schema/migrations/index.js's
 // CURRENT_VERSION -- a freshly created course starts at the latest version,
 // never needs migrating. See DECISIONS.md (Phase 4.5a).
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 export function createBlankCourseJson(title) {
   return {
@@ -136,6 +137,7 @@ export function createBlankCourseJson(title) {
       title: title || 'Untitled Course',
       theme: { accent: '#0891B2' },
       completion_rule: 'viewed_all_pages',
+      publish_settings: { completion_criteria: 'viewed_all_pages', report_status_as: 'both', success_enabled: true, passing_score_pct: 80 },
     },
     variables: [],
     assets: [],

@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 2
+      "const": 3
     },
     "meta": { "$ref": "#/definitions/meta" },
     "variables": {
@@ -56,6 +56,7 @@
         "completion_rule": {
           "enum": ["viewed_all_pages", "passed_final_quiz"]
         },
+        "publish_settings": { "$ref": "#/definitions/publish_settings" },
         "header": { "$ref": "#/definitions/rich_text_field" },
         "footer": { "$ref": "#/definitions/rich_text_field" },
         "page_numbering": {
@@ -106,6 +107,17 @@
           "type": "array",
           "items": { "$ref": "#/definitions/rich_text_segment" }
         }
+      }
+    },
+    "publish_settings": {
+      "type": "object",
+      "required": ["completion_criteria", "report_status_as", "success_enabled", "passing_score_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "completion_criteria": { "enum": ["viewed_all_pages", "passed_assessment", "either"] },
+        "report_status_as": { "enum": ["completion_only", "success_only", "both"] },
+        "success_enabled": { "type": "boolean" },
+        "passing_score_pct": { "type": "number", "minimum": 0, "maximum": 100 }
       }
     },
     "rich_text_segment": {
@@ -365,6 +377,36 @@
         {
           "if": { "properties": { "type": { "const": "tabs" } } },
           "then": { "properties": { "content": { "$ref": "#/definitions/items_with_stable_ids" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "enum": ["knowledge-check", "matching", "ordering"] }
+            }
+          },
+          "then": {
+            "properties": {
+              "content": {
+                "type": "object",
+                "properties": { "scored": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "const": "hotspot" }
+            }
+          },
+          "then": {
+            "properties": {
+              "content": {
+                "type": "object",
+                "properties": { "scored": { "type": "boolean" } }
+              }
+            }
+          }
         }
       ]
     },

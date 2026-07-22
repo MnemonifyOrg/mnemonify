@@ -3,12 +3,13 @@ import ConditionBuilder, { ValueInput } from './ConditionBuilder.jsx';
 import { ACTION_LABELS, ACTION_TYPES, blockLabel, defaultValueForType, eventLabelFor, newTriggerId } from '../lib/triggerUtils.js';
 
 function emptyAction(type, variables, pageBlocks, pages) {
+  const editableVariables = (variables || []).filter((v) => !v.readOnly);
   if (type === 'SET_VAR') {
-    const v = variables[0];
+    const v = editableVariables[0];
     return { action: 'SET_VAR', var: v?.name || '', value: defaultValueForType(v?.type) };
   }
   if (type === 'ADJUST_VAR') {
-    const numberVar = variables.find((v) => v.type === 'number');
+    const numberVar = editableVariables.find((v) => v.type === 'number');
     return { action: 'ADJUST_VAR', var: numberVar?.name || '', value: 1 };
   }
   if (type === 'SHOW_BLOCK' || type === 'HIDE_BLOCK') {
@@ -159,7 +160,8 @@ function OverlayContentEditor({ action, onChange }) {
 }
 
 function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, onOpenVariableManager }) {
-  const numberVariables = variables.filter((v) => v.type === 'number');
+  const editableVariables = variables.filter((v) => !v.readOnly);
+  const numberVariables = editableVariables.filter((v) => v.type === 'number');
 
   function changeType(type) {
     onChange(emptyAction(type, variables, pageBlocks, pages));
@@ -176,7 +178,7 @@ function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, o
       </select>
 
       {action.action === 'SET_VAR' &&
-        (variables.length === 0 ? (
+        (editableVariables.length === 0 ? (
           <NoVariablesMessage onOpenVariableManager={onOpenVariableManager} />
         ) : (
           <>
@@ -188,7 +190,7 @@ function ActionRow({ action, variables, pageBlocks, pages, onChange, onRemove, o
                 onChange({ action: 'SET_VAR', var: e.target.value, value: defaultValueForType(variable?.type) });
               }}
             >
-              {variables.map((v) => (
+              {editableVariables.map((v) => (
                 <option key={v.name} value={v.name}>
                   {v.name} ({v.type})
                 </option>

@@ -11,6 +11,7 @@ import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import { configureAnalytics, track } from './engine/analytics.js';
 import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
+import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction } from './engine/scoring.js';
 
 function RichTextPreview({ field }) {
   if (!field?.rich_text?.length) return null;
@@ -25,10 +26,20 @@ function RichTextPreview({ field }) {
 
 function initialVariables(course) {
   const vars = {};
-  course.variables.forEach((v) => {
+  (course.variables || []).forEach((v) => {
     vars[v.name] = v.default;
   });
   return vars;
+}
+
+function publishSettings(course) {
+  return {
+    completion_criteria: 'viewed_all_pages',
+    report_status_as: 'both',
+    success_enabled: true,
+    passing_score_pct: 80,
+    ...(course?.meta?.publish_settings || {}),
+  };
 }
 
 // Total knowledge checks across every page, not just the current one --
@@ -46,6 +57,7 @@ export default function App() {
   const [course, setCourse] = useState(null);
   const [courseResources, setCourseResources] = useState([]);
   const [variables, setVariables] = useState({});
+  const [scoreState, setScoreState] = useState({ scoreMax: 0, scoreRaw: 0, completedInteractionIds: [] });
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
   const [currentPageId, setCurrentPageId] = useState(null);
@@ -74,6 +86,11 @@ export default function App() {
   const completedRef = useRef(false);
   const timelineContextRef = useRef(null);
   const pageEnterTimesRef = useRef(new Map());
+  const scoreStateRef = useRef(scoreState);
+
+  function runtimeVariables(courseArg = course, scoreArg = scoreStateRef.current) {
+    return { ...variables, ...scoreVariables(courseArg, scoreArg) };
+  }
 
   function trackPageEnter(pageId) {
     const enteredAt = Date.now();
@@ -94,50 +111,42 @@ export default function App() {
     });
   }
 
-  async function evaluateCourseCompletion(courseArg, variablesArg, completedPageIdsArg, currentPageIdArg) {
+  async function evaluateCourseCompletion(courseArg, variablesArg, completedPageIdsArg, currentPageIdArg, scoreArg = scoreStateRef.current) {
     if (completedRef.current || !courseArg) return;
-    const rule = courseArg.meta.completion_rule || 'viewed_all_pages';
-    const { total, answeredCount, correct } = answeredRef.current;
-    // 'passed_final_quiz': driven by knowledge-check answers, course-wide --
-    // preserves the Phase 2 behavior this rule already had, just no longer
-    // scoped to a single hardcoded page. 'viewed_all_pages' (the default,
-    // and the sample course's own setting): driven purely by Continue-button
-    // page completion, independent of whether any page has a quiz at all.
-    const isComplete =
-      rule === 'passed_final_quiz' && total > 0
-        ? answeredCount >= total
-        : completedPageIdsArg.length >= courseArg.pages.length;
+    const settings = publishSettings(courseArg);
+    const score = scoreVariables(courseArg, scoreArg);
+    const hasScored = score.ScoreMax > 0;
+    const viewedAllPages = completedPageIdsArg.length >= courseArg.pages.length;
+    const passedAssessment = hasScored && score.ScorePassed;
+    const isComplete = settings.completion_criteria === 'passed_assessment'
+      ? (hasScored ? passedAssessment : viewedAllPages)
+      : settings.completion_criteria === 'either'
+        ? (viewedAllPages || passedAssessment)
+        : viewedAllPages;
     if (!isComplete) return;
 
     completedRef.current = true;
     track('course_complete', {
       pageId: currentPageIdArg,
       payload: {
-        completion_rule: rule,
+        completion_criteria: settings.completion_criteria,
         completed_pages: completedPageIdsArg.length,
         total_pages: courseArg.pages.length,
-        knowledge_checks: { answered: answeredCount, total, correct },
-        ...(total > 0
-          ? {
-              score: { raw: correct, min: 0, max: total, scaled: correct / total },
-              success: correct === total ? 'passed' : 'failed',
-            }
-          : {}),
+        score: { raw: score.ScoreRaw, min: 0, max: score.ScoreMax, scaled: score.ScorePercent / 100 },
+        success: hasScored ? (score.ScorePassed ? 'passed' : 'failed') : 'unknown',
       },
     });
     await scorm2004.setSuspendData({
       variables: variablesArg,
       pageId: currentPageIdArg,
       completedPageIds: completedPageIdsArg,
+      scoreState: scoreArg,
     });
-    await scorm2004.setCompletion('completed');
-    if (total > 0) {
-      await scorm2004.setScore(correct, 0, total, correct / total);
-      await scorm2004.setSuccess(correct === total ? 'passed' : 'failed');
-      await scorm2004.terminate('normal', null, { raw: correct, min: 0, max: total, scaled: correct / total });
-    } else {
-      await scorm2004.terminate('normal');
-    }
+    if (settings.report_status_as !== 'success_only') await scorm2004.setCompletion('completed');
+    if (settings.report_status_as !== 'completion_only') await scorm2004.setSuccess(hasScored ? (score.ScorePassed ? 'passed' : 'failed') : 'unknown');
+    const scorePayload = hasScored ? { raw: score.ScoreRaw, min: 0, max: score.ScoreMax, scaled: score.ScorePercent / 100 } : null;
+    if (scorePayload) await scorm2004.setScore(scorePayload.raw, scorePayload.min, scorePayload.max, scorePayload.scaled);
+    await scorm2004.terminate('normal', settings.report_status_as !== 'completion_only' ? (hasScored ? (score.ScorePassed ? 'passed' : 'failed') : 'unknown') : null, scorePayload);
   }
 
   useEffect(() => {
@@ -151,6 +160,7 @@ export default function App() {
       let restoredVariables = initialVariables(bundledCourse);
       let restoredPageId = bundledCourse.pages[0].page_id;
       let restoredCompletedPageIds = [];
+      let restoredScoreState = createScoreState(bundledCourse);
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -171,6 +181,7 @@ export default function App() {
           loadedCourse = record.course_json;
           restoredVariables = initialVariables(loadedCourse);
           restoredPageId = printPageId || loadedCourse.pages[0].page_id;
+          restoredScoreState = createScoreState(loadedCourse);
         } else {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
@@ -187,6 +198,7 @@ export default function App() {
             restoredVariables = suspend.variables || initialVariables(loadedCourse);
             restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
             restoredCompletedPageIds = suspend.completedPageIds || [];
+            restoredScoreState = createScoreState(loadedCourse, suspend.scoreState);
 
             await scorm2004.setLocation(restoredPageId);
             await scorm2004.setSuspendData({
@@ -206,6 +218,7 @@ export default function App() {
         restoredVariables = initialVariables(bundledCourse);
         restoredPageId = bundledCourse.pages[0].page_id;
         restoredCompletedPageIds = [];
+        restoredScoreState = createScoreState(bundledCourse);
       }
 
       // Defensive fallback if a prior save references a page_id that no
@@ -226,7 +239,9 @@ export default function App() {
       });
       setIsScorm(scormAvailable);
       answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
-      setVariables(restoredVariables);
+      scoreStateRef.current = restoredScoreState;
+      setVariables(stripSystemVariables(restoredVariables));
+      setScoreState(restoredScoreState);
       setCourse(loadedCourse);
       if (isPreview && params.get('courseId')) {
         fetch(`${window.location.origin}/api/courses/${params.get('courseId')}/resources`)
@@ -354,8 +369,8 @@ export default function App() {
     if (!course || !currentPageId) return;
     const page = course.pages.find((p) => p.page_id === currentPageId);
     if (!page) return;
-    const result = runTriggers(variables, page.triggers, 'onPageEnter');
-    setVariables(result.variables);
+    const result = runTriggers(runtimeVariables(), page.triggers, 'onPageEnter');
+    setVariables(stripSystemVariables(result.variables));
     applyEffects(result.effects);
     setVisitedPageIds((prev) => (prev.includes(currentPageId) ? prev : [...prev, currentPageId]));
     trackPageEnter(currentPageId);
@@ -402,19 +417,19 @@ export default function App() {
     if (!course) return;
     console.log('[player] variable state:', variables);
     if (isScorm) {
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState });
     }
-  }, [variables, course, isScorm, currentPageId, completedPageIds]);
+  }, [variables, course, isScorm, currentPageId, completedPageIds, scoreState]);
 
   useEffect(() => {
     function handleBeforeUnload() {
       if (!course || completedRef.current) return;
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState });
       scorm2004.terminate('suspend');
     }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [course, variables, currentPageId, completedPageIds]);
+  }, [course, variables, currentPageId, completedPageIds, scoreState]);
 
   function handleOpenModal(payload) {
     setModalPayload(payload);
@@ -445,8 +460,16 @@ export default function App() {
         payload: { event: eventName },
       });
     }
-    const result = runTriggers(variables, block.triggers, eventName);
-    setVariables(result.variables);
+    let nextScoreState = scoreStateRef.current;
+    if (eventName === 'onComplete' && isScoredInteraction(block)) {
+      nextScoreState = recordInteractionScore(course, nextScoreState, block, eventPayload);
+      if (nextScoreState !== scoreStateRef.current) {
+        scoreStateRef.current = nextScoreState;
+        setScoreState(nextScoreState);
+      }
+    }
+    const result = runTriggers({ ...variables, ...scoreVariables(course, nextScoreState) }, block.triggers, eventName);
+    setVariables(stripSystemVariables(result.variables));
     applyEffects(result.effects, {
       timelineBlockId: block.type === 'video' ? block.block_id : timelineContextRef.current?.blockId,
     });
@@ -454,7 +477,10 @@ export default function App() {
     if (block.type === 'knowledge-check' && (eventName === 'onCorrect' || eventName === 'onIncorrect')) {
       answeredRef.current.answeredCount += 1;
       if (eventName === 'onCorrect') answeredRef.current.correct += 1;
-      evaluateCourseCompletion(course, result.variables, completedPageIds, currentPageId);
+      evaluateCourseCompletion(course, stripSystemVariables(result.variables), completedPageIds, currentPageId, nextScoreState);
+    }
+    if (eventName === 'onComplete' && isScoredInteraction(block)) {
+      evaluateCourseCompletion(course, stripSystemVariables(result.variables), completedPageIds, currentPageId, nextScoreState);
     }
   }
 
@@ -469,8 +495,8 @@ export default function App() {
       resumeTimestamp: timestamp,
     };
     const timelineEvent = { ...timelineTrigger, event: 'onTimeReached' };
-    const result = runTriggers(variables, [...(videoBlock.triggers || []), timelineEvent], 'onTimeReached');
-    setVariables(result.variables);
+    const result = runTriggers(runtimeVariables(), [...(videoBlock.triggers || []), timelineEvent], 'onTimeReached');
+    setVariables(stripSystemVariables(result.variables));
     applyEffects(result.effects, { timelineBlockId: videoBlock.block_id });
   }
 
@@ -505,8 +531,8 @@ export default function App() {
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
       trackPageExit(currentPageId);
-      const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
-      setVariables(result.variables);
+      const result = runTriggers(runtimeVariables(), currentPage?.triggers, 'onPageExit');
+      setVariables(stripSystemVariables(result.variables));
       applyEffects(result.effects);
     }
     goToPage(pageId);
@@ -525,8 +551,8 @@ export default function App() {
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (pageId !== currentPageId) {
       trackPageExit(currentPageId);
-      const result = runTriggers(variables, currentPage?.triggers, 'onPageExit');
-      setVariables(result.variables);
+      const result = runTriggers(runtimeVariables(), currentPage?.triggers, 'onPageExit');
+      setVariables(stripSystemVariables(result.variables));
       applyEffects(result.effects);
     }
     goToPage(pageId);
@@ -543,15 +569,15 @@ export default function App() {
     track('continue_clicked', {
       pageId: currentPageId,
       payload: {
-        conditions_met: page.continue_gate
+        conditions_met: currentPage.continue_gate
           ? continueDisabled
             ? []
             : ['continue_gate']
           : ['no_continue_gate'],
       },
     });
-    const result = runTriggers(variables, currentPage.triggers, 'onPageExit');
-    setVariables(result.variables);
+    const result = runTriggers(runtimeVariables(), currentPage.triggers, 'onPageExit');
+    setVariables(stripSystemVariables(result.variables));
     applyEffects(result.effects);
 
     const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
@@ -559,7 +585,7 @@ export default function App() {
     if (nextPage) {
       goToPage(nextPage.page_id);
     } else {
-      evaluateCourseCompletion(course, result.variables, nextCompletedPageIds, currentPageId);
+      evaluateCourseCompletion(course, stripSystemVariables(result.variables), nextCompletedPageIds, currentPageId, scoreStateRef.current);
     }
   }
 
@@ -588,7 +614,8 @@ export default function App() {
   ];
   const currentIndex = course.pages.findIndex((p) => p.page_id === currentPageId);
   const isLastPage = currentIndex === course.pages.length - 1;
-  const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, variables) : false;
+  const playerVariables = runtimeVariables();
+  const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, playerVariables) : false;
 
   return (
     <div className="player-shell">
@@ -637,7 +664,7 @@ export default function App() {
                 isPreview={isPreview}
                 onOpenModal={handleOpenModal}
                 blockVisibility={blockVisibility}
-                variables={variables}
+                variables={playerVariables}
                 printMode={isPrintMode}
                 worksheetMode={isWorksheet}
               />

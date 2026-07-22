@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { genGroupId } from '../lib/idGen.js';
+
+const GROUP_DROP_PREFIX = 'group-drop:';
+const groupDropId = (groupId) => `${GROUP_DROP_PREFIX}${groupId}`;
 
 // Phase 4.6 Step 5: inline rename shared by both a page row and a group
 // header -- same click-to-edit-in-place interaction, just parameterized by
@@ -87,9 +90,12 @@ function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, o
 
 function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete }) {
   const [renaming, setRenaming] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.group_id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <div className="page-list__group-header">
+    <div ref={setNodeRef} style={style} className="page-list__group-header">
+      <span className="page-list__drag-handle" title="Drag to reorder modules" aria-label="Drag to reorder modules" {...attributes} {...listeners}>⠿</span>
       <button
         type="button"
         className="page-list__group-collapse"
@@ -126,6 +132,11 @@ function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete })
   );
 }
 
+function GroupDropList({ group, children }) {
+  const { isOver, setNodeRef } = useDroppable({ id: groupDropId(group.group_id) });
+  return <ul ref={setNodeRef} className={isOver ? 'page-list__group-pages page-list__group-pages--drop-target' : 'page-list__group-pages'}>{children}</ul>;
+}
+
 export default function PageList({
   pages,
   meta,
@@ -138,6 +149,7 @@ export default function PageList({
   onSaveAsPageTemplate,
   onInsertFromTemplate,
   onReorderPages,
+  onReorderGroups,
 }) {
   // Collapse/expand is view state, not document state -- deliberately not
   // persisted into meta.page_groups (same "view state stays out of the
@@ -165,13 +177,46 @@ export default function PageList({
   function handleDragEnd(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+    const activeGroupIndex = groups.findIndex((group) => group.group_id === active.id);
+    if (activeGroupIndex !== -1) {
+      const overGroupId = groups.some((group) => group.group_id === over.id)
+        ? over.id
+        : String(over.id).startsWith(GROUP_DROP_PREFIX)
+          ? String(over.id).slice(GROUP_DROP_PREFIX.length)
+          : groups.find((group) => (group.page_ids || []).includes(over.id))?.group_id;
+      const overGroupIndex = groups.findIndex((group) => group.group_id === overGroupId);
+      if (overGroupIndex === -1 || overGroupIndex === activeGroupIndex) return;
+      onReorderGroups(arrayMove(groups, activeGroupIndex, overGroupIndex));
+      return;
+    }
+
     const oldIndex = displayedPages.findIndex((page) => page.page_id === active.id);
-    const newIndex = displayedPages.findIndex((page) => page.page_id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    // In grouped mode the visible list is a flattened sequence of group
-    // memberships. Persist that exact sequence into course.pages[] so the
-    // player's array-driven Continue path follows the reordered nav.
-    onReorderPages(arrayMove(displayedPages, oldIndex, newIndex));
+    if (oldIndex === -1) return;
+    const overPageIndex = displayedPages.findIndex((page) => page.page_id === over.id);
+    const overGroupId = groups.some((group) => group.group_id === over.id)
+      ? over.id
+      : String(over.id).startsWith(GROUP_DROP_PREFIX)
+        ? String(over.id).slice(GROUP_DROP_PREFIX.length)
+        : groups.find((group) => (group.page_ids || []).includes(over.id))?.group_id || null;
+    let newIndex = overPageIndex;
+    if (newIndex === -1 && overGroupId) {
+      const targetPageIndexes = displayedPages
+        .map((page, index) => (groups.find((group) => (group.page_ids || []).includes(page.page_id))?.group_id === overGroupId ? index : -1))
+        .filter((index) => index >= 0);
+      newIndex = targetPageIndexes.length ? targetPageIndexes[targetPageIndexes.length - 1] + 1 : displayedPages.length;
+    }
+    if (newIndex === -1) return;
+
+    const reorderedPages = arrayMove(displayedPages, oldIndex, newIndex);
+    const nextGroups = groups.map((group) => ({
+      ...group,
+      page_ids: (group.page_ids || []).filter((pageId) => pageId !== active.id),
+    }));
+    if (overGroupId) {
+      const targetGroup = nextGroups.find((group) => group.group_id === overGroupId);
+      if (targetGroup) targetGroup.page_ids = [...targetGroup.page_ids, active.id];
+    }
+    onReorderPages(reorderedPages, nextGroups);
   }
 
   function toggleGroupCollapse(groupId) {
@@ -242,18 +287,20 @@ export default function PageList({
             const collapsed = collapsedGroups.has(group.group_id);
             return (
               <div className="page-list__group" key={group.group_id}>
-                <GroupHeader
-                  group={group}
-                  collapsed={collapsed}
-                  onToggleCollapse={() => toggleGroupCollapse(group.group_id)}
-                  onRename={handleRenameGroup}
-                  onDelete={handleDeleteGroup}
-                />
+                <SortableContext items={groups.map((candidate) => candidate.group_id)} strategy={verticalListSortingStrategy}>
+                  <GroupHeader
+                    group={group}
+                    collapsed={collapsed}
+                    onToggleCollapse={() => toggleGroupCollapse(group.group_id)}
+                    onRename={handleRenameGroup}
+                    onDelete={handleDeleteGroup}
+                  />
+                </SortableContext>
                 {!collapsed && (
-                  <ul className="page-list__group-pages">
+                  <GroupDropList group={group}>
                     {groupPages.length === 0 && <li className="page-list__empty-hint">No pages in this module yet.</li>}
                     {groupPages.map((page) => renderPageRow(page, group.group_id))}
-                  </ul>
+                  </GroupDropList>
                 )}
               </div>
             );

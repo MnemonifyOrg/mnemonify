@@ -380,8 +380,12 @@ export default function CourseEditor() {
     updateCourseJson((json) => ({ ...json, question_banks: newQuestionBanks }), options);
   }
 
-  function handleReorderPages(pages) {
-    updateCourseJson((json) => ({ ...json, pages }), { forceSnapshot: true });
+  function handleReorderPages(pages, pageGroups) {
+    updateCourseJson((json) => ({ ...json, pages, ...(pageGroups ? { meta: { ...json.meta, page_groups: pageGroups } } : {}) }), { forceSnapshot: true });
+  }
+
+  function handleReorderGroups(pageGroups) {
+    updateCourseJson((json) => ({ ...json, meta: { ...json.meta, page_groups: pageGroups } }), { forceSnapshot: true });
   }
 
   function renameVariable(oldName, nextVariable) {
@@ -1043,6 +1047,7 @@ export default function CourseEditor() {
               onSaveAsPageTemplate={setPageToSaveAsTemplate}
               onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
               onReorderPages={handleReorderPages}
+              onReorderGroups={handleReorderGroups}
             />
           )}
         </nav>

@@ -162,7 +162,15 @@
       "properties": {
         "question_id": { "type": "string", "pattern": "^bq_[a-zA-Z0-9_]+$" },
         "content": { "$ref": "#/definitions/knowledge_check_content" },
-        "scored": { "type": "boolean" }
+        "scored": { "type": "boolean" },
+        "objective_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       }
     },
     "knowledge_check_content": {
@@ -181,13 +189,19 @@
     },
     "objective": {
       "type": "object",
-      "required": ["objective_id", "text"],
+      "required": ["objective_id"],
       "additionalProperties": false,
       "properties": {
         "objective_id": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
         "text": { "type": "string" },
         "standard_code": { "type": "string" }
-      }
+      },
+      "anyOf": [
+        { "required": ["label"] },
+        { "required": ["text"] }
+      ]
     },
     "concept": {
       "type": "object",
@@ -211,6 +225,10 @@
         "page_ids": {
           "type": "array",
           "items": { "type": "string", "pattern": "^pg_[a-zA-Z0-9_]+$" }
+        },
+        "objective_ids": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     },

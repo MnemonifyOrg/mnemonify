@@ -125,4 +125,27 @@ describe('question bank draw persistence and scoring', () => {
     const prepared = prepareQuestionBankDraws(objectiveCourse);
     expect(new Set(prepared.course.pages[0].blocks[0].content.drawn_question_ids)).toEqual(new Set(['q-match', 'q-unmapped']));
   });
+
+  it('takes all matching questions before using unmapped fill questions', () => {
+    const objectiveCourse = {
+      meta: {
+        page_groups: [{ group_id: 'grp-one', page_ids: ['pg-one'], objective_ids: ['obj-one'] }],
+      },
+      question_banks: [{
+        bank_id: 'bank-objectives',
+        questions: [
+          { question_id: 'q-match-one', scored: true, objective_ids: ['obj-one'], content: { question: 'Match one', options: [] } },
+          { question_id: 'q-match-two', scored: true, objective_ids: ['obj-one'], content: { question: 'Match two', options: [] } },
+          { question_id: 'q-unmapped', scored: true, content: { question: 'Unmapped', options: [] } },
+        ],
+      }],
+      pages: [{
+        page_id: 'pg-one',
+        blocks: [{ block_id: 'draw-objectives', type: 'question_bank_draw', content: { bank_id: 'bank-objectives', draw_count: 2, objective_fallback: 'include_unmapped' } }],
+      }],
+    };
+
+    const prepared = prepareQuestionBankDraws(objectiveCourse);
+    expect(new Set(prepared.course.pages[0].blocks[0].content.drawn_question_ids)).toEqual(new Set(['q-match-one', 'q-match-two']));
+  });
 });

@@ -93,12 +93,15 @@ export function prepareQuestionBankDraws(course, restoredDraws = {}) {
       const pool = resolveQuestionBankDrawPool(bank, group, requested, block.content?.objective_fallback || 'draw_fewer');
       const questions = pool.eligibleQuestions;
       const validIds = new Set(questions.map((question) => question.question_id));
+      const drawCandidates = pool.filtered && pool.fallback === 'include_unmapped'
+        ? [...shuffled(pool.matchingQuestions), ...shuffled(pool.unmappedQuestions)]
+        : shuffled(questions);
       const restored = Array.isArray(restoredDraws[block.block_id])
         ? restoredDraws[block.block_id].filter((id) => validIds.has(id))
         : [];
       const selected = [...new Set(restored)].slice(0, requested);
       if (selected.length < Math.min(requested, questions.length)) {
-        const remaining = shuffled(questions.filter((question) => !selected.includes(question.question_id)));
+        const remaining = drawCandidates.filter((question) => !selected.includes(question.question_id));
         selected.push(...remaining.slice(0, Math.min(requested, questions.length) - selected.length).map((question) => question.question_id));
       }
       questionBankDraws[block.block_id] = selected;

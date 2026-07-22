@@ -152,6 +152,21 @@ describe('suspend data', () => {
     expect(JSON.parse(saved).scoreState).toEqual(scoreState);
   });
 
+  it('persists per-question interaction state alongside score state for resume', async () => {
+    const { mod, api } = await setupDirectModule();
+    const interactionStates = {
+      blk_kc1: { submitted: true, selectedId: 'option-a', correct: true },
+    };
+    await mod.default.setSuspendData({
+      variables: {},
+      pageId: 'pg_case1',
+      scoreState: { scoreMax: 2, scoreRaw: 1, completedInteractionIds: ['blk_kc1'] },
+      interactionStates,
+    });
+    const saved = api.SetValue.mock.calls.find(([key]) => key === 'cmi.suspend_data')[1];
+    expect(JSON.parse(saved).interactionStates).toEqual(interactionStates);
+  });
+
   it('parses suspend_data back into an object', async () => {
     const { mod, api } = await setupDirectModule();
     api.GetValue.mockReturnValue(JSON.stringify({ variables: { a: 1 }, pageId: 'pg_1' }));

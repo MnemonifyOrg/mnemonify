@@ -2,7 +2,7 @@ import { useState } from 'react';
 import BlockRenderer from './BlockRenderer.jsx';
 import RichText from './RichText.jsx';
 
-export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables, printMode, worksheetMode }) {
+export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onOpenModal, blockVisibility, variables, interactionStates, printMode, worksheetMode }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const items = block.content.items;
 
@@ -68,6 +68,7 @@ export default function TabsBlock({ block, assets, onTrigger, onTimeReached, onO
                 onOpenModal={onOpenModal}
                 blockVisibility={blockVisibility}
                 variables={variables}
+                interactionStates={interactionStates}
                 printMode={printMode}
                 worksheetMode={worksheetMode}
               />

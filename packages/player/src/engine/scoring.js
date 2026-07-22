@@ -2,6 +2,48 @@ import { isReservedSystemVariableName } from '@mnemonify/schema/system-variables
 
 export const SCOREABLE_BLOCK_TYPES = new Set(['knowledge-check', 'matching', 'ordering', 'hotspot']);
 
+function walkBlocks(blocks, visit) {
+  for (const block of blocks || []) {
+    visit(block);
+    if (block.content?.items) {
+      for (const item of block.content.items) walkBlocks(item.body_blocks, visit);
+    }
+    if (block.left) walkBlocks([block.left], visit);
+    if (block.right) walkBlocks([block.right], visit);
+  }
+}
+
+export function collectKnowledgeChecks(course) {
+  const result = [];
+  for (const page of course?.pages || []) {
+    walkBlocks(page.blocks, (block) => {
+      if (block.type === 'knowledge-check' && block.block_id) result.push(block);
+    });
+  }
+  return result;
+}
+
+export function restoreInteractionStates(course, restored = {}) {
+  const validIds = new Set(collectKnowledgeChecks(course).map((block) => block.block_id));
+  return Object.fromEntries(
+    Object.entries(restored || {}).filter(([blockId, state]) => (
+      validIds.has(blockId) && state?.submitted === true && typeof state.selectedId === 'string'
+    ))
+  );
+}
+
+export function recordInteractionState(state, block, payload = {}) {
+  if (block?.type !== 'knowledge-check' || !block.block_id || typeof payload.answer_selected !== 'string') return state;
+  return {
+    ...state,
+    [block.block_id]: {
+      submitted: true,
+      selectedId: payload.answer_selected,
+      correct: payload.correct === true,
+    },
+  };
+}
+
 export function isScoredInteraction(block) {
   return Boolean(
     block &&

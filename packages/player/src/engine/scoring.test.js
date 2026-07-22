@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createScoreState, recordInteractionScore, scoreVariables } from './scoring.js';
+import { createScoreState, recordInteractionScore, scoreVariables, restoreInteractionStates, recordInteractionState } from './scoring.js';
 
 const course = {
   meta: { publish_settings: { success_enabled: true, passing_score_pct: 70 } },
@@ -25,5 +25,28 @@ describe('system score variables', () => {
     state = recordInteractionScore(course, state, course.pages[0].blocks[0], { correct: false });
     state = recordInteractionScore(course, state, course.pages[0].blocks[0], { correct: true });
     expect(scoreVariables(course, state).ScoreRaw).toBe(0);
+  });
+});
+
+describe('knowledge-check resume state', () => {
+  it('restores only valid submitted question state from suspend data', () => {
+    const restored = restoreInteractionStates(course, {
+      'kc-1': { submitted: true, selectedId: 'answer-a', correct: true },
+      'removed-kc': { submitted: true, selectedId: 'answer-b', correct: false },
+      'kc-2': { submitted: false, selectedId: 'answer-c', correct: false },
+    });
+    expect(restored).toEqual({
+      'kc-1': { submitted: true, selectedId: 'answer-a', correct: true },
+    });
+  });
+
+  it('records a submitted answer without changing the score tally', () => {
+    const state = recordInteractionState({}, course.pages[0].blocks[0], {
+      answer_selected: 'answer-a',
+      correct: true,
+    });
+    expect(state).toEqual({
+      'kc-1': { submitted: true, selectedId: 'answer-a', correct: true },
+    });
   });
 });

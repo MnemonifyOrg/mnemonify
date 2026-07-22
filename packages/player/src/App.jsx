@@ -11,7 +11,7 @@ import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import { configureAnalytics, track } from './engine/analytics.js';
 import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
-import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction } from './engine/scoring.js';
+import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState } from './engine/scoring.js';
 
 function RichTextPreview({ field }) {
   if (!field?.rich_text?.length) return null;
@@ -58,6 +58,7 @@ export default function App() {
   const [courseResources, setCourseResources] = useState([]);
   const [variables, setVariables] = useState({});
   const [scoreState, setScoreState] = useState({ scoreMax: 0, scoreRaw: 0, completedInteractionIds: [] });
+  const [interactionStates, setInteractionStates] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
   const [currentPageId, setCurrentPageId] = useState(null);
@@ -87,6 +88,7 @@ export default function App() {
   const timelineContextRef = useRef(null);
   const pageEnterTimesRef = useRef(new Map());
   const scoreStateRef = useRef(scoreState);
+  const interactionStatesRef = useRef(interactionStates);
 
   function runtimeVariables(courseArg = course, scoreArg = scoreStateRef.current) {
     return { ...variables, ...scoreVariables(courseArg, scoreArg) };
@@ -161,6 +163,7 @@ export default function App() {
       let restoredPageId = bundledCourse.pages[0].page_id;
       let restoredCompletedPageIds = [];
       let restoredScoreState = createScoreState(bundledCourse);
+      let restoredInteractionStates = {};
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -182,6 +185,7 @@ export default function App() {
           restoredVariables = initialVariables(loadedCourse);
           restoredPageId = printPageId || loadedCourse.pages[0].page_id;
           restoredScoreState = createScoreState(loadedCourse);
+          restoredInteractionStates = {};
         } else {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
@@ -199,12 +203,15 @@ export default function App() {
             restoredPageId = suspend.pageId || loadedCourse.pages[0].page_id;
             restoredCompletedPageIds = suspend.completedPageIds || [];
             restoredScoreState = createScoreState(loadedCourse, suspend.scoreState);
+            restoredInteractionStates = restoreInteractionStates(loadedCourse, suspend.interactionStates);
 
             await scorm2004.setLocation(restoredPageId);
             await scorm2004.setSuspendData({
               variables: restoredVariables,
               pageId: restoredPageId,
               completedPageIds: restoredCompletedPageIds,
+              scoreState: restoredScoreState,
+              interactionStates: restoredInteractionStates,
             });
           }
         }
@@ -219,6 +226,7 @@ export default function App() {
         restoredPageId = bundledCourse.pages[0].page_id;
         restoredCompletedPageIds = [];
         restoredScoreState = createScoreState(bundledCourse);
+        restoredInteractionStates = {};
       }
 
       // Defensive fallback if a prior save references a page_id that no
@@ -240,8 +248,10 @@ export default function App() {
       setIsScorm(scormAvailable);
       answeredRef.current = { total: countKnowledgeChecks(loadedCourse), correct: 0, answeredCount: 0 };
       scoreStateRef.current = restoredScoreState;
+      interactionStatesRef.current = restoredInteractionStates;
       setVariables(stripSystemVariables(restoredVariables));
       setScoreState(restoredScoreState);
+      setInteractionStates(restoredInteractionStates);
       setCourse(loadedCourse);
       if (isPreview && params.get('courseId')) {
         fetch(`${window.location.origin}/api/courses/${params.get('courseId')}/resources`)
@@ -417,19 +427,19 @@ export default function App() {
     if (!course) return;
     console.log('[player] variable state:', variables);
     if (isScorm) {
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates });
     }
-  }, [variables, course, isScorm, currentPageId, completedPageIds, scoreState]);
+  }, [variables, course, isScorm, currentPageId, completedPageIds, scoreState, interactionStates]);
 
   useEffect(() => {
     function handleBeforeUnload() {
       if (!course || completedRef.current) return;
-      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState });
+      scorm2004.setSuspendData({ variables, pageId: currentPageId, completedPageIds, scoreState, interactionStates });
       scorm2004.terminate('suspend');
     }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [course, variables, currentPageId, completedPageIds, scoreState]);
+  }, [course, variables, currentPageId, completedPageIds, scoreState, interactionStates]);
 
   function handleOpenModal(payload) {
     setModalPayload(payload);
@@ -461,6 +471,14 @@ export default function App() {
       });
     }
     let nextScoreState = scoreStateRef.current;
+    let nextInteractionStates = interactionStatesRef.current;
+    if (eventName === 'onComplete' && block.type === 'knowledge-check') {
+      nextInteractionStates = recordInteractionState(nextInteractionStates, block, eventPayload);
+      if (nextInteractionStates !== interactionStatesRef.current) {
+        interactionStatesRef.current = nextInteractionStates;
+        setInteractionStates(nextInteractionStates);
+      }
+    }
     if (eventName === 'onComplete' && isScoredInteraction(block)) {
       nextScoreState = recordInteractionScore(course, nextScoreState, block, eventPayload);
       if (nextScoreState !== scoreStateRef.current) {
@@ -665,6 +683,7 @@ export default function App() {
                 onOpenModal={handleOpenModal}
                 blockVisibility={blockVisibility}
                 variables={playerVariables}
+                interactionStates={interactionStates}
                 printMode={isPrintMode}
                 worksheetMode={isWorksheet}
               />

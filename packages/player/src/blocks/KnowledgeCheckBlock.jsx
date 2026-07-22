@@ -22,9 +22,10 @@ function KcImage({ assetId, assets, onOpenModal }) {
   );
 }
 
-export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, printMode, worksheetMode }) {
-  const [selectedId, setSelectedId] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
+export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, interactionStates, printMode, worksheetMode }) {
+  const restoredState = interactionStates?.[block.block_id];
+  const [selectedId, setSelectedId] = useState(restoredState?.selectedId || null);
+  const [submitted, setSubmitted] = useState(restoredState?.submitted === true);
   const {
     question,
     question_image_id: questionImageId,

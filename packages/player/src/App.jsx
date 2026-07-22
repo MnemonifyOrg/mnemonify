@@ -14,6 +14,7 @@ import scorm2004 from './lms/scorm2004.js';
 import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws, collectKnowledgeChecks } from './engine/scoring.js';
 import RichText from './blocks/RichText.jsx';
 import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js';
+import { resetPageScroll } from './engine/scroll.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -335,7 +336,7 @@ export default function App() {
     // This must NOT fight a learner who deliberately clicks into the embed
     // to use it, or who has started scrolling/interacting with the page at
     // all -- see DECISIONS.md for the full reasoning.
-    window.scrollTo(0, 0);
+    resetPageScroll();
 
     let userHasInteracted = false;
     function markInteracted() {
@@ -382,6 +383,11 @@ export default function App() {
       iframes.forEach((iframe) => iframe.removeEventListener('load', resetScroll));
     };
   }, [course]);
+
+  useEffect(() => {
+    if (!currentPageId) return;
+    resetPageScroll();
+  }, [currentPageId]);
 
   // Fires onPageEnter and marks the page visited whenever currentPageId
   // changes -- including the very first time it's set on boot, so the

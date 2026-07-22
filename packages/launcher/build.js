@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import archiver from 'archiver';
+import { buildManifest, getCourseTitle, renderLauncherConfig } from './manifest.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,44 +25,6 @@ if (!CONTENT_SERVER_URL || !COURSE_ID || !VERSION_ID) {
   process.exit(1);
 }
 
-function buildManifest({ courseId, versionId }) {
-  const identifier = `mnemonify_${courseId}_v${versionId}`;
-  return `<?xml version="1.0" standalone="no" ?>
-<manifest identifier="${identifier}" version="${versionId}"
-  xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
-  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
-  xmlns:adlseq="http://www.adlnet.org/xsd/adlseq_v1p3"
-  xmlns:adlnav="http://www.adlnet.org/xsd/adlnav_v1p3"
-  xmlns:imsss="http://www.imsglobal.org/xsd/imsss"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 imscp_v1p1.xsd
-                       http://www.imsglobal.org/xsd/imsss imsss_v1p0.xsd
-                       http://www.adlnet.org/xsd/adlcp_v1p3 adlcp_v1p3.xsd
-                       http://www.adlnet.org/xsd/adlseq_v1p3 adlseq_v1p3.xsd
-                       http://www.adlnet.org/xsd/adlnav_v1p3 adlnav_v1p3.xsd">
-  <metadata>
-    <schema>ADL SCORM</schema>
-    <schemaversion>2004 3rd Edition</schemaversion>
-  </metadata>
-  <organizations default="mnemonify_org">
-    <organization identifier="mnemonify_org">
-      <title>Mnemonify Course</title>
-      <item identifier="mnemonify_item" identifierref="mnemonify_resource">
-        <title>Mnemonify Course</title>
-      </item>
-    </organization>
-  </organizations>
-  <resources>
-    <resource identifier="mnemonify_resource" type="webcontent" adlcp:scormType="sco" href="index.html">
-      <file href="index.html"/>
-      <file href="scorm-api.js"/>
-      <file href="config.json"/>
-    </resource>
-  </resources>
-</manifest>
-`;
-}
-
 function zipDirectory(sourceDir, outPath) {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(outPath);
@@ -81,15 +44,18 @@ async function main() {
 
   fs.cpSync(templateDir, buildDir, { recursive: true });
 
-  const configPath = path.join(buildDir, 'config.json');
-  const filledConfig = fs
-    .readFileSync(configPath, 'utf-8')
-    .replace('{{CONTENT_SERVER_URL}}', CONTENT_SERVER_URL)
-    .replace('{{COURSE_ID}}', COURSE_ID)
-    .replace('{{VERSION_ID}}', VERSION_ID);
-  fs.writeFileSync(configPath, filledConfig);
+  const contentUrl = CONTENT_SERVER_URL.replace(/\/$/, '');
+  const courseResponse = await fetch(`${contentUrl}/content/${encodeURIComponent(COURSE_ID)}`);
+  if (!courseResponse.ok) {
+    throw new Error(`Could not load course ${COURSE_ID} from ${contentUrl}/content: HTTP ${courseResponse.status}`);
+  }
+  const courseTitle = getCourseTitle(await courseResponse.json());
 
-  fs.writeFileSync(path.join(buildDir, 'imsmanifest.xml'), buildManifest({ courseId: COURSE_ID, versionId: VERSION_ID }));
+  fs.writeFileSync(
+    path.join(buildDir, 'config.json'),
+    renderLauncherConfig({ contentServerUrl: CONTENT_SERVER_URL, courseId: COURSE_ID, versionId: VERSION_ID, courseTitle })
+  );
+  fs.writeFileSync(path.join(buildDir, 'imsmanifest.xml'), buildManifest({ courseId: COURSE_ID, versionId: VERSION_ID, courseTitle }));
 
   fs.mkdirSync(distDir, { recursive: true });
   const outputPath = path.join(distDir, `mnemonify-${COURSE_ID}-launcher.zip`);

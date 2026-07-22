@@ -284,6 +284,7 @@ export default function App() {
   useEffect(() => {
     if (!course) return;
     window.__MNEMONIFY_BOOTED__ = true;
+    document.title = course.title || course.meta?.title || 'Mnemonify Course';
     // Per-course customizable interactive color (meta.theme.accent, see
     // ARCHITECTURE.md 3.3). Overrides brand.css's --color-primary default
     // -- named --color-primary (not --color-accent) so it doesn't collide

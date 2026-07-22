@@ -1,5 +1,6 @@
 {
   "contentServerUrl": "{{CONTENT_SERVER_URL}}",
   "courseId": "{{COURSE_ID}}",
-  "versionId": "{{VERSION_ID}}"
+  "versionId": "{{VERSION_ID}}",
+  "courseTitle": "{{COURSE_TITLE}}"
 }

@@ -27,6 +27,7 @@
       (async function boot() {
         const response = await fetch('config.json');
         const config = await response.json();
+        document.title = config.courseTitle || 'Mnemonify Course';
         const iframe = document.createElement('iframe');
         iframe.id = 'mnemonify-player';
         iframe.title = 'Mnemonify Course Player';

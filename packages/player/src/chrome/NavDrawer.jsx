@@ -60,9 +60,14 @@ function PageItem({ page, status, isCurrent, onNavigate }) {
   );
 }
 
+export function getGroupPagesInCourseOrder(group, pages) {
+  const memberIds = new Set(group.page_ids || []);
+  return pages.filter((page) => memberIds.has(page.page_id));
+}
+
 function GroupSection({ group, pages, getStatus, currentPageId, onNavigate }) {
   const [expanded, setExpanded] = useState(true);
-  const groupPages = group.page_ids.map((id) => pages.find((p) => p.page_id === id)).filter(Boolean);
+  const groupPages = getGroupPagesInCourseOrder(group, pages);
 
   return (
     <li className="nav-drawer__group">

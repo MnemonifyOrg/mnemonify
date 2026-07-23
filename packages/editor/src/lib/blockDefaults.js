@@ -129,7 +129,7 @@ export function createInnerBlock(type, parentBlockId, side) {
 // schema_version const and packages/schema/migrations/index.js's
 // CURRENT_VERSION -- a freshly created course starts at the latest version,
 // never needs migrating. See DECISIONS.md (Phase 4.5a).
-const CURRENT_SCHEMA_VERSION = 4;
+const CURRENT_SCHEMA_VERSION = 5;
 
 export function createBlankCourseJson(title) {
   return {
@@ -143,6 +143,7 @@ export function createBlankCourseJson(title) {
     },
     variables: [],
     question_banks: [],
+    linked_entities: [],
     assets: [],
     pages: [{ page_id: genPageId(), title: 'Page 1', blocks: [] }],
   };

@@ -25,6 +25,8 @@ export default function QuestionBankEditorModal({
   variables = [],
   onChangeBank,
   onAddQuestion,
+  onRequestLinkedQuestionEdit,
+  onRequestLinkedQuestionDelete,
   onAddCourseAssets,
   onUpdateCourseAsset,
   onClose,
@@ -78,11 +80,32 @@ export default function QuestionBankEditorModal({
 
   function applyBulk(operation) {
     const nextQuestions = operation(questions, selectedQuestionIds);
+    const linkedChanged = nextQuestions.find((question, index) => {
+      const previous = questions[index];
+      return question.linked_entity_id && JSON.stringify(question) !== JSON.stringify(previous);
+    });
+    if (linkedChanged?.linked_entity_id) {
+      onRequestLinkedQuestionEdit?.({
+        entityId: linkedChanged.linked_entity_id,
+        usage: { kind: 'bank', bank_id: bank.bank_id, question_id: linkedChanged.question_id, entityId: linkedChanged.linked_entity_id },
+        question: linkedChanged,
+      });
+      return;
+    }
     updateQuestions(nextQuestions);
   }
 
   function deleteSelected() {
     if (selectedCount === 0 || (typeof window !== 'undefined' && !window.confirm(`Delete ${selectedCount} selected question${selectedCount === 1 ? '' : 's'}?`))) return;
+    const linkedQuestion = questions.find((question) => selectedQuestionIds.includes(question.question_id) && question.linked_entity_id);
+    if (linkedQuestion) {
+      onRequestLinkedQuestionDelete?.({
+        entityId: linkedQuestion.linked_entity_id,
+        usage: { kind: 'bank', bank_id: bank.bank_id, question_id: linkedQuestion.question_id, entityId: linkedQuestion.linked_entity_id },
+        question: linkedQuestion,
+      });
+      return;
+    }
     const nextQuestions = bulkDeleteQuestions(questions, selectedQuestionIds);
     updateQuestions(nextQuestions);
     setSelectedQuestionIds([]);
@@ -90,9 +113,17 @@ export default function QuestionBankEditorModal({
   }
 
   function updateQuestion(questionId, content, objectiveIds) {
-    updateQuestions(questions.map((question) => (question.question_id === questionId
-      ? { ...question, content, objective_ids: objectiveIds, scored: content.scored !== false }
-      : question)));
+    const current = questions.find((question) => question.question_id === questionId);
+    const updated = { ...current, content, objective_ids: objectiveIds, scored: content.scored !== false };
+    if (current?.linked_entity_id) {
+      onRequestLinkedQuestionEdit?.({
+        entityId: current.linked_entity_id,
+        usage: { kind: 'bank', bank_id: bank.bank_id, question_id: questionId, entityId: current.linked_entity_id },
+        question: updated,
+      });
+      return;
+    }
+    updateQuestions(questions.map((question) => (question.question_id === questionId ? updated : question)));
   }
 
   function moveQuestion(index, delta) {
@@ -105,6 +136,15 @@ export default function QuestionBankEditorModal({
 
   function removeQuestion(questionId) {
     if (questions.length <= 1) return;
+    const current = questions.find((question) => question.question_id === questionId);
+    if (current?.linked_entity_id) {
+      onRequestLinkedQuestionDelete?.({
+        entityId: current.linked_entity_id,
+        usage: { kind: 'bank', bank_id: bank.bank_id, question_id: questionId, entityId: current.linked_entity_id },
+        question: current,
+      });
+      return;
+    }
     const nextQuestions = questions.filter((question) => question.question_id !== questionId);
     updateQuestions(nextQuestions);
     setSelectedQuestionIds((current) => current.filter((id) => id !== questionId));

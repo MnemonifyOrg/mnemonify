@@ -12,8 +12,21 @@ import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
+import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
+import {
+  deleteEntityEverywhere,
+  detachUsageWithUpdate,
+  findLinkedUsages,
+  linkBlockToBank,
+  materializeLinkedEntities,
+  mergePagesPreservingLinked,
+  mergeQuestionBanksPreservingLinked,
+  unlinkUsage,
+  updateLinkedEntityFromBankQuestion,
+  updateLinkedEntityFromBlock,
+} from '@mnemonify/schema/linked-entities.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -74,6 +87,8 @@ export default function CourseEditor() {
   const [settingsTab, setSettingsTab] = useState('Course');
   const [publishing, setPublishing] = useState(false);
   const [publishNotice, setPublishNotice] = useState(null);
+  const [pendingLinkedEdit, setPendingLinkedEdit] = useState(null);
+  const [pendingLinkedDelete, setPendingLinkedDelete] = useState(null);
 
   // Phase 4.6 Step 2: panel collapse + Focus Mode. Deliberately plain
   // useState, entirely separate from the undo/redo system below -- this is
@@ -234,7 +249,7 @@ export default function CourseEditor() {
   // actually safe to publish" must be authoritative, not just displayed.
   async function handlePublish() {
     await saveNow();
-    const freshFindings = analyzeCourse(courseRef.current.course_json);
+    const freshFindings = analyzeCourse(materializeLinkedEntities(courseRef.current.course_json));
     const errorFindings = freshFindings.filter((f) => f.severity === 'error');
     if (errorFindings.length > 0) {
       setSelectedBlockId(null);
@@ -377,11 +392,70 @@ export default function CourseEditor() {
   }
 
   function handleChangeQuestionBanks(newQuestionBanks, options) {
-    updateCourseJson((json) => ({ ...json, question_banks: newQuestionBanks }), options);
+    updateCourseJson((json) => ({ ...json, question_banks: mergeQuestionBanksPreservingLinked(json, newQuestionBanks) }), options);
+  }
+
+  function requestLinkedEdit({ entityId, usage, updated }) {
+    const usages = findLinkedUsages(courseRef.current.course_json, entityId);
+    setPendingLinkedEdit({ entityId, usage, updated, usages });
+  }
+
+  function requestLinkedBlockEdit(usage, updated) {
+    requestLinkedEdit({ entityId: usage.entityId, usage, updated });
+  }
+
+  function handleRequestLinkedQuestionEdit({ entityId, usage, question }) {
+    requestLinkedEdit({ entityId, usage, updated: question });
+  }
+
+  function confirmLinkedEdit() {
+    const pending = pendingLinkedEdit;
+    if (!pending) return;
+    updateCourseJson((json) => (
+      pending.usage.kind === 'page'
+        ? updateLinkedEntityFromBlock(json, pending.entityId, pending.updated)
+        : updateLinkedEntityFromBankQuestion(json, pending.entityId, pending.updated)
+    ), { forceSnapshot: true });
+    setPendingLinkedEdit(null);
+  }
+
+  function detachLinkedEdit() {
+    const pending = pendingLinkedEdit;
+    if (!pending) return;
+    updateCourseJson((json) => detachUsageWithUpdate(json, pending.usage, pending.updated), { forceSnapshot: true });
+    setPendingLinkedEdit(null);
+  }
+
+  function requestLinkedDelete({ entityId, usage }) {
+    setPendingLinkedDelete({ entityId, usage, usages: findLinkedUsages(courseRef.current.course_json, entityId) });
+  }
+
+  function handleRequestLinkedQuestionDelete({ entityId, usage }) {
+    requestLinkedDelete({ entityId, usage });
+  }
+
+  function unlinkDeletedUsage() {
+    const pending = pendingLinkedDelete;
+    if (!pending) return;
+    updateCourseJson((json) => unlinkUsage(json, pending.usage), { forceSnapshot: true });
+    if (pending.usage.kind === 'page') setSelectedBlockId(null);
+    setPendingLinkedDelete(null);
+  }
+
+  function deleteLinkedEntityEverywhere() {
+    const pending = pendingLinkedDelete;
+    if (!pending) return;
+    updateCourseJson((json) => deleteEntityEverywhere(json, pending.entityId), { forceSnapshot: true });
+    if (pending.usage.kind === 'page') setSelectedBlockId(null);
+    setPendingLinkedDelete(null);
+  }
+
+  function handleLinkBlockToBank(pageId, blockId, bankId) {
+    updateCourseJson((json) => linkBlockToBank(json, pageId, blockId, bankId).course, { forceSnapshot: true });
   }
 
   function handleReorderPages(pages, pageGroups) {
-    updateCourseJson((json) => ({ ...json, pages, ...(pageGroups ? { meta: { ...json.meta, page_groups: pageGroups } } : {}) }), { forceSnapshot: true });
+    updateCourseJson((json) => ({ ...json, pages: mergePagesPreservingLinked(json, pages), ...(pageGroups ? { meta: { ...json.meta, page_groups: pageGroups } } : {}) }), { forceSnapshot: true });
   }
 
   function handleReorderGroups(pageGroups) {
@@ -416,7 +490,7 @@ export default function CourseEditor() {
     updateCourseJson(
       (json) => ({
         ...json,
-        pages: json.pages.map((p) => (p.page_id === updatedPage.page_id ? updatedPage : p)),
+        pages: mergePagesPreservingLinked(json, json.pages.map((p) => (p.page_id === updatedPage.page_id ? updatedPage : p))),
       }),
       options
     );
@@ -605,12 +679,18 @@ export default function CourseEditor() {
   }
 
   function handleChangeBlock(blockId, updatedBlock, options) {
+    const currentPage = courseRef.current.course_json.pages.find((candidate) => candidate.page_id === activePageId);
+    const currentBlock = currentPage?.blocks.find((block) => block.block_id === blockId);
+    if (currentBlock?.linked_entity_id) {
+      requestLinkedBlockEdit({ kind: 'page', page_id: activePageId, block_id: blockId, entityId: currentBlock.linked_entity_id }, updatedBlock);
+      return;
+    }
     updateCourseJson(
       (json) => ({
         ...json,
-        pages: json.pages.map((p) =>
+        pages: mergePagesPreservingLinked(json, json.pages.map((p) =>
           p.page_id !== activePageId ? p : { ...p, blocks: p.blocks.map((b) => (b.block_id === blockId ? updatedBlock : b)) }
-        ),
+        )),
       }),
       options
     );
@@ -778,6 +858,15 @@ export default function CourseEditor() {
   }
 
   function handleDeleteBlock(blockId) {
+    const currentPage = courseRef.current.course_json.pages.find((candidate) => candidate.page_id === activePageId);
+    const currentBlock = currentPage?.blocks.find((block) => block.block_id === blockId);
+    if (currentBlock?.linked_entity_id) {
+      requestLinkedDelete({
+        entityId: currentBlock.linked_entity_id,
+        usage: { kind: 'page', page_id: activePageId, block_id: blockId, entityId: currentBlock.linked_entity_id },
+      });
+      return;
+    }
     updateCourseJson(
       (json) => ({
         ...json,
@@ -840,7 +929,7 @@ export default function CourseEditor() {
     updateCourseJson(
       (json) => ({
         ...json,
-        pages: json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: newBlocks })),
+        pages: mergePagesPreservingLinked(json, json.pages.map((p) => (p.page_id !== activePageId ? p : { ...p, blocks: newBlocks }))),
       }),
       { forceSnapshot: true }
     );
@@ -853,11 +942,11 @@ export default function CourseEditor() {
   // enough that "always accurate" costs nothing noticeable, and it's what
   // lets the top-bar issue badge stay correct without its own separate
   // trigger. See DECISIONS.md.
-  const findings = useMemo(() => analyzeCourse(course?.course_json), [course?.course_json]);
+  const findings = useMemo(() => analyzeCourse(materializeLinkedEntities(course?.course_json)), [course?.course_json]);
 
   if (!course) return null;
 
-  const json = course.course_json;
+  const json = materializeLinkedEntities(course.course_json);
   const page = activePage(json);
   const selectedBlock = page?.blocks.find((b) => b.block_id === selectedBlockId) || null;
 
@@ -1015,6 +1104,26 @@ export default function CourseEditor() {
         />
       )}
 
+      {pendingLinkedEdit && (
+        <LinkedEntityPrompt
+          mode="edit"
+          usages={pendingLinkedEdit.usages}
+          onConfirm={confirmLinkedEdit}
+          onDetach={detachLinkedEdit}
+          onCancel={() => setPendingLinkedEdit(null)}
+        />
+      )}
+
+      {pendingLinkedDelete && (
+        <LinkedEntityPrompt
+          mode="delete"
+          usages={pendingLinkedDelete.usages}
+          onConfirm={deleteLinkedEntityEverywhere}
+          onDetach={unlinkDeletedUsage}
+          onCancel={() => setPendingLinkedDelete(null)}
+        />
+      )}
+
       <div
         className={
           'course-editor__body' +
@@ -1101,6 +1210,8 @@ export default function CourseEditor() {
                 onReorderBlocks={handleReorderBlocks}
                 onMoveBlockToPage={handleMoveBlockToPage}
                 onCopyBlockToPage={handleCopyBlockToPage}
+                questionBanks={json.question_banks || []}
+                onLinkBlockToBank={handleLinkBlockToBank}
               />
             )
           )}
@@ -1132,6 +1243,9 @@ export default function CourseEditor() {
               onChangePage={handleChangePage}
               onChangeVariables={handleChangeVariables}
               onChangeQuestionBanks={handleChangeQuestionBanks}
+              onLinkBlockToBank={handleLinkBlockToBank}
+              onRequestLinkedQuestionEdit={handleRequestLinkedQuestionEdit}
+              onRequestLinkedQuestionDelete={handleRequestLinkedQuestionDelete}
               onRenameVariable={renameVariable}
               onUpdateCourseAsset={handleUpdateCourseAsset}
               onAddCourseAssets={handleAddCourseAssets}

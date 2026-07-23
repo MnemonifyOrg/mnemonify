@@ -333,6 +333,9 @@ export default function SettingsPanel({
   onChangePage,
   onChangeVariables,
   onChangeQuestionBanks,
+  onLinkBlockToBank,
+  onRequestLinkedQuestionEdit,
+  onRequestLinkedQuestionDelete,
   onRenameVariable,
   onChangeBlock,
   assets,
@@ -398,6 +401,9 @@ export default function SettingsPanel({
             assets={assets}
             courseId={courseId}
             onChangeQuestionBanks={onChangeQuestionBanks}
+            onLinkBlockToBank={onLinkBlockToBank}
+            onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
+            onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}
             onAddCourseAssets={onAddCourseAssets}
             onUpdateCourseAsset={onUpdateCourseAsset}
             variables={variables}

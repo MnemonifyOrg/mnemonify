@@ -8,6 +8,7 @@ import { blockLabel } from '../lib/triggerUtils.js';
 import GenericBlockPreview from './GenericBlockPreview.jsx';
 import BlockPickerModal from './BlockPickerModal.jsx';
 import MoveCopyBlockModal from './MoveCopyBlockModal.jsx';
+import LinkToBankModal from './LinkToBankModal.jsx';
 
 // Phase 4.6 Step 3: a between-block "+" insertion point. Always present in
 // the DOM (not conditionally rendered only on hover) so it's a real button
@@ -51,10 +52,13 @@ function BlockWrapper({
   activePageId,
   onMoveBlockToPage,
   onCopyBlockToPage,
+  questionBanks,
+  onLinkBlockToBank,
 }) {
   const Editor = BLOCK_EDITORS[block.type] || GenericBlockPreview;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.block_id });
   const [moveCopyMode, setMoveCopyMode] = useState(null); // 'move' | 'copy' | null
+  const [linkBankOpen, setLinkBankOpen] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -77,6 +81,20 @@ function BlockWrapper({
         <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
           ⠿
         </span>
+        {!block.linked_entity_id && (
+          <span
+            className="block-wrapper__bank-drag"
+            draggable
+            title="Drag this question to the Question Banks panel"
+            onDragStart={(event) => {
+              event.stopPropagation();
+              event.dataTransfer.effectAllowed = 'link';
+              event.dataTransfer.setData('application/x-mnemonify-block', JSON.stringify({ pageId: activePageId, blockId: block.block_id }));
+            }}
+          >
+            ⇢
+          </span>
+        )}
         <span className="block-wrapper__label">{blockLabel(block, pageBlocks)}</span>
         <span className="block-wrapper__spacer" />
         <button
@@ -99,6 +117,18 @@ function BlockWrapper({
         >
           ⎘
         </button>
+        {!block.linked_entity_id && questionBanks?.length > 0 && (
+          <button
+            className="btn-text"
+            title="Add to bank"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLinkBankOpen(true);
+            }}
+          >
+            +↗
+          </button>
+        )}
         <button
           className="btn-text"
           title="Duplicate"
@@ -145,6 +175,16 @@ function BlockWrapper({
           }}
         />
       )}
+      {linkBankOpen && (
+        <LinkToBankModal
+          questionBanks={questionBanks}
+          onClose={() => setLinkBankOpen(false)}
+          onConfirm={(bankId) => {
+            onLinkBlockToBank(activePageId, block.block_id, bankId);
+            setLinkBankOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -166,6 +206,8 @@ export default function BlockCanvas({
   onUpdateCourseAsset,
   onMoveBlockToPage,
   onCopyBlockToPage,
+  questionBanks,
+  onLinkBlockToBank,
 }) {
   // null = closed; a number = open, inserting at that block index.
   const [pickerInsertIndex, setPickerInsertIndex] = useState(null);
@@ -205,6 +247,8 @@ export default function BlockCanvas({
                 activePageId={page.page_id}
                 onMoveBlockToPage={onMoveBlockToPage}
                 onCopyBlockToPage={onCopyBlockToPage}
+                questionBanks={questionBanks}
+                onLinkBlockToBank={onLinkBlockToBank}
               />
               <InsertionPoint index={index + 1} onInsert={setPickerInsertIndex} />
             </Fragment>

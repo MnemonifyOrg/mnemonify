@@ -19,7 +19,7 @@ function emptyQuestion() {
   };
 }
 
-export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
+export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], onLinkBlockToBank, onRequestLinkedQuestionEdit, onRequestLinkedQuestionDelete }) {
   const banks = questionBanks || [];
   const [selectedBankId, setSelectedBankId] = useState(banks[0]?.bank_id || null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -80,6 +80,23 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
             <button type="button" className="btn btn-primary" onClick={() => setEditorOpen(true)}>Open bank editor</button>
             <button type="button" className="btn-text settings-panel__danger-action" onClick={deleteBank}>Delete bank</button>
           </div>
+          <div
+            className="question-bank-manager__drop-zone"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const raw = event.dataTransfer.getData('application/x-mnemonify-block');
+              if (!raw || !onLinkBlockToBank) return;
+              try {
+                const source = JSON.parse(raw);
+                onLinkBlockToBank(source.pageId, source.blockId, selectedBank.bank_id);
+              } catch {
+                // Ignore malformed drag payloads from unrelated browser elements.
+              }
+            }}
+          >
+            ⇢ Drop a question block here to link it to <strong>{selectedBank.name || selectedBank.bank_id}</strong>
+          </div>
         </>
       )}
       {editorOpen && selectedBank && (
@@ -91,6 +108,8 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
           variables={variables}
           onChangeBank={updateBank}
           onAddQuestion={addQuestion}
+          onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
+          onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}
           onAddCourseAssets={onAddCourseAssets}
           onUpdateCourseAsset={onUpdateCourseAsset}
           onClose={() => setEditorOpen(false)}

@@ -131,7 +131,16 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   function deleteOption(id) {
     if (options.length <= MIN_OPTIONS) return;
-    setContent({ options: options.filter((o) => o.id !== id) });
+    const nextOptions = options.filter((o) => o.id !== id);
+    if (multiSelect) {
+      setContent({
+        options: nextOptions,
+        correct_option_ids: [...correctOptionIds].filter((optionId) => optionId !== id),
+      });
+    } else {
+      const nextCorrectId = block.content.correct_option_id === id ? nextOptions.find((option) => option.correct)?.id : block.content.correct_option_id;
+      setContent({ options: nextOptions, correct_option_id: nextCorrectId });
+    }
   }
 
   // The toolbar tracks whichever field is currently focused, rather than

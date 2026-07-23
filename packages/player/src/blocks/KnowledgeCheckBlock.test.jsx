@@ -24,6 +24,19 @@ function block(content = {}) {
 }
 
 describe('multi-select knowledge-check player', () => {
+  it('keeps legacy single-select questions on radio controls and the existing answer path', () => {
+    const html = renderToStaticMarkup(
+      <KnowledgeCheckBlock
+        block={block({ options: [{ id: 'opt_a', text: rich('A'), correct: true }, { id: 'opt_b', text: rich('B') }] })}
+        interactionStates={{ blk_kc: { submitted: true, selectedId: 'opt_a', correct: true } }}
+        onTrigger={() => {}}
+      />
+    );
+    expect((html.match(/type="radio"/g) || []).length).toBe(2);
+    expect(html).not.toContain('type="checkbox"');
+    expect(html).toContain('data-correct="true"');
+  });
+
   it('renders checkboxes and restores multiple selected options', () => {
     const html = renderToStaticMarkup(
       <KnowledgeCheckBlock

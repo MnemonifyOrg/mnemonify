@@ -73,6 +73,7 @@ export function materializeLinkedEntities(course) {
       if (!entity) return question;
       return {
         ...question,
+        type: entity.block_type,
         content: clone(entity.content),
         scored: entity.metadata?.scored ?? question.scored,
         objective_ids: [...(entity.metadata?.objective_ids || question.objective_ids || [])],

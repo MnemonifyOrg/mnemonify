@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import KnowledgeCheckBlockEditor from './blocks/KnowledgeCheckBlock.jsx';
+import { BLOCK_EDITORS } from './blocks/index.js';
 import {
   bulkAssignObjective,
   bulkAssignTag,
@@ -60,6 +60,7 @@ export default function QuestionBankEditorModal({
   const questionTypes = [...new Set(questions.map(questionType))];
   const selectedCount = selectedQuestionIds.length;
   const allVisibleSelected = visibleQuestions.length > 0 && visibleQuestions.every((question) => selectedQuestionIds.includes(question.question_id));
+  const ActiveEditor = activeQuestion ? (BLOCK_EDITORS[activeQuestion.type || questionType(activeQuestion)] || BLOCK_EDITORS['knowledge-check']) : null;
 
   function updateQuestions(nextQuestions, options = { forceSnapshot: false }) {
     onChangeBank({ questions: nextQuestions }, options);
@@ -245,8 +246,8 @@ export default function QuestionBankEditorModal({
                     <button type="button" className="btn-text settings-panel__danger-action" disabled={questions.length <= 1} onClick={() => removeQuestion(activeQuestion.question_id)}>Remove</button>
                   </div>
                 </div>
-                <KnowledgeCheckBlockEditor
-                  block={{ block_id: `blk_${activeQuestion.question_id}`, type: 'knowledge-check', content: activeQuestion.content, objective_ids: activeQuestion.objective_ids || [], triggers: [] }}
+                <ActiveEditor
+                  block={{ ...activeQuestion, block_id: `blk_${activeQuestion.question_id}`, type: activeQuestion.type || questionType(activeQuestion), content: activeQuestion.content, objective_ids: activeQuestion.objective_ids || [], triggers: activeQuestion.triggers || [] }}
                   assets={assets}
                   courseId={courseId}
                   onChange={(updated) => updateQuestion(activeQuestion.question_id, updated.content, updated.objective_ids || [])}

@@ -7,7 +7,7 @@ function richTextToPlain(value) {
 }
 
 export function questionType(question) {
-  return question?.content?.question_type || question?.content?.block_type || question?.content?.type || 'knowledge-check';
+  return question?.type || question?.content?.question_type || question?.content?.block_type || question?.content?.type || 'knowledge-check';
 }
 
 export function questionSearchText(question) {

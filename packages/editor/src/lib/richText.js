@@ -15,7 +15,7 @@
 
 export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN']);
 const VARIABLE_TOKEN_PATTERN = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
-const VARIABLE_MARKER_PREFIX = '\uE000MNEMONIFY_VAR_';
+const SEGMENT_MARKER_PREFIX = '\uE000MNEMONIFY_SEG_';
 const VARIABLE_MARKER_SUFFIX = '\uE001';
 // Curated text-color palette (item 8) -- deliberately NOT an open color
 // picker, a fixed set applied via document.execCommand('foreColor', ...).
@@ -214,11 +214,15 @@ export function richSegmentsToEditableHtml(value, allowedTags = RICH_TEXT_TAGS) 
       const name = String(segment.var_name || '');
       return `<span class="rich-variable-chip" data-mnemonify-variable="${escapeHtml(name)}">${escapeHtml(name)}</span>`;
     }
+    if (segment?.t === 'glossary_link') {
+      const termId = escapeHtml(String(segment.term_id || ''));
+      return `<span class="rich-glossary-chip" data-mnemonify-glossary-term="${termId}">${escapeHtml(String(segment.v || ''))}</span>`;
+    }
     return sanitizeRichHtml(segment?.v || '', allowedTags);
   }).join('');
 }
 
-function replaceVariableTokensInTextNodes(root, markerFor) {
+function replaceSpecialSegmentsInTextNodes(root, markerFor) {
   const textNodes = [];
 
   function visit(node) {
@@ -229,7 +233,12 @@ function replaceVariableTokensInTextNodes(root, markerFor) {
     if (node.nodeType !== 1) return;
     const chipName = node.getAttribute('data-mnemonify-variable');
     if (chipName) {
-      node.replaceWith(document.createTextNode(markerFor(chipName)));
+      node.replaceWith(document.createTextNode(markerFor({ t: 'variable', var_name: chipName })));
+      return;
+    }
+    const glossaryTermId = node.getAttribute('data-mnemonify-glossary-term');
+    if (glossaryTermId) {
+      node.replaceWith(document.createTextNode(markerFor({ t: 'glossary_link', term_id: glossaryTermId, v: node.textContent || '' })));
       return;
     }
     [...node.childNodes].forEach(visit);
@@ -242,7 +251,7 @@ function replaceVariableTokensInTextNodes(root, markerFor) {
     if (!parts.some((part) => part.type === 'variable')) return;
     const fragment = document.createDocumentFragment();
     parts.forEach((part) => {
-      fragment.appendChild(document.createTextNode(part.type === 'variable' ? markerFor(part.name) : part.value));
+      fragment.appendChild(document.createTextNode(part.type === 'variable' ? markerFor({ t: 'variable', var_name: part.name }) : part.value));
     });
     node.replaceWith(fragment);
   });
@@ -252,21 +261,21 @@ export function editableHtmlToRichValue(html, allowedTags = RICH_TEXT_TAGS) {
   const source = String(html || '');
   const scratch = document.createElement('div');
   scratch.innerHTML = source;
-  const variableNames = [];
-  const markerFor = (name) => {
-    const index = variableNames.push(String(name)) - 1;
-    return `${VARIABLE_MARKER_PREFIX}${index}${VARIABLE_MARKER_SUFFIX}`;
+  const specialSegments = [];
+  const markerFor = (segment) => {
+    const index = specialSegments.push(segment) - 1;
+    return `${SEGMENT_MARKER_PREFIX}${index}${VARIABLE_MARKER_SUFFIX}`;
   };
-  replaceVariableTokensInTextNodes(scratch, markerFor);
+  replaceSpecialSegmentsInTextNodes(scratch, markerFor);
   const sanitized = sanitizeRichHtml(scratch.innerHTML, allowedTags);
-  const marker = new RegExp(`${VARIABLE_MARKER_PREFIX}(\\d+)${VARIABLE_MARKER_SUFFIX}`, 'g');
+  const marker = new RegExp(`${SEGMENT_MARKER_PREFIX}(\\d+)${VARIABLE_MARKER_SUFFIX}`, 'g');
   const segments = [];
   let last = 0;
   let match;
   while ((match = marker.exec(sanitized))) {
     const literal = sanitized.slice(last, match.index);
     if (literal) segments.push({ t: 'html', v: literal });
-    segments.push({ t: 'variable', var_name: variableNames[Number(match[1])] });
+    segments.push(specialSegments[Number(match[1])]);
     last = marker.lastIndex;
   }
   if (!segments.length) return sanitizeRichHtml(source, allowedTags);

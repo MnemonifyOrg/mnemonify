@@ -14,6 +14,7 @@ import { SYSTEM_VARIABLE_DEFINITIONS } from '@mnemonify/schema/system-variables.
 import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import ObjectivesPanel from './ObjectivesPanel.jsx';
+import GlossaryPanel from './GlossaryPanel.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -312,7 +313,7 @@ function AdvancedSection({ blockId, children }) {
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Question Banks', 'Course Health'];
+const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Glossary', 'Question Banks', 'Course Health'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -352,6 +353,12 @@ export default function SettingsPanel({
   onNavigateToFinding,
   onOpenAltTextReview,
   onAddCourseAssets,
+  libraryGlossaries,
+  libraryGlossaryTerms,
+  onChangeGlossaryTerms,
+  onCreateGlossary,
+  onPublishGlossaryTerm,
+  onApplyGlossarySuggestion,
 }) {
   const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
@@ -397,6 +404,18 @@ export default function SettingsPanel({
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
         ) : activeTab === 'Objectives' ? (
           <ObjectivesPanel objectives={meta.objectives || []} onChange={(objectives) => onChangeMeta({ ...meta, objectives })} />
+        ) : activeTab === 'Glossary' ? (
+          <GlossaryPanel
+            courseJson={courseJson}
+            meta={meta}
+            libraryGlossaries={libraryGlossaries}
+            libraryTerms={libraryGlossaryTerms}
+            onChangeMeta={onChangeMeta}
+            onChangeTerms={onChangeGlossaryTerms}
+            onCreateGlossary={onCreateGlossary}
+            onPublishTerm={onPublishGlossaryTerm}
+            onApplySuggestion={onApplyGlossarySuggestion}
+          />
         ) : activeTab === 'Question Banks' ? (
           <QuestionBankManagerPanel
             questionBanks={questionBanks}

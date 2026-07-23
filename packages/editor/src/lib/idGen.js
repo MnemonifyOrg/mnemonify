@@ -24,3 +24,4 @@ export const genOrderingItemId = () => `ord_${shortId()}`;
 export const genHotspotRegionId = () => `hs_${shortId()}`;
 export const genBankId = () => `bnk_${shortId()}`;
 export const genBankQuestionId = () => `bq_${shortId()}`;
+export const genGlossaryTermId = () => `term_course_${shortId()}`;

@@ -1246,6 +1246,54 @@
 }
 
 /* Media library */
+.glossary-panel__create,
+.glossary-panel__terms,
+.glossary-panel__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.glossary-panel__create,
+.glossary-panel__section-header {
+  margin-top: var(--space-4);
+}
+.glossary-panel__create-row,
+.glossary-panel__term-actions,
+.glossary-panel__suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.glossary-panel__create-row .input {
+  flex: 1;
+}
+.glossary-panel__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.glossary-panel__section-header h4 {
+  margin: 0;
+}
+.glossary-panel__term,
+.glossary-panel__suggestion {
+  padding: var(--space-3);
+}
+.glossary-panel__suggestions {
+  list-style: none;
+  padding: 0;
+}
+.glossary-panel__suggestion {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Media library */
 .flashcards-editor__card, .hotspot-editor__row { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3); }
 .flashcards-editor__card-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
 .flashcards-editor__card-header span { flex: 1; }

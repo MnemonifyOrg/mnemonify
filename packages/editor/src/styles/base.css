@@ -204,6 +204,15 @@ a {
   margin-top: 0;
 }
 
+.rich-glossary-chip {
+  display: inline-block;
+  padding: 0 0.2rem;
+  border-radius: var(--radius-sm);
+  background: #DBEAFE;
+  color: #1E3A8A;
+  outline: 1px solid #93C5FD;
+}
+
 .top-bar {
   display: flex;
   align-items: center;

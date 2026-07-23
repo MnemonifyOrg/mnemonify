@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { captureRichTextSelection, insertVariableAtSelection, splitVariableSyntax } from './richText.js';
+import { captureRichTextSelection, insertVariableAtSelection, richSegmentsToEditableHtml, splitVariableSyntax } from './richText.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -43,5 +43,11 @@ describe('editor rich-text variable editing', () => {
       false,
       '<span class="rich-variable-chip" data-mnemonify-variable="ScoreRaw">ScoreRaw</span>'
     );
+  });
+
+  it('serializes accepted glossary links as visibly distinct bound chips', () => {
+    expect(richSegmentsToEditableHtml([
+      { t: 'glossary_link', term_id: 'term_anemia', v: 'anemia' },
+    ])).toContain('class="rich-glossary-chip" data-mnemonify-glossary-term="term_anemia">anemia</span>');
   });
 });

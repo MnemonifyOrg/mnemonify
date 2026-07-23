@@ -14,6 +14,7 @@ import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
 import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
+import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
 import {
@@ -91,6 +92,8 @@ export default function CourseEditor() {
   const [publishNotice, setPublishNotice] = useState(null);
   const [pendingLinkedEdit, setPendingLinkedEdit] = useState(null);
   const [pendingLinkedDelete, setPendingLinkedDelete] = useState(null);
+  const [libraryGlossaries, setLibraryGlossaries] = useState([]);
+  const [libraryGlossaryTerms, setLibraryGlossaryTerms] = useState([]);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [courseVersions, setCourseVersions] = useState([]);
   const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
@@ -125,6 +128,28 @@ export default function CourseEditor() {
   const burstTimerRef = useRef(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+
+  useEffect(() => {
+    api.listGlossaries().then(setLibraryGlossaries).catch((error) => console.warn('[course-editor] could not load glossary library:', error));
+  }, []);
+
+  useEffect(() => {
+    const glossaryId = course?.course_json?.meta?.glossary_id;
+    if (!glossaryId) {
+      setLibraryGlossaryTerms([]);
+      return undefined;
+    }
+    let cancelled = false;
+    api.getGlossary(glossaryId).then((glossary) => {
+      if (!cancelled) setLibraryGlossaryTerms(glossary.terms || []);
+    }).catch((error) => {
+      if (!cancelled) {
+        setLibraryGlossaryTerms([]);
+        console.warn('[course-editor] could not load attached glossary:', error);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [course?.course_json?.meta?.glossary_id]);
 
   useEffect(() => {
     api.getCourse(id).then((c) => {
@@ -446,6 +471,38 @@ export default function CourseEditor() {
 
   function handleChangeQuestionBanks(newQuestionBanks, options) {
     updateCourseJson((json) => ({ ...json, question_banks: mergeQuestionBanksPreservingLinked(json, newQuestionBanks) }), options);
+  }
+
+  function handleChangeGlossaryTerms(newTerms, options = { forceSnapshot: false }) {
+    updateCourseJson((json) => ({ ...json, glossary_terms: newTerms }), options);
+  }
+
+  async function handleCreateGlossary(name) {
+    const glossary = await api.createGlossary({ name });
+    setLibraryGlossaries((current) => [...current, glossary].sort((a, b) => a.name.localeCompare(b.name)));
+    return glossary;
+  }
+
+  async function handlePublishGlossaryTerm(term) {
+    const glossaryId = courseRef.current.course_json.meta?.glossary_id;
+    if (!glossaryId) throw new Error('Attach a library glossary before publishing a term.');
+    const libraryTerm = await api.publishGlossaryTerm(glossaryId, { term: term.term, definition: term.definition });
+    handleChangeGlossaryTerms(
+      (courseRef.current.course_json.glossary_terms || []).map((candidate) => (
+        candidate.term_id === term.term_id
+          ? { ...candidate, source: 'course', shared_library_term_id: libraryTerm.term_id }
+          : candidate
+      )),
+      { forceSnapshot: true }
+    );
+    setLibraryGlossaryTerms((current) => {
+      const withoutExisting = current.filter((candidate) => candidate.term_id !== libraryTerm.term_id && candidate.term.toLocaleLowerCase() !== libraryTerm.term.toLocaleLowerCase());
+      return [...withoutExisting, libraryTerm];
+    });
+  }
+
+  function handleApplyGlossarySuggestion(suggestion) {
+    updateCourseJson((json) => applyGlossarySuggestion(json, suggestion), { forceSnapshot: true });
   }
 
   function handleImportBank({ payload, mode, targetBankId }) {
@@ -1333,6 +1390,12 @@ export default function CourseEditor() {
               findings={findings}
               onNavigateToFinding={handleNavigateToFinding}
               onOpenAltTextReview={() => setShowAltTextReview(true)}
+              libraryGlossaries={libraryGlossaries}
+              libraryGlossaryTerms={libraryGlossaryTerms}
+              onChangeGlossaryTerms={handleChangeGlossaryTerms}
+              onCreateGlossary={handleCreateGlossary}
+              onPublishGlossaryTerm={handlePublishGlossaryTerm}
+              onApplyGlossarySuggestion={handleApplyGlossarySuggestion}
             />
           )}
         </div>

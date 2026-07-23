@@ -11,6 +11,7 @@ import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
 import pageTemplatesRouter from './routes/pageTemplates.js';
 import analyticsRouter from './routes/analytics.js';
+import glossariesRouter from './routes/glossaries.js';
 import captionsRouter from './routes/captions.js';
 import pool from './db.js';
 import { DEV_ORG_ID } from './lib/devUser.js';
@@ -71,6 +72,7 @@ app.use('/api', usersRouter);
 app.use('/api', wordRouter);
 app.use('/api', pageTemplatesRouter);
 app.use('/api', analyticsRouter);
+app.use('/api', glossariesRouter);
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Serves course content to the SCORM launcher and the player's own

@@ -23,6 +23,10 @@
       "type": "array",
       "items": { "$ref": "#/definitions/question_bank" }
     },
+    "glossary_terms": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/course_glossary_term" }
+    },
     "linked_entities": {
       "type": "array",
       "items": { "$ref": "#/definitions/linked_entity" }
@@ -90,6 +94,10 @@
           "type": "array",
           "items": { "$ref": "#/definitions/page_group" }
         },
+        "glossary_id": {
+          "type": "string",
+          "pattern": "^glo_[a-zA-Z0-9_]+$"
+        },
         "utility_bar": { "$ref": "#/definitions/utility_bar" },
         "resources": {
           "type": "array",
@@ -133,18 +141,35 @@
       "required": ["t"],
       "additionalProperties": false,
       "properties": {
-        "t": { "enum": ["text", "html", "asset_link", "variable"] },
+        "t": { "enum": ["text", "html", "asset_link", "variable", "glossary_link"] },
         "v": { "type": "string" },
         "asset_id": { "type": "string" },
-        "var_name": { "type": "string", "minLength": 1 }
+        "var_name": { "type": "string", "minLength": 1 },
+        "term_id": { "type": "string", "minLength": 1 }
       },
       "allOf": [
         {
           "if": { "properties": { "t": { "const": "variable" } } },
           "then": { "required": ["var_name"] },
-          "else": { "required": ["v"] }
+          "else": {
+            "if": { "properties": { "t": { "const": "glossary_link" } } },
+            "then": { "required": ["term_id", "v"] },
+            "else": { "required": ["v"] }
+          }
         }
       ]
+    },
+    "course_glossary_term": {
+      "type": "object",
+      "required": ["term_id", "term", "definition"],
+      "additionalProperties": false,
+      "properties": {
+        "term_id": { "type": "string", "minLength": 1 },
+        "term": { "type": "string", "minLength": 1 },
+        "definition": { "$ref": "#/definitions/rich_text_field" },
+        "source": { "const": "course" },
+        "shared_library_term_id": { "type": ["string", "null"] }
+      }
     },
     "question_bank": {
       "type": "object",

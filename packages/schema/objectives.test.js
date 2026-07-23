@@ -5,7 +5,7 @@ import { objectiveLabel, resolveQuestionBankDrawPool, resolveQuestionBankPool } 
 
 function course(overrides = {}) {
   return {
-    schema_version: 4,
+    schema_version: 5,
     meta: {
       course_id: 'crs_objectives',
       title: 'Objectives',
@@ -15,6 +15,7 @@ function course(overrides = {}) {
     variables: [],
     assets: [],
     question_banks: [],
+    linked_entities: [],
     pages: [{ page_id: 'pg_one', title: 'One', blocks: [] }],
     ...overrides,
   };

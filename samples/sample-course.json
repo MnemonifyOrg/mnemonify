@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "meta": {
     "course_id": "crs_fs001",
     "title": "Frozen Section Interpretation: Case 1",
@@ -105,6 +105,7 @@
       ]
     }
   ],
+  "linked_entities": [],
   "assets": [
     {
       "asset_id": "ast_slide01",

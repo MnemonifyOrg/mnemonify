@@ -5,11 +5,12 @@ import { getCorrectOptionIds, isKnowledgeCheckAnswerCorrect, getKnowledgeCheckOp
 
 function courseWithBlock(content) {
   return {
-    schema_version: 4,
+    schema_version: 5,
     meta: { course_id: 'crs_multiselect', title: 'Multi-select', theme: { accent: '#0f766e' } },
     variables: [],
     assets: [],
     question_banks: [],
+    linked_entities: [],
     pages: [{ page_id: 'pg_one', title: 'One', blocks: [{ block_id: 'blk_kc', type: 'knowledge-check', content }] }],
   };
 }

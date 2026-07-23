@@ -13,6 +13,7 @@ import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
+import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
 import {
@@ -90,6 +91,10 @@ export default function CourseEditor() {
   const [publishNotice, setPublishNotice] = useState(null);
   const [pendingLinkedEdit, setPendingLinkedEdit] = useState(null);
   const [pendingLinkedDelete, setPendingLinkedDelete] = useState(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [courseVersions, setCourseVersions] = useState([]);
+  const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
+  const [versionHistoryError, setVersionHistoryError] = useState(null);
 
   // Phase 4.6 Step 2: panel collapse + Focus Mode. Deliberately plain
   // useState, entirely separate from the undo/redo system below -- this is
@@ -200,9 +205,11 @@ export default function CourseEditor() {
     try {
       await api.updateCourse(current.id, { title: current.title, course_json: current.course_json });
       setSaveStatus('saved');
+      return true;
     } catch (err) {
       console.error('[course-editor] autosave failed:', err);
       setSaveStatus('unsaved');
+      return false;
     }
   }
 
@@ -215,6 +222,51 @@ export default function CourseEditor() {
   function saveNow() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     return doSave();
+  }
+
+  async function refreshCourseVersions() {
+    setVersionHistoryLoading(true);
+    setVersionHistoryError(null);
+    try {
+      setCourseVersions(await api.listCourseVersions(course.id));
+    } catch (error) {
+      setVersionHistoryError(error);
+    } finally {
+      setVersionHistoryLoading(false);
+    }
+  }
+
+  async function openVersionHistory() {
+    setShowVersionHistory(true);
+    const saved = await saveNow();
+    if (!saved) {
+      setVersionHistoryError(new Error('The current course could not be saved. Version history was not opened.'));
+      return;
+    }
+    await refreshCourseVersions();
+  }
+
+  async function handleSaveVersion(name) {
+    const saved = await saveNow();
+    if (!saved) throw new Error('The current course could not be saved, so no snapshot was created.');
+    const version = await api.createCourseVersion(course.id, { name });
+    setCourseVersions((previous) => [version, ...previous]);
+  }
+
+  async function handleRestoreVersion(version) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    const result = await api.restoreCourseVersion(course.id, version.version_id);
+    courseRef.current = result.course;
+    setCourse(result.course);
+    setActivePageId(result.course.course_json.pages?.[0]?.page_id || null);
+    setSelectedBlockId(null);
+    setSettingsTab('Course');
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
+    setSaveStatus('saved');
+    setCourseVersions((previous) => [result.version, ...previous]);
   }
 
   async function handleExportWord() {
@@ -1040,6 +1092,10 @@ export default function CourseEditor() {
           ]}
         />
 
+        <button type="button" className="btn" onClick={openVersionHistory}>
+          Version History
+        </button>
+
         {findings.length > 0 && (
           <button
             type="button"
@@ -1074,6 +1130,17 @@ export default function CourseEditor() {
       )}
 
       {showTour && <OnboardingTour onComplete={handleTourComplete} />}
+
+      {showVersionHistory && (
+        <VersionHistoryModal
+          versions={courseVersions}
+          loading={versionHistoryLoading}
+          error={versionHistoryError}
+          onSave={handleSaveVersion}
+          onRestore={handleRestoreVersion}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      )}
 
       {showSaveTemplate && (
         <SaveAsTemplateModal courseTitle={json.meta?.title || course.title} courseId={course.id} onClose={() => setShowSaveTemplate(false)} />

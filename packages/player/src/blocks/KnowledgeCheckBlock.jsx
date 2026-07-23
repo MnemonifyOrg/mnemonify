@@ -1,5 +1,11 @@
 import { useState } from 'react';
 import RichText from './RichText.jsx';
+import {
+  getCorrectOptionIds,
+  getKnowledgeCheckOptionFeedback,
+  isKnowledgeCheckAnswerCorrect,
+  normalizeSelectedOptionIds,
+} from '@mnemonify/schema/knowledge-check.js';
 
 // Click-to-zoom like a standalone image block (Modal.jsx / imageZoom.js),
 // but never as part of a set -- no images/index passed, so the lightbox
@@ -23,9 +29,6 @@ function KcImage({ assetId, assets, onOpenModal }) {
 }
 
 export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenModal, interactionStates, variables, printMode, worksheetMode }) {
-  const restoredState = interactionStates?.[block.block_id];
-  const [selectedId, setSelectedId] = useState(restoredState?.selectedId || null);
-  const [submitted, setSubmitted] = useState(restoredState?.submitted === true);
   const {
     question,
     question_image_id: questionImageId,
@@ -35,12 +38,20 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     incorrect_feedback,
     incorrect_feedback_image_id: incorrectFeedbackImageId,
     show_feedback,
+    multi_select: multiSelect,
+    feedback_mode: feedbackMode,
   } = block.content;
+  const restoredState = interactionStates?.[block.block_id];
+  const [selectedOptionIds, setSelectedOptionIds] = useState(() => normalizeSelectedOptionIds(restoredState?.selectedIds ?? restoredState?.selectedId));
+  const [submitted, setSubmitted] = useState(restoredState?.submitted === true);
+  const selectedId = selectedOptionIds[0] || null;
+  const selectedIds = multiSelect === true ? selectedOptionIds : (selectedId ? [selectedId] : []);
+  const answerCorrect = isKnowledgeCheckAnswerCorrect(block.content, selectedIds);
 
   function handleSubmit() {
     setSubmitted(true);
     const selected = options.find((o) => o.id === selectedId);
-    onTrigger(block, selected && selected.correct ? 'onCorrect' : 'onIncorrect');
+    onTrigger(block, answerCorrect ? 'onCorrect' : 'onIncorrect');
     // onComplete (Phase 4 Part 2 Step 3): "any answer submitted," fired in
     // addition to onCorrect/onIncorrect, not instead of -- an author who
     // only cares "did they answer at all" (e.g. to reveal a Continue gate)
@@ -48,15 +59,18 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     const confidenceLevel = selected?.confidence_level ?? block.content.confidence_level;
     onTrigger(block, 'onComplete', {
       question_id: block.block_id,
-      answer_selected: selectedId,
+      answer_selected: multiSelect === true ? selectedIds : selectedId,
+      ...(multiSelect === true ? { answer_selected_ids: selectedIds } : {}),
       ...(confidenceLevel !== undefined && confidenceLevel !== null
         ? { confidence_level: confidenceLevel }
         : {}),
-      correct: !!selected?.correct,
+      correct: answerCorrect,
     });
   }
 
   const selectedOption = options.find((o) => o.id === selectedId);
+  const selectedOptionIsCorrect = getCorrectOptionIds(block.content).includes(selectedId);
+  const optionFeedback = getKnowledgeCheckOptionFeedback(block.content, selectedIds);
   const activeIndex = selectedId ? options.findIndex((o) => o.id === selectedId) : 0;
 
   function focusOption(id) {
@@ -69,16 +83,21 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault();
       const nextIndex = index === lastIndex ? 0 : index + 1;
-      setSelectedId(options[nextIndex].id);
+      if (multiSelect !== true) setSelectedOptionIds([options[nextIndex].id]);
       focusOption(options[nextIndex].id);
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       e.preventDefault();
       const prevIndex = index === 0 ? lastIndex : index - 1;
-      setSelectedId(options[prevIndex].id);
+      if (multiSelect !== true) setSelectedOptionIds([options[prevIndex].id]);
       focusOption(options[prevIndex].id);
     } else if (e.key === ' ' || e.key === 'Spacebar') {
       e.preventDefault();
-      setSelectedId(options[index].id);
+      setSelectedOptionIds((current) => {
+        if (multiSelect !== true) return [options[index].id];
+        return current.includes(options[index].id)
+          ? current.filter((id) => id !== options[index].id)
+          : [...current, options[index].id];
+      });
     }
   }
 
@@ -93,27 +112,32 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
       </p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
         <legend className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
-          {question}
+          <RichText value={question} variables={variables} />
         </legend>
         <ul className="knowledge-check__options">
           {options.map((option, index) => (
             <li
               className={
-                selectedId === option.id
+                selectedOptionIds.includes(option.id)
                   ? 'knowledge-check__option knowledge-check__option--selected'
                   : 'knowledge-check__option'
               }
               key={option.id}
             >
               <input
-                type="radio"
+                type={multiSelect === true ? 'checkbox' : 'radio'}
                 id={`${block.block_id}-${option.id}`}
                 name={block.block_id}
                 value={option.id}
-                checked={selectedId === option.id}
+                checked={selectedOptionIds.includes(option.id)}
                 disabled={submitted}
                 tabIndex={index === activeIndex ? 0 : -1}
-                onChange={() => setSelectedId(option.id)}
+                onChange={() => setSelectedOptionIds((current) => {
+                  if (multiSelect !== true) return [option.id];
+                  return current.includes(option.id)
+                    ? current.filter((id) => id !== option.id)
+                    : [...current, option.id];
+                })}
                 onKeyDown={(e) => handleOptionKeyDown(e, index)}
               />
               <label htmlFor={`${block.block_id}-${option.id}`}>
@@ -128,37 +152,51 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
         type="button"
         className="knowledge-check__submit"
         tabIndex={0}
-        disabled={!selectedId || submitted}
+        disabled={selectedOptionIds.length === 0 || submitted}
         onClick={handleSubmit}
       >
         Submit
       </button>
       {submitted && show_feedback !== false && (
-        <div className="knowledge-check__feedback" data-correct={String(!!selectedOption?.correct)} role="status">
+        <div className="knowledge-check__feedback" data-correct={String(answerCorrect)} role="status">
           {/* An option's own feedback (answer-level, ARCHITECTURE.md 3.8)
               takes precedence over the block-level correct_feedback /
               incorrect_feedback when present, so distractor-specific
               rationale (e.g. "why this option is wrong") can be shown
               instead of the generic message. */}
-          <KcImage
-            assetId={
-              selectedOption?.feedback?.rich_text?.length
-                ? selectedOption.feedback.image_id
-                : selectedOption?.correct
-                  ? correctFeedbackImageId
-                  : incorrectFeedbackImageId
-            }
-            assets={assets}
-            onOpenModal={onOpenModal}
-          />
-          {selectedOption?.feedback?.rich_text?.length ? (
-            <RichText value={selectedOption.feedback.rich_text} variables={variables} />
-          ) : selectedOption?.correct ? (
-            correct_feedback ? <RichText value={correct_feedback} variables={variables} /> : 'Correct.'
-          ) : incorrect_feedback ? (
-<RichText value={incorrect_feedback} variables={variables} />
+          {multiSelect === true && feedbackMode === 'per_option' ? (
+            <ul className="knowledge-check__per-option-feedback">
+              {optionFeedback.map((feedback) => (
+                <li key={feedback.id} data-option-correct={String(feedback.correct)} data-option-selected={String(feedback.selected)}>
+                  <RichText value={options.find((option) => option.id === feedback.id)?.text} variables={variables} />
+                  {' — '}{feedback.correct ? 'Correct option' : 'Incorrect option'}
+                  {feedback.selected ? ' (selected)' : ' (not selected)'}
+                </li>
+              ))}
+            </ul>
           ) : (
-            'Not quite — review the case findings and try again.'
+            <>
+              <KcImage
+                assetId={
+                  selectedOption?.feedback?.rich_text?.length
+                    ? selectedOption.feedback.image_id
+                    : selectedOptionIsCorrect
+                      ? correctFeedbackImageId
+                      : incorrectFeedbackImageId
+                }
+                assets={assets}
+                onOpenModal={onOpenModal}
+              />
+              {selectedOption?.feedback?.rich_text?.length && multiSelect !== true ? (
+                <RichText value={selectedOption.feedback.rich_text} variables={variables} />
+              ) : answerCorrect ? (
+                correct_feedback ? <RichText value={correct_feedback} variables={variables} /> : 'Correct.'
+              ) : incorrect_feedback ? (
+                <RichText value={incorrect_feedback} variables={variables} />
+              ) : (
+                'Not quite — review the case findings and try again.'
+              )}
+            </>
           )}
         </div>
       )}

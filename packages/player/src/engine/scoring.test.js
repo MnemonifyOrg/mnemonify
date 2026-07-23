@@ -49,6 +49,22 @@ describe('knowledge-check resume state', () => {
       'kc-1': { submitted: true, selectedId: 'answer-a', correct: true },
     });
   });
+
+  it('persists multi-select answers in the same interaction-state payload', () => {
+    const multiBlock = {
+      block_id: 'kc-multi',
+      type: 'knowledge-check',
+      content: { multi_select: true },
+    };
+    const state = recordInteractionState({}, multiBlock, {
+      answer_selected: ['answer-a', 'answer-b'],
+      correct: false,
+    });
+    expect(state).toEqual({
+      'kc-multi': { submitted: true, selectedIds: ['answer-a', 'answer-b'], correct: false },
+    });
+    expect(restoreInteractionStates({ pages: [{ blocks: [multiBlock] }] }, state)).toEqual(state);
+  });
 });
 
 describe('question bank draw persistence and scoring', () => {

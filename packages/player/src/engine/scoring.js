@@ -1,5 +1,6 @@
 import { isReservedSystemVariableName } from '@mnemonify/schema/system-variables.js';
 import { resolveQuestionBankDrawPool } from '@mnemonify/schema/objectives.js';
+import { normalizeSelectedOptionIds } from '@mnemonify/schema/knowledge-check.js';
 
 export const SCOREABLE_BLOCK_TYPES = new Set(['knowledge-check', 'matching', 'ordering', 'hotspot']);
 
@@ -29,18 +30,25 @@ export function restoreInteractionStates(course, restored = {}) {
   const validIds = new Set(collectKnowledgeChecks(course).map((block) => block.block_id));
   return Object.fromEntries(
     Object.entries(restored || {}).filter(([blockId, state]) => (
-      validIds.has(blockId) && state?.submitted === true && typeof state.selectedId === 'string'
+      validIds.has(blockId) && state?.submitted === true && (
+        typeof state.selectedId === 'string' || Array.isArray(state.selectedIds)
+      )
     ))
   );
 }
 
 export function recordInteractionState(state, block, payload = {}) {
-  if (block?.type !== 'knowledge-check' || !block.block_id || typeof payload.answer_selected !== 'string') return state;
+  if (block?.type !== 'knowledge-check' || !block.block_id) return state;
+  const selectedIds = normalizeSelectedOptionIds(payload.answer_selected_ids ?? payload.answer_selected);
+  if (selectedIds.length === 0) return state;
+  const answerState = block.content?.multi_select === true
+    ? { selectedIds }
+    : { selectedId: selectedIds[0] };
   return {
     ...state,
     [block.block_id]: {
       submitted: true,
-      selectedId: payload.answer_selected,
+      ...answerState,
       correct: payload.correct === true,
     },
   };

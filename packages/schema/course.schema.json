@@ -179,9 +179,22 @@
       "additionalProperties": true,
       "properties": {
         "scored": { "type": "boolean" },
+        "multi_select": {
+          "type": "boolean",
+          "default": false
+        },
         "question": { "type": ["string", "array"] },
         "question_image_id": { "type": ["string", "null"] },
         "options": { "type": "array", "minItems": 2, "items": { "type": "object" } },
+        "correct_option_id": { "type": "string" },
+        "correct_option_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "feedback_mode": {
+          "enum": ["summary", "per_option"],
+          "default": "summary"
+        },
         "correct_feedback": { "type": ["string", "array"] },
         "incorrect_feedback": { "type": ["string", "array"] },
         "show_feedback": { "type": "boolean" }

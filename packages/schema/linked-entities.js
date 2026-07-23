@@ -171,8 +171,7 @@ export function linkBlockToBank(course, pageId, blockId, bankId, { entityId, que
   const nextEntityId = entityId || generatedId('ent', new Set((course.linked_entities || []).map((entity) => entity.entity_id)));
   const nextQuestionId = questionId || generatedId('bq', new Set((bank.questions || []).map((question) => question.question_id)));
   const entity = createLinkedEntityFromBlock(block, nextEntityId);
-  const linkedBlock = { ...block, linked_entity_id: nextEntityId };
-  delete linkedBlock.content;
+  const linkedBlock = { block_id: block.block_id, type: block.type, linked_entity_id: nextEntityId };
   const nextPages = (course.pages || []).map((candidate) => candidate.page_id === pageId
     ? { ...candidate, blocks: replaceBlock(candidate.blocks, blockId, linkedBlock) }
     : candidate);
@@ -227,6 +226,76 @@ export function unlinkUsage(course, usage) {
     }) }
     : bank);
   return cleanupEntity({ ...course, question_banks: nextBanks }, usage.entityId);
+}
+
+export function detachUsageWithUpdate(course, usage, updatedUsage) {
+  const entity = (course.linked_entities || []).find((candidate) => candidate.entity_id === usage.entityId);
+  if (!entity) return course;
+  if (usage.kind === 'page') {
+    const standalone = { ...updatedUsage };
+    delete standalone.linked_entity_id;
+    return cleanupEntity({ ...course, pages: (course.pages || []).map((candidate) => candidate.page_id === usage.page_id ? { ...candidate, blocks: replaceBlock(candidate.blocks, usage.block_id, standalone) } : candidate) }, usage.entityId);
+  }
+  const nextBanks = (course.question_banks || []).map((bank) => bank.bank_id === usage.bank_id
+    ? { ...bank, questions: (bank.questions || []).map((question) => question.question_id === usage.question_id ? (() => {
+      const standalone = { ...updatedUsage };
+      delete standalone.linked_entity_id;
+      return standalone;
+    })() : question) }
+    : bank);
+  return cleanupEntity({ ...course, question_banks: nextBanks }, usage.entityId);
+}
+
+export function mergeQuestionBanksPreservingLinked(course, nextQuestionBanks) {
+  const rawQuestions = new Map();
+  for (const bank of course?.question_banks || []) {
+    for (const question of bank.questions || []) {
+      if (question.linked_entity_id) rawQuestions.set(`${bank.bank_id}:${question.question_id}`, question);
+    }
+  }
+  return (nextQuestionBanks || []).map((bank) => ({
+    ...bank,
+    questions: (bank.questions || []).map((question) => rawQuestions.get(`${bank.bank_id}:${question.question_id}`) || question),
+  }));
+}
+
+function preserveBlockReferences(rawBlocks, nextBlocks) {
+  const rawById = new Map((rawBlocks || []).map((block) => [block.block_id, block]));
+  return (nextBlocks || []).map((nextBlock) => {
+    const rawBlock = rawById.get(nextBlock.block_id);
+    if (nextBlock.linked_entity_id) {
+      return rawBlock?.linked_entity_id === nextBlock.linked_entity_id
+        ? rawBlock
+        : { block_id: nextBlock.block_id, type: nextBlock.type, linked_entity_id: nextBlock.linked_entity_id };
+    }
+    let next = nextBlock;
+    if (next.content?.items) {
+      const rawItemsById = new Map((rawBlock?.content?.items || []).filter((item) => item?.item_id).map((item) => [item.item_id, item]));
+      next = {
+        ...next,
+        content: {
+          ...next.content,
+          items: next.content.items.map((item, index) => item?.body_blocks
+            ? {
+              ...item,
+              body_blocks: preserveBlockReferences((rawItemsById.get(item.item_id) || rawBlock?.content?.items?.[index])?.body_blocks, item.body_blocks),
+            }
+            : item),
+        },
+      };
+    }
+    if (next.left) next = { ...next, left: preserveBlockReferences(rawBlock?.left ? [rawBlock.left] : [], [next.left])[0] };
+    if (next.right) next = { ...next, right: preserveBlockReferences(rawBlock?.right ? [rawBlock.right] : [], [next.right])[0] };
+    return next;
+  });
+}
+
+export function mergePagesPreservingLinked(course, nextPages) {
+  const rawPages = new Map((course?.pages || []).map((page) => [page.page_id, page]));
+  return (nextPages || []).map((page) => ({
+    ...page,
+    blocks: preserveBlockReferences(rawPages.get(page.page_id)?.blocks, page.blocks),
+  }));
 }
 
 export function deleteEntityEverywhere(course, entityId) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createScoreState, recordInteractionScore, scoreVariables, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws } from './scoring.js';
+import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
 
 const course = {
   meta: { publish_settings: { success_enabled: true, passing_score_pct: 70 } },
@@ -163,5 +164,24 @@ describe('question bank draw persistence and scoring', () => {
 
     const prepared = prepareQuestionBankDraws(objectiveCourse);
     expect(new Set(prepared.course.pages[0].blocks[0].content.drawn_question_ids)).toEqual(new Set(['q-match-one', 'q-match-two']));
+  });
+});
+
+describe('linked question player materialization', () => {
+  it('restores canonical page content before the existing score collector runs', () => {
+    const linkedCourse = {
+      meta: { publish_settings: { success_enabled: true, passing_score_pct: 70 } },
+      linked_entities: [{
+        entity_id: 'ent-kc',
+        block_type: 'knowledge-check',
+        content: { question: 'Canonical question', options: [], scored: true },
+        metadata: { scored: true, objective_ids: [], tags: [], block_fields: {} },
+      }],
+      pages: [{ blocks: [{ block_id: 'blk-kc', type: 'knowledge-check', linked_entity_id: 'ent-kc' }] }],
+      question_banks: [],
+    };
+    const materialized = materializeLinkedEntities(linkedCourse);
+    expect(materialized.pages[0].blocks[0].content.question).toBe('Canonical question');
+    expect(createScoreState(materialized).scoreMax).toBe(1);
   });
 });

@@ -16,6 +16,7 @@ import RichText from './blocks/RichText.jsx';
 import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js';
 import { resetPageScroll } from './engine/scroll.js';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
+import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -223,6 +224,11 @@ export default function App() {
         restoredInteractionStatePayload = {};
       }
 
+      // Published documents store linked usages without duplicate content.
+      // Materialize the canonical entity once at boot so every existing
+      // player block and scoring path continues to consume the same
+      // structural shape as a standalone block/question.
+      loadedCourse = materializeLinkedEntities(loadedCourse);
       const prepared = prepareQuestionBankDraws(loadedCourse, restoredQuestionBankDraws);
       loadedCourse = prepared.course;
       restoredQuestionBankDraws = prepared.questionBankDraws;

@@ -1,4 +1,7 @@
+import { createContext, useContext, useState } from 'react';
 import { htmlToRichAst, RICH_TEXT_TAGS } from '../lib/richText.js';
+
+export const GlossaryContext = createContext({ terms: [], onOpenGlossary: null });
 
 const TAG_MAP = { b: 'b', strong: 'strong', i: 'i', em: 'em', u: 'u', sup: 'sup', sub: 'sub' };
 const VARIABLE_TOKEN_PATTERN = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
@@ -48,7 +51,38 @@ function renderInlineText(value, variables, keyPrefix) {
   ));
 }
 
-function renderSegments(segments, { variables, assets = [], onOpenModal, allowedTags }) {
+export function GlossaryLink({ segment, glossaryTerm, onOpenGlossary, variables, assets, allowedTags }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  if (!glossaryTerm) return <span>{segment.v || ''}</span>;
+  return (
+    <span className="glossary-link__wrapper">
+      <button
+        type="button"
+        className="glossary-link"
+        aria-label={`${segment.v || glossaryTerm.term}: ${plainDefinition(glossaryTerm.definition)}`}
+        onMouseEnter={() => setPreviewOpen(true)}
+        onMouseLeave={() => setPreviewOpen(false)}
+        onFocus={() => setPreviewOpen(true)}
+        onBlur={() => setPreviewOpen(false)}
+        onClick={() => onOpenGlossary?.(glossaryTerm.term_id)}
+      >
+        {segment.v || glossaryTerm.term}
+      </button>
+      {previewOpen && (
+        <span className="glossary-link__tooltip" role="tooltip">
+          <RichText value={glossaryTerm.definition} variables={variables} assets={assets} allowedTags={allowedTags} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function plainDefinition(definition) {
+  return (definition?.rich_text || []).map((segment) => segment.v || '').join('').replace(/<[^>]+>/g, '');
+}
+
+function renderSegments(segments, { variables, assets = [], onOpenModal, glossaryTerms = [], onOpenGlossary, allowedTags }) {
+  const termsById = new Map(glossaryTerms.map((term) => [term.term_id, term]));
   return (segments || []).map((segment, i) => {
     if (segment.t === 'variable') {
       return <span key={i} data-variable={segment.var_name}>{variableValue(segment.var_name, variables)}</span>;
@@ -60,6 +94,9 @@ function renderSegments(segments, { variables, assets = [], onOpenModal, allowed
           {segment.v || ''}
         </button>
       );
+    }
+    if (segment.t === 'glossary_link') {
+      return <GlossaryLink key={i} segment={segment} glossaryTerm={termsById.get(segment.term_id)} onOpenGlossary={onOpenGlossary} variables={variables} assets={assets} allowedTags={allowedTags} />;
     }
     if (segment.t === 'html') return <span key={i}><RichText value={segment.v} variables={variables} allowedTags={allowedTags} /></span>;
     return <span key={i}>{renderInlineText(segment.v || '', variables, `segment-${i}`)}</span>;
@@ -73,9 +110,12 @@ function renderSegments(segments, { variables, assets = [], onOpenModal, allowed
 // fields" rule). Re-sanitizes defensively at render time (not just trusting
 // that the editor already sanitized on save), in case content ever arrives
 // through another path, e.g. a future Word import.
-export default function RichText({ value, variables, assets, onOpenModal, allowedTags = RICH_TEXT_TAGS }) {
+export default function RichText({ value, variables, assets, onOpenModal, glossaryTerms, onOpenGlossary, allowedTags = RICH_TEXT_TAGS }) {
+  const glossaryContext = useContext(GlossaryContext);
+  const resolvedGlossaryTerms = glossaryTerms ?? glossaryContext.terms ?? [];
+  const resolvedOpenGlossary = onOpenGlossary ?? glossaryContext.onOpenGlossary;
   if (!value) return null;
-  if (Array.isArray(value)) return <>{renderSegments(value, { variables, assets, onOpenModal, allowedTags })}</>;
-  if (value?.rich_text) return <>{renderSegments(value.rich_text, { variables, assets, onOpenModal, allowedTags })}</>;
+  if (Array.isArray(value)) return <>{renderSegments(value, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags })}</>;
+  if (value?.rich_text) return <>{renderSegments(value.rich_text, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags })}</>;
   return <>{renderNodes(htmlToRichAst(value, allowedTags), variables)}</>;
 }

@@ -17,6 +17,8 @@ import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js
 import { resetPageScroll } from './engine/scroll.js';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
+import { effectiveGlossaryTerms } from '@mnemonify/schema/glossary.js';
+import { GlossaryContext } from './blocks/RichText.jsx';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -57,6 +59,7 @@ export default function App() {
   const [questionBankDraws, setQuestionBankDraws] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
+  const [glossaryTerms, setGlossaryTerms] = useState([]);
   const [currentPageId, setCurrentPageId] = useState(null);
   // Runtime learner state (ARCHITECTURE.md 5.1/5.6) -- never stored in the
   // course JSON itself, only in-memory here and mirrored into SCORM
@@ -165,6 +168,7 @@ export default function App() {
       let restoredInteractionStates = {};
       let restoredQuestionBankDraws = {};
       let restoredInteractionStatePayload = {};
+      let restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] });
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -187,6 +191,7 @@ export default function App() {
           restoredPageId = printPageId || loadedCourse.pages[0].page_id;
           restoredScoreState = createScoreState(loadedCourse);
           restoredInteractionStates = {};
+          restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] });
         } else {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
@@ -197,6 +202,8 @@ export default function App() {
             const response = await fetch(`${contentServerUrl}/content/${courseId}`);
             loadedCourse = await response.json();
             if (cancelled) return;
+
+            restoredGlossaryTerms = await fetchEffectiveGlossaryTerms(loadedCourse, contentServerUrl);
 
             const suspend = await scorm2004.getSuspendData();
             learnerId = await scorm2004.getLearnerId();
@@ -222,6 +229,7 @@ export default function App() {
         restoredInteractionStates = {};
         restoredQuestionBankDraws = {};
         restoredInteractionStatePayload = {};
+        restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] });
       }
 
       // Published documents store linked usages without duplicate content.
@@ -271,6 +279,7 @@ export default function App() {
       setScoreState(restoredScoreState);
       setInteractionStates(restoredInteractionStates);
       setQuestionBankDraws(restoredQuestionBankDraws);
+      setGlossaryTerms(restoredGlossaryTerms);
       setCourse(loadedCourse);
       if (isPreview && params.get('courseId')) {
         fetch(`${window.location.origin}/api/courses/${params.get('courseId')}/resources`)
@@ -470,6 +479,10 @@ export default function App() {
     setModalPayload(payload);
   }
 
+  function handleOpenGlossary() {
+    setModalPayload({ type: 'glossary', terms: glossaryTerms, ariaLabel: 'Course glossary' });
+  }
+
   function handleCloseModal() {
     const timelineContext = timelineContextRef.current;
     setModalPayload(null);
@@ -657,6 +670,7 @@ export default function App() {
   const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, playerVariables) : false;
 
   return (
+    <GlossaryContext.Provider value={{ terms: glossaryTerms, onOpenGlossary: handleOpenGlossary }}>
     <div className="player-shell">
       <TopBar
         courseTitle={course.meta.title}
@@ -733,5 +747,20 @@ export default function App() {
       />
       <Modal payload={modalPayload} onClose={handleCloseModal} />
     </div>
+    </GlossaryContext.Provider>
   );
+}
+
+async function fetchEffectiveGlossaryTerms(course, contentServerUrl) {
+  const localTerms = course?.glossary_terms || [];
+  if (!course?.meta?.glossary_id) return effectiveGlossaryTerms({ courseTerms: localTerms });
+  try {
+    const response = await fetch(`${contentServerUrl}/api/glossaries/${encodeURIComponent(course.meta.glossary_id)}`);
+    if (!response.ok) return effectiveGlossaryTerms({ courseTerms: localTerms });
+    const glossary = await response.json();
+    return effectiveGlossaryTerms({ libraryTerms: glossary.terms || [], courseTerms: localTerms });
+  } catch (error) {
+    console.warn('[player] attached glossary could not be loaded:', error);
+    return effectiveGlossaryTerms({ courseTerms: localTerms });
+  }
 }

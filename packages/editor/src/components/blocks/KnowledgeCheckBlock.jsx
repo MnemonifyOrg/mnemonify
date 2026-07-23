@@ -52,10 +52,6 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
     onChange({ ...block, content: { ...block.content, ...patch } });
   }
 
-  function setSelectionMode(multi) {
-    onChange(updateKnowledgeCheckSelectionMode(block, multi));
-  }
-
   function setObjectiveIds(objectiveIds) {
     onChange({ ...block, objective_ids: objectiveIds });
   }

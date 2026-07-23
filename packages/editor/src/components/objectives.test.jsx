@@ -5,6 +5,7 @@ import ObjectivesPanel from './ObjectivesPanel.jsx';
 import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
 import { readSelectedObjectiveIds } from '../lib/objectiveUi.js';
 import { KnowledgeCheckBlockSettings } from './blocks/KnowledgeCheckBlock.jsx';
+import { updateKnowledgeCheckCorrectOptions, updateKnowledgeCheckSelectionMode } from '../lib/knowledgeCheck.js';
 import { QuestionBankDrawBlockSettings } from './blocks/QuestionBankDrawBlock.jsx';
 
 globalThis.React = React;
@@ -50,6 +51,46 @@ describe('objective authoring controls', () => {
     expect(html).toContain('aria-label="Question objectives"');
     expect(html).toContain('value="obj_one" selected');
     expect(html).toContain('value="obj_two"');
+  });
+
+  it('renders the multi-select toggle and feedback style only when enabled', () => {
+    const single = renderToStaticMarkup(
+      <KnowledgeCheckBlockSettings block={{ content: { show_feedback: true } }} objectives={[]} onChange={() => {}} />
+    );
+    expect(single).toContain('Select all that apply');
+    expect(single).not.toContain('Feedback style');
+
+    const multi = renderToStaticMarkup(
+      <KnowledgeCheckBlockSettings
+        block={{ content: { multi_select: true, feedback_mode: 'per_option', show_feedback: true } }}
+        objectives={[]}
+        onChange={() => {}}
+      />
+    );
+    expect(multi).toContain('Feedback style');
+    expect(multi).toContain('value="summary"');
+    expect(multi).toContain('value="per_option" selected');
+  });
+
+  it('stores multiple checked answers and converts legacy single-select content safely', () => {
+    const block = {
+      block_id: 'blk_kc',
+      content: {
+        multi_select: true,
+        correct_option_ids: ['opt_a'],
+        question: 'Select all',
+        options: [{ id: 'opt_a', text: 'A', correct: true }, { id: 'opt_b', text: 'B', correct: false }],
+      },
+    };
+    const selected = updateKnowledgeCheckCorrectOptions(block, ['opt_a', 'opt_b']);
+    expect(selected.content.correct_option_ids).toEqual(['opt_a', 'opt_b']);
+    expect(selected.content.options.map((option) => option.correct)).toEqual([true, true]);
+
+    const single = updateKnowledgeCheckSelectionMode(selected, false);
+    expect(single.content.multi_select).toBe(false);
+    expect(single.content.correct_option_id).toBe('opt_a');
+    expect(single.content.correct_option_ids).toBeUndefined();
+    expect(single.content.feedback_mode).toBeUndefined();
   });
 
   it('extracts all selected objective ids from a native multi-select event', () => {

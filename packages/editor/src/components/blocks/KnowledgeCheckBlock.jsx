@@ -5,6 +5,8 @@ import { genOptionId } from '../../lib/idGen.js';
 import VariablePicker from '../VariablePicker.jsx';
 import { insertVariableAtSelection } from '../../lib/richText.js';
 import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
+import { getCorrectOptionIds } from '@mnemonify/schema/knowledge-check.js';
+import { updateKnowledgeCheckCorrectOptions, updateKnowledgeCheckSelectionMode } from '../../lib/knowledgeCheck.js';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -31,6 +33,8 @@ function KcImageField({ assetId, assets, label, onPick, onRemove }) {
 
 export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
   const { question = '', options = [] } = block.content;
+  const multiSelect = block.content.multi_select === true;
+  const correctOptionIds = new Set(getCorrectOptionIds(block.content));
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
   const [toolbarPos, setToolbarPos] = useState(null);
@@ -46,6 +50,10 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
+  }
+
+  function setSelectionMode(multi) {
+    onChange(updateKnowledgeCheckSelectionMode(block, multi));
   }
 
   function setObjectiveIds(objectiveIds) {
@@ -114,7 +122,10 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   }
 
   function markCorrect(id) {
-    setContent({ options: options.map((o) => ({ ...o, correct: o.id === id })) });
+    const nextIds = multiSelect
+      ? (correctOptionIds.has(id) ? [...correctOptionIds].filter((optionId) => optionId !== id) : [...correctOptionIds, id])
+      : [id];
+    onChange(updateKnowledgeCheckCorrectOptions(block, nextIds));
   }
 
   function addOption() {
@@ -167,6 +178,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
           hint="Optional. Map this question to one or more course objectives."
         />
       )}
+      <KnowledgeCheckModeControls block={block} onChange={onChange} />
       {toolbarPos && (
         <div
           className="rich-text-toolbar knowledge-check-block-editor__toolbar"
@@ -214,7 +226,12 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
           return (
             <li key={option.id}>
               <div className="kc-option-row">
-                <input type="radio" checked={!!option.correct} onChange={() => markCorrect(option.id)} title="Mark as correct answer" />
+                <input
+                  type={multiSelect ? 'checkbox' : 'radio'}
+                  checked={correctOptionIds.has(option.id)}
+                  onChange={() => markCorrect(option.id)}
+                  title={multiSelect ? 'Mark as a correct answer' : 'Mark as correct answer'}
+                />
                 <EditableRichField
                   className="editable-field"
                   placeholder="Click to add answer option..."
@@ -323,10 +340,39 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   );
 }
 
+export function KnowledgeCheckModeControls({ block, onChange }) {
+  const multiSelect = block.content.multi_select === true;
+  return (
+    <div className="knowledge-check-mode-controls">
+      <label className="settings-panel__checkbox-row">
+        <input
+          type="checkbox"
+          checked={multiSelect}
+          onChange={(e) => onChange(updateKnowledgeCheckSelectionMode(block, e.target.checked))}
+        />
+        Select all that apply
+      </label>
+      {multiSelect && (
+        <label className="knowledge-check-mode-controls__feedback">
+          Feedback style
+          <select
+            value={block.content.feedback_mode === 'per_option' ? 'per_option' : 'summary'}
+            onChange={(e) => onChange({ ...block, content: { ...block.content, feedback_mode: e.target.value } })}
+          >
+            <option value="summary">Summary</option>
+            <option value="per_option">Per-option</option>
+          </select>
+        </label>
+      )}
+    </div>
+  );
+}
+
 export function KnowledgeCheckBlockSettings({ block, onChange, objectives = [] }) {
   const showFeedback = block.content.show_feedback !== false;
   return (
     <>
+      <KnowledgeCheckModeControls block={block} onChange={onChange} />
       <label className="settings-panel__checkbox-row">
         <input
           type="checkbox"

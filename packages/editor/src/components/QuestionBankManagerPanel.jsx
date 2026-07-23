@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { genBankId, genBankQuestionId } from '../lib/idGen.js';
 import QuestionBankEditorModal from './QuestionBankEditorModal.jsx';
+import BankExportModal from './BankExportModal.jsx';
+import BankImportReviewModal from './BankImportReviewModal.jsx';
+import { buildNativeQuestionBankExport, exportQuestionBankAsGift, parseNativeQuestionBankExport } from '@mnemonify/schema/question-bank-transfer.js';
 
 function emptyQuestion() {
   return {
@@ -19,10 +22,14 @@ function emptyQuestion() {
   };
 }
 
-export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], onLinkBlockToBank, onRequestLinkedQuestionEdit, onRequestLinkedQuestionDelete }) {
+export default function QuestionBankManagerPanel({ questionBanks, courseJson, assets, courseId, onChangeQuestionBanks, onImportBank, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], onLinkBlockToBank, onRequestLinkedQuestionEdit, onRequestLinkedQuestionDelete }) {
   const banks = questionBanks || [];
   const [selectedBankId, setSelectedBankId] = useState(banks[0]?.bank_id || null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importPayload, setImportPayload] = useState(null);
+  const [importError, setImportError] = useState(null);
+  const importInputRef = useRef(null);
   const selectedBank = banks.find((bank) => bank.bank_id === selectedBankId) || banks[0];
 
   function updateBanks(next, options = { forceSnapshot: true }) {
@@ -57,6 +64,34 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
     return question.question_id;
   }
 
+  function downloadExport(format) {
+    const sourceCourse = courseJson || { question_banks: banks, linked_entities: [] };
+    const result = format === 'native'
+      ? { content: JSON.stringify(buildNativeQuestionBankExport(sourceCourse, selectedBank.bank_id), null, 2), filename: `${selectedBank.name || selectedBank.bank_id}.mnemonify-bank.json`, mime: 'application/json' }
+      : { ...exportQuestionBankAsGift(sourceCourse, selectedBank.bank_id), mime: 'text/plain' };
+    const url = URL.createObjectURL(new Blob([result.content], { type: result.mime }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = result.filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    setExportOpen(false);
+  }
+
+  async function readImportFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const payload = parseNativeQuestionBankExport(await file.text());
+      setImportError(null);
+      setImportPayload(payload);
+    } catch (error) {
+      setImportPayload(null);
+      setImportError(error.message || 'Could not read this question-bank JSON file.');
+    }
+  }
+
   return (
     <div className="settings-panel__section question-bank-manager">
       <h3>Question Banks</h3>
@@ -67,7 +102,10 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
           {banks.map((bank) => <option key={bank.bank_id} value={bank.bank_id}>{bank.name || bank.bank_id}</option>)}
         </select>
         <button type="button" className="btn" onClick={createBank}>+ New bank</button>
+        <button type="button" className="btn" onClick={() => importInputRef.current?.click()}>Import bank</button>
+        <input ref={importInputRef} type="file" accept=".json,application/json" hidden onChange={readImportFile} />
       </div>
+      {importError && <p className="bank-transfer-error" role="alert">{importError}</p>}
       {!selectedBank ? <p className="settings-panel__empty">Create a bank to start adding reusable questions.</p> : (
         <>
           <label>Bank name</label>
@@ -78,6 +116,7 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
           </div>
           <div className="question-bank-manager__actions">
             <button type="button" className="btn btn-primary" onClick={() => setEditorOpen(true)}>Open bank editor</button>
+            <button type="button" className="btn" onClick={() => setExportOpen(true)}>Export bank</button>
             <button type="button" className="btn-text settings-panel__danger-action" onClick={deleteBank}>Delete bank</button>
           </div>
           <div
@@ -113,6 +152,19 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
           onAddCourseAssets={onAddCourseAssets}
           onUpdateCourseAsset={onUpdateCourseAsset}
           onClose={() => setEditorOpen(false)}
+        />
+      )}
+      {exportOpen && selectedBank && <BankExportModal bank={selectedBank} onExport={downloadExport} onClose={() => setExportOpen(false)} />}
+      {importPayload && (
+        <BankImportReviewModal
+          payload={importPayload}
+          courseJson={courseJson || { question_banks: banks, variables, meta: { objectives } }}
+          questionBanks={banks}
+          onConfirm={(request) => {
+            onImportBank?.({ ...request, payload: importPayload });
+            setImportPayload(null);
+          }}
+          onClose={() => setImportPayload(null)}
         />
       )}
     </div>

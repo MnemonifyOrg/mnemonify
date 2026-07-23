@@ -571,6 +571,78 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.bank-transfer-modal {
+  width: min(620px, 92vw);
+}
+.bank-transfer-modal__options {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+.bank-transfer-modal__options .btn {
+  display: grid;
+  gap: var(--space-1);
+  text-align: left;
+}
+.bank-transfer-modal__options span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.bank-transfer-review {
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.bank-transfer-review__choice {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.bank-transfer-review__choice legend {
+  padding: 0 var(--space-1);
+  font-weight: 700;
+}
+.settings-panel__radio-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.bank-transfer-review__info,
+.bank-transfer-review__warning {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  font-size: var(--text-sm);
+}
+.bank-transfer-review__warning {
+  border-left: 3px solid var(--color-warning, #d97706);
+}
+.bank-transfer-review__warning--major {
+  background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface));
+}
+.bank-transfer-review__info p,
+.bank-transfer-review__warning p {
+  margin: var(--space-1) 0;
+}
+.bank-transfer-review__info code {
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.bank-transfer-review__warning ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+.bank-transfer-error {
+  margin: var(--space-2) 0;
+  color: var(--color-error);
+  font-size: var(--text-sm);
 }
 .question-bank-manager__drop-zone {
   margin-top: var(--space-4);

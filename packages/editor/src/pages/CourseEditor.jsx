@@ -27,6 +27,7 @@ import {
   updateLinkedEntityFromBankQuestion,
   updateLinkedEntityFromBlock,
 } from '@mnemonify/schema/linked-entities.js';
+import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transfer.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -393,6 +394,10 @@ export default function CourseEditor() {
 
   function handleChangeQuestionBanks(newQuestionBanks, options) {
     updateCourseJson((json) => ({ ...json, question_banks: mergeQuestionBanksPreservingLinked(json, newQuestionBanks) }), options);
+  }
+
+  function handleImportBank({ payload, mode, targetBankId }) {
+    updateCourseJson((json) => importNativeQuestionBank(json, payload, { mode, targetBankId }).course, { forceSnapshot: true });
   }
 
   function requestLinkedEdit({ entityId, usage, updated }) {
@@ -1147,6 +1152,7 @@ export default function CourseEditor() {
             <PageList
               pages={json.pages}
               meta={json.meta}
+              courseJson={course.course_json}
               onChangeMeta={handleChangeMeta}
               activePageId={activePageId}
               onSelectPage={handleSelectPage}
@@ -1243,6 +1249,7 @@ export default function CourseEditor() {
               onChangePage={handleChangePage}
               onChangeVariables={handleChangeVariables}
               onChangeQuestionBanks={handleChangeQuestionBanks}
+              onImportBank={handleImportBank}
               onLinkBlockToBank={handleLinkBlockToBank}
               onRequestLinkedQuestionEdit={handleRequestLinkedQuestionEdit}
               onRequestLinkedQuestionDelete={handleRequestLinkedQuestionDelete}

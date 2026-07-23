@@ -329,10 +329,12 @@ export default function SettingsPanel({
   pages,
   variables,
   questionBanks,
+  courseJson,
   onChangeMeta,
   onChangePage,
   onChangeVariables,
   onChangeQuestionBanks,
+  onImportBank,
   onLinkBlockToBank,
   onRequestLinkedQuestionEdit,
   onRequestLinkedQuestionDelete,
@@ -398,9 +400,11 @@ export default function SettingsPanel({
         ) : activeTab === 'Question Banks' ? (
           <QuestionBankManagerPanel
             questionBanks={questionBanks}
+            courseJson={courseJson}
             assets={assets}
             courseId={courseId}
             onChangeQuestionBanks={onChangeQuestionBanks}
+            onImportBank={onImportBank}
             onLinkBlockToBank={onLinkBlockToBank}
             onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
             onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}

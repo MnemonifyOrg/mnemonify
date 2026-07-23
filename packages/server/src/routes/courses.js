@@ -5,6 +5,12 @@ import { templatizeCourse } from '../lib/templatize.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { migrateCourse, MigrationError } from '@mnemonify/schema/migrations/index.js';
 import { queueCoursePdfs } from '../lib/pdfPipeline.js';
+import {
+  createNamedSnapshot,
+  restoreCourseFromSnapshot,
+  versionForResponse,
+  validateVersionName,
+} from '../lib/courseVersions.js';
 
 const router = express.Router();
 
@@ -83,6 +89,143 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
   }
   const row = await loadAndMigrateCourseRow(result.rows[0]);
   res.json(row);
+}));
+
+router.get('/courses/:id/versions', asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    `SELECT v.version_id, v.course_id, v.kind, v.name, v.created_by,
+            v.created_at, v.restored_from_version_id, u.name AS author
+     FROM course_versions v
+     LEFT JOIN users u ON u.id = v.created_by
+     WHERE v.course_id = $1 AND v.organisation_id = $2 AND v.kind = 'named_snapshot'
+     ORDER BY v.created_at DESC, v.version_id DESC`,
+    [req.params.id, DEV_ORG_ID]
+  );
+  res.json(result.rows.map(versionForResponse));
+}));
+
+router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
+  let name;
+  try {
+    name = validateVersionName(req.body?.name);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const courseResult = await client.query(
+      `SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 FOR UPDATE`,
+      [req.params.id, DEV_ORG_ID]
+    );
+    if (courseResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ error: 'Course not found' });
+      return;
+    }
+    const snapshot = createNamedSnapshot({
+      courseId: req.params.id,
+      name,
+      createdBy: DEV_USER_ID,
+      courseJson: courseResult.rows[0].course_json,
+    });
+    const versionResult = await client.query(
+      `INSERT INTO course_versions
+         (version_id, course_id, organisation_id, kind, name, created_by,
+          created_at, restored_from_version_id, course_json, asset_manifest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING version_id, course_id, kind, name, created_by, created_at,
+                 restored_from_version_id, course_json`,
+      [
+        snapshot.version_id,
+        snapshot.course_id,
+        DEV_ORG_ID,
+        snapshot.kind,
+        snapshot.name,
+        snapshot.created_by,
+        snapshot.created_at,
+        snapshot.restored_from_version_id,
+        snapshot.course_json,
+        snapshot.asset_manifest,
+      ]
+    );
+    await client.query('COMMIT');
+    res.status(201).json(versionForResponse({ ...versionResult.rows[0], author: 'Dev User' }));
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
+router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const courseResult = await client.query(
+      `SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 FOR UPDATE`,
+      [req.params.id, DEV_ORG_ID]
+    );
+    if (courseResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ error: 'Course not found' });
+      return;
+    }
+    const sourceResult = await client.query(
+      `SELECT * FROM course_versions
+       WHERE version_id = $1 AND course_id = $2 AND organisation_id = $3
+         AND kind = 'named_snapshot'`,
+      [req.params.versionId, req.params.id, DEV_ORG_ID]
+    );
+    if (sourceResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ error: 'Named version not found' });
+      return;
+    }
+    const restored = restoreCourseFromSnapshot({
+      currentCourse: courseResult.rows[0],
+      sourceVersion: sourceResult.rows[0],
+      createdBy: DEV_USER_ID,
+    });
+    const courseUpdate = await client.query(
+      `UPDATE courses SET title = $1, course_json = $2, updated_at = now()
+       WHERE id = $3 AND organisation_id = $4 RETURNING *`,
+      [restored.course.title, restored.course.course_json, req.params.id, DEV_ORG_ID]
+    );
+    const versionResult = await client.query(
+      `INSERT INTO course_versions
+         (version_id, course_id, organisation_id, kind, name, created_by,
+          created_at, restored_from_version_id, course_json, asset_manifest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING version_id, course_id, kind, name, created_by, created_at,
+                 restored_from_version_id, course_json`,
+      [
+        restored.version.version_id,
+        restored.version.course_id,
+        DEV_ORG_ID,
+        restored.version.kind,
+        restored.version.name,
+        restored.version.created_by,
+        restored.version.created_at,
+        restored.version.restored_from_version_id,
+        restored.version.course_json,
+        restored.version.asset_manifest,
+      ]
+    );
+    await client.query('COMMIT');
+    res.json({
+      course: courseUpdate.rows[0],
+      version: versionForResponse({ ...versionResult.rows[0], author: 'Dev User' }),
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }));
 
 router.post('/courses', asyncHandler(async (req, res) => {

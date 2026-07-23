@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import KnowledgeCheckBlockEditor from './blocks/KnowledgeCheckBlock.jsx';
 import { genBankId, genBankQuestionId } from '../lib/idGen.js';
+import QuestionBankEditorModal from './QuestionBankEditorModal.jsx';
 
 function emptyQuestion() {
   return {
     question_id: genBankQuestionId(),
     scored: true,
     objective_ids: [],
+    tags: [],
     content: {
       scored: true,
       question: '',
@@ -21,51 +22,47 @@ function emptyQuestion() {
 export default function QuestionBankManagerPanel({ questionBanks, assets, courseId, onChangeQuestionBanks, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
   const banks = questionBanks || [];
   const [selectedBankId, setSelectedBankId] = useState(banks[0]?.bank_id || null);
+  const [editorOpen, setEditorOpen] = useState(false);
   const selectedBank = banks.find((bank) => bank.bank_id === selectedBankId) || banks[0];
 
   function updateBanks(next, options = { forceSnapshot: true }) {
     onChangeQuestionBanks(next, options);
-    if (!next.some((bank) => bank.bank_id === selectedBankId)) setSelectedBankId(next[0]?.bank_id || null);
+    if (!next.some((bank) => bank.bank_id === selectedBankId)) {
+      setSelectedBankId(next[0]?.bank_id || null);
+      setEditorOpen(false);
+    }
   }
 
   function createBank() {
     const bank = { bank_id: genBankId(), name: `Question Bank ${banks.length + 1}`, questions: [emptyQuestion()] };
     updateBanks([...banks, bank]);
     setSelectedBankId(bank.bank_id);
+    setEditorOpen(true);
   }
 
-  function updateBank(patch) {
-    updateBanks(banks.map((bank) => (bank.bank_id === selectedBank?.bank_id ? { ...bank, ...patch } : bank)), { forceSnapshot: false });
+  function updateBank(patch, options = { forceSnapshot: false }) {
+    if (!selectedBank) return;
+    updateBanks(banks.map((bank) => (bank.bank_id === selectedBank.bank_id ? { ...bank, ...patch } : bank)), options);
   }
 
   function deleteBank() {
-    if (!selectedBank || !window.confirm(`Delete ${selectedBank.name || 'this question bank'}? Existing draw blocks will become unconfigured.`)) return;
+    if (!selectedBank || (typeof window !== 'undefined' && !window.confirm(`Delete ${selectedBank.name || 'this question bank'}? Existing draw blocks will become unconfigured.`))) return;
     updateBanks(banks.filter((bank) => bank.bank_id !== selectedBank.bank_id));
   }
 
-  function updateQuestion(questionId, content, objectiveIds) {
-    updateBank({ questions: selectedBank.questions.map((question) => (question.question_id === questionId ? { ...question, content, objective_ids: objectiveIds, scored: content.scored !== false } : question)) });
-  }
-
-  function moveQuestion(index, delta) {
-    const target = index + delta;
-    if (target < 0 || target >= selectedBank.questions.length) return;
-    const questions = [...selectedBank.questions];
-    [questions[index], questions[target]] = [questions[target], questions[index]];
-    updateBank({ questions });
-  }
-
-  function removeQuestion(questionId) {
-    if (selectedBank.questions.length <= 1) return;
-    updateBank({ questions: selectedBank.questions.filter((question) => question.question_id !== questionId) });
+  function addQuestion() {
+    if (!selectedBank) return null;
+    const question = emptyQuestion();
+    updateBank({ questions: [...selectedBank.questions, question] });
+    return question.question_id;
   }
 
   return (
     <div className="settings-panel__section question-bank-manager">
       <h3>Question Banks</h3>
-      <p className="settings-panel__hint">Reusable question collections. A Question Bank block can draw a random subset while keeping that selection stable for each learner.</p>
+      <p className="settings-panel__hint">Reusable question collections. Open a bank in the full editor to search, manage, and author its questions.</p>
       <div className="question-bank-manager__toolbar">
-        <select className="input" aria-label="Select question bank" value={selectedBank?.bank_id || ''} onChange={(event) => setSelectedBankId(event.target.value)}>
+        <select className="input" aria-label="Select question bank" value={selectedBank?.bank_id || ''} onChange={(event) => { setSelectedBankId(event.target.value); setEditorOpen(false); }}>
           {banks.length === 0 && <option value="">No banks yet</option>}
           {banks.map((bank) => <option key={bank.bank_id} value={bank.bank_id}>{bank.name || bank.bank_id}</option>)}
         </select>
@@ -75,33 +72,29 @@ export default function QuestionBankManagerPanel({ questionBanks, assets, course
         <>
           <label>Bank name</label>
           <input className="input" value={selectedBank.name || ''} onChange={(event) => updateBank({ name: event.target.value })} />
-          <button type="button" className="btn-text settings-panel__danger-action" onClick={deleteBank}>Delete bank</button>
-          <div className="question-bank-manager__questions">
-            {selectedBank.questions.map((question, index) => (
-              <div className="question-bank-manager__question card" key={question.question_id}>
-                <div className="question-bank-manager__question-header">
-                  <strong>Question {index + 1}</strong>
-                  <span>
-                    <button type="button" className="btn-text" disabled={index === 0} onClick={() => moveQuestion(index, -1)}>↑</button>
-                    <button type="button" className="btn-text" disabled={index === selectedBank.questions.length - 1} onClick={() => moveQuestion(index, 1)}>↓</button>
-                    <button type="button" className="btn-text" disabled={selectedBank.questions.length <= 1} onClick={() => removeQuestion(question.question_id)}>Remove</button>
-                  </span>
-                </div>
-                <KnowledgeCheckBlockEditor
-                  block={{ block_id: 'blk_' + question.question_id, type: 'knowledge-check', content: question.content, objective_ids: question.objective_ids || [], triggers: [] }}
-                  assets={assets}
-                  courseId={courseId}
-                  onChange={(updated) => updateQuestion(question.question_id, updated.content, updated.objective_ids || [])}
-                  onAddCourseAssets={onAddCourseAssets}
-                  onUpdateCourseAsset={onUpdateCourseAsset}
-                  variables={variables}
-                  objectives={objectives}
-                />
-              </div>
-            ))}
+          <div className="question-bank-manager__summary">
+            <strong>{selectedBank.questions?.length || 0} question{selectedBank.questions?.length === 1 ? '' : 's'}</strong>
+            <span className="settings-panel__hint">Includes objective mapping, tags, images, feedback, and scoring controls.</span>
           </div>
-          <button type="button" className="btn" onClick={() => updateBank({ questions: [...selectedBank.questions, emptyQuestion()] })}>+ Add question</button>
+          <div className="question-bank-manager__actions">
+            <button type="button" className="btn btn-primary" onClick={() => setEditorOpen(true)}>Open bank editor</button>
+            <button type="button" className="btn-text settings-panel__danger-action" onClick={deleteBank}>Delete bank</button>
+          </div>
         </>
+      )}
+      {editorOpen && selectedBank && (
+        <QuestionBankEditorModal
+          bank={selectedBank}
+          assets={assets}
+          courseId={courseId}
+          objectives={objectives}
+          variables={variables}
+          onChangeBank={updateBank}
+          onAddQuestion={addQuestion}
+          onAddCourseAssets={onAddCourseAssets}
+          onUpdateCourseAsset={onUpdateCourseAsset}
+          onClose={() => setEditorOpen(false)}
+        />
       )}
     </div>
   );

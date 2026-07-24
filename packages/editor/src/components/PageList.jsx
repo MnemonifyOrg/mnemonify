@@ -170,7 +170,7 @@ function GroupActionMenu({ group, onRename, onDelete }) {
   );
 }
 
-function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete }) {
+function GroupHeader({ group, collapsed, onToggleCollapse, onSelect, onRename, onDelete }) {
   const [renaming, setRenaming] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.group_id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -198,9 +198,9 @@ function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete })
           }}
         />
       ) : (
-        <span className="page-list__group-title" onDoubleClick={() => setRenaming(true)}>
+        <button type="button" className="page-list__group-title" onClick={onSelect} onDoubleClick={() => setRenaming(true)}>
           {group.title}
-        </span>
+        </button>
       )}
       <div className="page-list__actions">
         <GroupActionMenu
@@ -224,6 +224,7 @@ export default function PageList({
   onChangeMeta,
   activePageId,
   onSelectPage,
+  onSelectGroup = () => {},
   onAddPage,
   onRenamePage,
   onDeletePage,
@@ -390,6 +391,7 @@ export default function PageList({
                     group={group}
                     collapsed={collapsed}
                     onToggleCollapse={() => toggleGroupCollapse(group.group_id)}
+                    onSelect={() => onSelectGroup(group.group_id)}
                     onRename={handleRenameGroup}
                     onDelete={handleDeleteGroup}
                   />

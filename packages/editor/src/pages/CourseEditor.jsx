@@ -12,6 +12,7 @@ import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
+import EditorDrawerShell from '../components/EditorDrawerShell.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
 import { VersionHistoryButton } from '../components/FeatureFlaggedControls.jsx';
 import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
@@ -32,6 +33,7 @@ import {
 } from '@mnemonify/schema/linked-entities.js';
 import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transfer.js';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
+import { toggleRailDrawer } from '../lib/editorDrawer.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -79,6 +81,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [course, setCourse] = useState(null);
   const [activePageId, setActivePageId] = useState(null);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
+  const [activeRailItem, setActiveRailItem] = useState(null);
+  const [contextualDrawer, setContextualDrawer] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [editingTitle, setEditingTitle] = useState(false);
   const [previewMode, setPreviewMode] = useState(null);
@@ -113,6 +117,28 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [focusMode, setFocusMode] = useState(false);
   const effectiveLeftCollapsed = leftPanelCollapsed || focusMode;
   const effectiveRightCollapsed = rightPanelCollapsed || focusMode;
+
+  function handleCloseDrawer() {
+    setActiveRailItem(null);
+    setContextualDrawer(null);
+  }
+
+  function handleRailItemClick(itemId) {
+    setActiveRailItem((current) => toggleRailDrawer(current, itemId));
+    setContextualDrawer(null);
+    setSelectedBlockId(null);
+  }
+
+  function handleSelectBlock(blockId) {
+    setSelectedBlockId(blockId);
+    setActiveRailItem(null);
+    setContextualDrawer(blockId ? { kind: 'block', id: blockId } : null);
+  }
+
+  function clearContextualSelection() {
+    setSelectedBlockId(null);
+    setContextualDrawer(null);
+  }
 
   const courseRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -292,7 +318,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     courseRef.current = result.course;
     setCourse(result.course);
     setActivePageId(result.course.course_json.pages?.[0]?.page_id || null);
-    setSelectedBlockId(null);
+    clearContextualSelection();
+    setActiveRailItem(null);
     setSettingsTab('Course');
     undoStackRef.current = [];
     redoStackRef.current = [];
@@ -338,7 +365,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     const freshFindings = analyzeCourse(materializeLinkedEntities(courseRef.current.course_json));
     const errorFindings = freshFindings.filter((f) => f.severity === 'error');
     if (errorFindings.length > 0) {
-      setSelectedBlockId(null);
+      clearContextualSelection();
+      setActiveRailItem(null);
       setSettingsTab('Course Health');
       setPublishNotice({
         type: 'error',
@@ -567,7 +595,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     const pending = pendingLinkedDelete;
     if (!pending) return;
     updateCourseJson((json) => unlinkUsage(json, pending.usage), { forceSnapshot: true });
-    if (pending.usage.kind === 'page') setSelectedBlockId(null);
+    if (pending.usage.kind === 'page') clearContextualSelection();
     setPendingLinkedDelete(null);
   }
 
@@ -575,7 +603,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     const pending = pendingLinkedDelete;
     if (!pending) return;
     updateCourseJson((json) => deleteEntityEverywhere(json, pending.entityId), { forceSnapshot: true });
-    if (pending.usage.kind === 'page') setSelectedBlockId(null);
+    if (pending.usage.kind === 'page') clearContextualSelection();
     setPendingLinkedDelete(null);
   }
 
@@ -630,7 +658,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // the "Open Variable Manager" shortcut link shown wherever a condition or
   // SET_VAR/ADJUST_VAR action has no variables to offer yet (Step 4).
   function openVariableManager() {
-    setSelectedBlockId(null);
+    clearContextualSelection();
     setSettingsTab('Variables');
   }
 
@@ -645,7 +673,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // if the block is below the fold or on a page that wasn't open yet.
   function handleNavigateToFinding(finding) {
     if (finding.entityType === 'variable') {
-      setSelectedBlockId(null);
+      clearContextualSelection();
       setSettingsTab('Variables');
       return;
     }
@@ -657,7 +685,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       setActivePageId(finding.location.page_id);
     }
     if (finding.location?.block_id) {
-      setSelectedBlockId(finding.location.block_id);
+      handleSelectBlock(finding.location.block_id);
       // A timeout, not requestAnimationFrame, deliberately -- this only
       // needs to run after the selection re-render commits, and rAF
       // callbacks can be starved in some automated/headless browser
@@ -669,7 +697,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 0);
     } else {
-      setSelectedBlockId(null);
+      clearContextualSelection();
     }
   }
 
@@ -760,7 +788,15 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
 
   function handleSelectPage(pageId) {
     setActivePageId(pageId);
+    clearContextualSelection();
+    setActiveRailItem(null);
+    setContextualDrawer({ kind: 'page', id: pageId });
+  }
+
+  function handleSelectGroup(groupId) {
     setSelectedBlockId(null);
+    setActiveRailItem(null);
+    setContextualDrawer({ kind: 'module', id: groupId });
   }
 
   function handleAddPage() {
@@ -958,7 +994,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       },
       { forceSnapshot: true }
     );
-    setSelectedBlockId(null);
+    clearContextualSelection();
+    setActiveRailItem(null);
   }
 
   function handleCopyBlockToPage(blockId, targetPageId) {
@@ -1033,7 +1070,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       }),
       { forceSnapshot: true }
     );
-    if (selectedBlockId === blockId) setSelectedBlockId(null);
+    if (selectedBlockId === blockId) clearContextualSelection();
   }
 
   // insertIndex (Phase 4.6 Step 3): omitted/undefined appends at the end,
@@ -1055,7 +1092,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       }),
       { forceSnapshot: true }
     );
-    setSelectedBlockId(newBlock.block_id);
+    handleSelectBlock(newBlock.block_id);
     // Focus the new block's primary editable field once it's rendered --
     // a generic "first focusable thing inside this block" query rather
     // than per-block-type wiring, since it correctly reaches the common
@@ -1205,7 +1242,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 : 'course-editor__health-badge course-editor__health-badge--warning'
             }
             onClick={() => {
-              setSelectedBlockId(null);
+              clearContextualSelection();
+              setActiveRailItem(null);
               setSettingsTab('Course Health');
             }}
             title="Open Course Health"
@@ -1325,6 +1363,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
               onChangeMeta={handleChangeMeta}
               activePageId={activePageId}
               onSelectPage={handleSelectPage}
+              onSelectGroup={handleSelectGroup}
               onAddPage={handleAddPage}
               onRenamePage={handleRenamePage}
               onDeletePage={handleDeletePage}
@@ -1378,7 +1417,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 onAddCourseAssets={handleAddCourseAssets}
                 onUpdateCourseAsset={handleUpdateCourseAsset}
                 selectedBlockId={selectedBlockId}
-                onSelectBlock={setSelectedBlockId}
+                onSelectBlock={handleSelectBlock}
                 onChangeBlock={handleChangeBlock}
                 onDuplicateBlock={handleDuplicateBlock}
                 onDeleteBlock={handleDeleteBlock}
@@ -1448,6 +1487,14 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           )}
         </div>
       </div>
+
+      <EditorDrawerShell
+        activeRailItem={activeRailItem}
+        contextualDrawer={contextualDrawer}
+        featureFlags={featureFlags}
+        onRailItemClick={handleRailItemClick}
+        onCloseDrawer={handleCloseDrawer}
+      />
     </div>
   );
 }

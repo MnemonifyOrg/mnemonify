@@ -779,6 +779,35 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     );
   }
 
+  function handleDuplicatePage(pageId) {
+    let duplicatedPageId = null;
+    updateCourseJson(
+      (json) => {
+        const sourceIndex = json.pages.findIndex((page) => page.page_id === pageId);
+        if (sourceIndex === -1) return json;
+        const sourcePage = json.pages[sourceIndex];
+        const duplicatedPage = regeneratePageIds({ ...sourcePage, title: `${sourcePage.title} (Copy)` });
+        duplicatedPageId = duplicatedPage.page_id;
+        const pages = [...json.pages];
+        pages.splice(sourceIndex + 1, 0, duplicatedPage);
+        const sourceGroup = (json.meta?.page_groups || []).find((group) => (group.page_ids || []).includes(pageId));
+        const meta = sourceGroup
+          ? {
+            ...json.meta,
+            page_groups: json.meta.page_groups.map((group) => (
+              group.group_id === sourceGroup.group_id
+                ? { ...group, page_ids: [...(group.page_ids || []), duplicatedPageId] }
+                : group
+            )),
+          }
+          : json.meta;
+        return { ...json, pages, meta };
+      },
+      { forceSnapshot: true }
+    );
+    if (duplicatedPageId) setActivePageId(duplicatedPageId);
+  }
+
   // Inserts a copy of a saved page template right after the current page.
   // Structural, so it forces its own undo/redo snapshot like Add Page does.
   function handleInsertPageFromTemplate(template) {
@@ -1299,6 +1328,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
               onAddPage={handleAddPage}
               onRenamePage={handleRenamePage}
               onDeletePage={handleDeletePage}
+              onDuplicatePage={handleDuplicatePage}
               onSaveAsPageTemplate={setPageToSaveAsTemplate}
               onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
               onReorderPages={handleReorderPages}

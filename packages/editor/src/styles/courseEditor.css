@@ -252,35 +252,74 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  /* max-width: 0 (not display:none) so this stays keyboard-focusable and
-     participates in a smooth reveal transition, but -- the actual bug
-     this fixes -- doesn't reserve its full hover-state width while
-     hidden. Adding the group-picker <select> (Phase 4.6 Step 5) made the
-     old opacity-only reveal wide enough to crush .page-list__title down
-     to a couple of visible characters even when nothing was hovered,
-     since opacity:0 alone still occupies normal flex layout space. */
-  max-width: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
   opacity: 0;
-  transition: max-width 0.15s ease, opacity 0.1s ease;
+  visibility: hidden;
+  transition: opacity 0.1s ease;
 }
 .page-list__item:hover .page-list__actions,
-.page-list__item:focus-within .page-list__actions {
-  max-width: 200px;
+.page-list__item:focus-within .page-list__actions,
+.page-list__group-header:hover .page-list__actions,
+.page-list__group-header:focus-within .page-list__actions {
   opacity: 1;
+  visibility: visible;
 }
-.page-list__item:focus-within .page-list__actions {
-  /* The action row is clipped while collapsed to avoid reserving width in
-     the nav. Once its custom module picker is focused, let the popover
-     escape the row's transition wrapper. */
-  overflow: visible;
+.page-list__menu {
+  position: relative;
 }
-.page-list__group-picker {
-  font-size: var(--text-xs);
-  max-width: 70px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+.page-list__menu-trigger {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--radius-input);
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+}
+.page-list__menu-trigger:hover,
+.page-list__menu-trigger:focus-visible,
+.page-list__menu-trigger[aria-expanded='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.page-list__menu-popover {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  min-width: 180px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-overlay);
+}
+.page-list__menu-popover > button,
+.page-list__menu-submenu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-input);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.page-list__menu-popover > button:hover,
+.page-list__menu-popover > button:focus-visible,
+.page-list__menu-submenu button:hover,
+.page-list__menu-submenu button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.page-list__menu-submenu {
+  margin: 0 var(--space-1) var(--space-1);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .page-list__add-row {
   display: flex;
@@ -1983,19 +2022,6 @@
   font-weight: 400;
   color: var(--color-text-secondary);
 }
-.page-list__group-header .objective-multi-select {
-  margin: 0 var(--space-2);
-  min-width: 11rem;
-}
-.page-list__group-header .objective-multi-select__input {
-  min-height: 2.2rem;
-  max-height: 2.2rem;
-}
-.page-list__group-header .objective-multi-select .settings-panel__hint,
-.page-list__group-header .objective-multi-select__status {
-  display: none;
-}
-
 /* Player tab (Step 1, Phase 4 usability-fix session) */
 .settings-panel__player-heading {
   margin: 0 0 var(--space-3);

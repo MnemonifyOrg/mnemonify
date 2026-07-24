@@ -3,8 +3,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { genGroupId } from '../lib/idGen.js';
-import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
-import StyledSelect from './StyledSelect.jsx';
+import { buildGroupOptions } from '../lib/pageList.js';
 
 const GROUP_DROP_PREFIX = 'group-drop:';
 const groupDropId = (groupId) => `${GROUP_DROP_PREFIX}${groupId}`;
@@ -35,7 +34,81 @@ function InlineRenameField({ value, onCommit, className, autoFocus }) {
   );
 }
 
-function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, onDelete, onSaveAsPageTemplate, onAssignGroup, showGroupPicker, canDelete }) {
+function KebabMenuTrigger({ label, expanded, onClick }) {
+  return (
+    <button
+      type="button"
+      className="btn-text page-list__menu-trigger"
+      aria-label={label}
+      aria-haspopup="menu"
+      aria-expanded={expanded}
+      onClick={onClick}
+    >
+      ⋮
+    </button>
+  );
+}
+
+function PageActionMenu({ page, groups, onRename, onDelete, onDuplicate, onSaveAsPageTemplate, onAssignGroup, canDelete }) {
+  const [open, setOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+
+  function close() {
+    setOpen(false);
+    setMoveOpen(false);
+  }
+
+  return (
+    <div className="page-list__menu" onClick={(event) => event.stopPropagation()}>
+      <KebabMenuTrigger
+        label={`Page actions for ${page.title}`}
+        expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      />
+      {open && (
+        <div className="page-list__menu-popover" role="menu" aria-label={`Actions for ${page.title}`}>
+          <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded={moveOpen} onClick={() => setMoveOpen((current) => !current)}>
+            <span>Move to module</span>
+            <span aria-hidden="true">{moveOpen ? '▴' : '▾'}</span>
+          </button>
+          {moveOpen && (
+            <div className="page-list__menu-submenu" role="menu" aria-label="Move page to module">
+              {buildGroupOptions(groups).map((option) => (
+                <button
+                  type="button"
+                  role="menuitem"
+                  key={option.value || 'no-module'}
+                  onClick={() => {
+                    onAssignGroup(page.page_id, option.value || null);
+                    close();
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onDuplicate(page.page_id); }}>
+            Duplicate
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); setMoveOpen(false); onRename(page.page_id); }}>
+            Rename
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onSaveAsPageTemplate(page); }}>
+            Save as Page Template
+          </button>
+          {canDelete && (
+            <button type="button" role="menuitem" onClick={() => { setOpen(false); onDelete(page.page_id); }}>
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PageRow({ page, isActive, groups, onSelect, onRename, onDelete, onDuplicate, onSaveAsPageTemplate, onAssignGroup, canDelete }) {
   const [renaming, setRenaming] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.page_id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -58,37 +131,46 @@ function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, o
         </button>
       )}
       <div className="page-list__actions">
-        {showGroupPicker && (
-          <StyledSelect
-            className="page-list__group-picker"
-            options={[
-              { value: '', label: 'No module' },
-              ...groups.map((g) => ({ value: g.group_id, label: g.title })),
-            ]}
-            value={currentGroupId || ''}
-            onChange={(groupId) => onAssignGroup(page.page_id, groupId || null)}
-            onClick={(e) => e.stopPropagation()}
-            title="Move to module"
-            ariaLabel={`Move ${page.title} to module`}
-          />
-        )}
-        <button className="btn-text" title="Rename" onClick={() => setRenaming(true)}>
-          ✎
-        </button>
-        <button className="btn-text" title="Save as Page Template" onClick={() => onSaveAsPageTemplate(page)}>
-          ▤
-        </button>
-        {canDelete && (
-          <button className="btn-text" title="Delete page" onClick={() => onDelete(page.page_id)}>
-            ✕
-          </button>
-        )}
+        <PageActionMenu
+          page={page}
+          groups={groups}
+          onRename={() => setRenaming(true)}
+          onDelete={onDelete}
+          onDuplicate={onDuplicate}
+          onSaveAsPageTemplate={onSaveAsPageTemplate}
+          onAssignGroup={onAssignGroup}
+          canDelete={canDelete}
+        />
       </div>
     </li>
   );
 }
 
-function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete, objectives, onAssignObjectives }) {
+function GroupActionMenu({ group, onRename, onDelete }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="page-list__menu" onClick={(event) => event.stopPropagation()}>
+      <KebabMenuTrigger
+        label={`Module actions for ${group.title}`}
+        expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      />
+      {open && (
+        <div className="page-list__menu-popover" role="menu" aria-label={`Actions for ${group.title}`}>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onRename(group.group_id); }}>
+            Rename
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onDelete(group.group_id); }}>
+            Delete module
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete }) {
   const [renaming, setRenaming] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.group_id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -120,23 +202,12 @@ function GroupHeader({ group, collapsed, onToggleCollapse, onRename, onDelete, o
           {group.title}
         </span>
       )}
-      <div onClick={(event) => event.stopPropagation()}>
-        <ObjectiveMultiSelect
-          objectives={objectives}
-          value={group.objective_ids || []}
-          onChange={(objectiveIds) => onAssignObjectives(group.group_id, objectiveIds)}
-          label="Assign objectives"
-          ariaLabel={'Assign objectives to ' + group.title}
-          hint="Optional module filter for question-bank draws."
-        />
-      </div>
       <div className="page-list__actions">
-        <button className="btn-text" title="Rename module" onClick={() => setRenaming(true)}>
-          ✎
-        </button>
-        <button className="btn-text" title="Delete module (pages are kept, just ungrouped)" onClick={() => onDelete(group.group_id)}>
-          ✕
-        </button>
+        <GroupActionMenu
+          group={group}
+          onRename={() => setRenaming(true)}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
@@ -156,6 +227,7 @@ export default function PageList({
   onAddPage,
   onRenamePage,
   onDeletePage,
+  onDuplicatePage,
   onSaveAsPageTemplate,
   onInsertFromTemplate,
   onReorderPages,
@@ -264,6 +336,10 @@ export default function PageList({
     );
   }
 
+  // Keep the existing module-objective update path intact for P1-D's
+  // Objectives drawer; this pass only removes its old nav rendering.
+  void handleAssignObjectives;
+
   // Removes the page from whichever group currently holds it (if any),
   // then adds it to the target group -- a page can only ever belong to
   // one module at a time, so reassigning is "remove from old, add to
@@ -276,20 +352,19 @@ export default function PageList({
     onChangeMeta({ ...meta, page_groups: finalGroups }, { forceSnapshot: true });
   }
 
-  function renderPageRow(page, currentGroupId) {
+  function renderPageRow(page) {
     return (
       <PageRow
         key={page.page_id}
         page={page}
         isActive={page.page_id === activePageId}
         groups={groups}
-        currentGroupId={currentGroupId}
         onSelect={onSelectPage}
         onRename={onRenamePage}
         onDelete={onDeletePage}
+        onDuplicate={onDuplicatePage}
         onSaveAsPageTemplate={onSaveAsPageTemplate}
         onAssignGroup={handleAssignGroup}
-        showGroupPicker={isGrouped}
         canDelete={pages.length > 1}
       />
     );
@@ -317,14 +392,12 @@ export default function PageList({
                     onToggleCollapse={() => toggleGroupCollapse(group.group_id)}
                     onRename={handleRenameGroup}
                     onDelete={handleDeleteGroup}
-                    objectives={meta.objectives || []}
-                    onAssignObjectives={handleAssignObjectives}
                   />
                 </SortableContext>
                 {!collapsed && (
                   <GroupDropList group={group}>
                     {groupPages.length === 0 && <li className="page-list__empty-hint">No pages in this module yet.</li>}
-                    {groupPages.map((page) => renderPageRow(page, group.group_id))}
+                    {groupPages.map((page) => renderPageRow(page))}
                   </GroupDropList>
                 )}
               </div>
@@ -339,7 +412,7 @@ export default function PageList({
                 <div className="page-list__group-header page-list__group-header--plain">
                   <span className="page-list__group-title">Ungrouped pages</span>
                 </div>
-                <ul className="page-list__group-pages">{ungrouped.map((page) => renderPageRow(page, null))}</ul>
+                <ul className="page-list__group-pages">{ungrouped.map((page) => renderPageRow(page))}</ul>
               </div>
             );
           })()}
@@ -349,7 +422,7 @@ export default function PageList({
           </button>
         </div>
       ) : (
-        <ul>{pages.map((page) => renderPageRow(page, null))}</ul>
+        <ul>{pages.map((page) => renderPageRow(page))}</ul>
       )}
       </div>
 

@@ -6,6 +6,9 @@
     "packages/*"
   ],
   "scripts": {
+    "test": "npm run test:node && npm run test:vitest",
+    "test:node": "npm run test --workspace=packages/schema && npm run test --workspace=packages/server",
+    "test:vitest": "vitest run packages/editor/src packages/player/src packages/launcher",
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:editor": "npm run dev --workspace=packages/editor",
     "package:scorm": "node packages/launcher/build.js"

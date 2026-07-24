@@ -300,6 +300,10 @@ export default function PageList({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={displayedPages.map((page) => page.page_id)} strategy={verticalListSortingStrategy}>
       <div className="page-list">
+      <div className="page-list__header">
+        <h2 className="page-list__heading">Pages &amp; Modules</h2>
+      </div>
+      <div className="page-list__content">
       {isGrouped ? (
         <div className="page-list__grouped">
           {groups.map((group) => {
@@ -348,14 +352,17 @@ export default function PageList({
       ) : (
         <ul>{pages.map((page) => renderPageRow(page, null))}</ul>
       )}
+      </div>
 
-      <div className="page-list__add-row">
-        <button className="btn page-list__add" onClick={onAddPage}>
-          + Add Page
-        </button>
-        <button className="btn page-list__add" onClick={onInsertFromTemplate}>
-          + From Template
-        </button>
+      <div className="page-list__footer">
+        <div className="page-list__add-row">
+          <button className="btn page-list__add" onClick={onAddPage}>
+            + Add Page
+          </button>
+          <button className="btn page-list__add" onClick={onInsertFromTemplate}>
+            + From Template
+          </button>
+        </div>
       </div>
       </div>
       </SortableContext>

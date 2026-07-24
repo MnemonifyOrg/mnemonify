@@ -7,6 +7,14 @@ import { defineConfig } from 'vitest/config';
 // `npm test` command runs those files through their package-native runner
 // before invoking this Vitest configuration for the React/launcher suites.
 export default defineConfig({
+  // Match the player Vite config's React transform when Vitest is launched
+  // from the repository root. Automatic JSX runtime prevents component
+  // modules that import named React hooks from needing a separate default
+  // `React` binding solely because they contain JSX.
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'react',
+  },
   test: {
     exclude: [
       '**/node_modules/**',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import GlossaryPayload from './GlossaryPayload.jsx';
 import Modal from './Modal.jsx';

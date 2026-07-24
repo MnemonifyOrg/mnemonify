@@ -496,7 +496,7 @@ The right inspector pane currently renders six tabs (Course, Page, Player, Varia
 - **Icon rail:** a 48px vertical icon rail, fixed at the right edge of the editor, always visible regardless of selection state. Icons: Course, Player, Variables, Question Banks, Objectives. (Glossary and Version History icons exist but stay hidden while their feature flags are off, per P1-A.)
 - **Drawer behavior:** clicking an icon-rail item opens a single overlay drawer (~400px wide) sliding in from the right edge, on top of the canvas. Only one panel is ever open at a time — **opening an icon-rail drawer deselects any selected block and closes its block-settings drawer, and vice versa: selecting a block closes any open icon-rail drawer.** There is no simultaneous dual-panel state.
 - **Objectives scope:** the Objectives icon-rail item is the single home for ALL objective mapping — both course-level objectives and module-level objective assignment live together in this one drawer (not split between the drawer and the Page/Module inspector). The drawer should let the author pick a module (or "Course-level") as a sub-context within the Objectives panel itself.
-- **Contextual inspector:** selecting a block opens a Block Settings drawer (same visual treatment as the icon-rail drawers: slides from the right edge, ~400px, one at a time) showing that block's settings. Selecting a page or module in the left nav opens a Page/Module Settings drawer. Nothing selected = no drawer open = full-width canvas.
+- **Contextual inspector:** selecting a block applies its selection state (accent ring/shadow and hover toolbar) but does not open a settings drawer. Block Settings opens only through an explicit click on the block hover toolbar's settings/gear action. The hover toolbar uses discoverable roughly 28–32px action targets with clear tooltips. Selecting a page or module in the left nav continues to open a Page/Module Settings drawer. Nothing selected and no explicit drawer open = no drawer = full-width canvas.
 - **Question Banks drawer:** contains only the bank selector dropdown, "New bank" button, and "Open bank editor" button (which opens the existing P1-72 modal). Bank content editing (name field, question list, export/import buttons) stays entirely inside that modal, not in the drawer.
 - **Viewport support:** desktop-only for v1. No responsive/tablet-width handling required in this pass.
 
@@ -519,7 +519,7 @@ Left nav shows only structure:
 
 - Right inspector's 6-tab layout is fully replaced; no tabbed panel remains
 - Icon rail always visible; each icon opens its drawer; only one drawer (icon-rail OR block/page-module) open at any time
-- Selecting a block closes any open icon-rail drawer and opens Block Settings; opening an icon-rail item closes any open block/page/module drawer
+- Selecting a block closes any open icon-rail or contextual drawer without opening Block Settings; the explicit settings/gear action opens Block Settings. Opening an icon-rail item closes any open block/page/module drawer. Only one drawer is ever open.
 - Left nav renders no objective UI and no module-assignment dropdown
 - All previously-accessible settings (Course, Player, Variables, Question Banks, Objectives incl. module-level, Page, Block) remain reachable and functional through the new drawers — this is a relocation of UI, not a removal of functionality
 - Existing drag-and-drop reorder (pages and modules) works unchanged

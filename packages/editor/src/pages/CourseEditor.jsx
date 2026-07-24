@@ -157,6 +157,12 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   function handleSelectBlock(blockId) {
     setSelectedBlockId(blockId);
     setActiveRailItem(null);
+    setContextualDrawer(null);
+  }
+
+  function handleOpenBlockSettings(blockId) {
+    setSelectedBlockId(blockId);
+    setActiveRailItem(null);
     setContextualDrawer(blockId ? { kind: 'block', id: blockId } : null);
   }
 
@@ -1452,6 +1458,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 onUpdateCourseAsset={handleUpdateCourseAsset}
                 selectedBlockId={selectedBlockId}
                 onSelectBlock={handleSelectBlock}
+                onOpenBlockSettings={handleOpenBlockSettings}
                 onChangeBlock={handleChangeBlock}
                 onDuplicateBlock={handleDuplicateBlock}
                 onDeleteBlock={handleDeleteBlock}

@@ -15,6 +15,7 @@ const commonProps = {
   pages: [page],
   variables: [],
   onSelectBlock: () => {},
+  onOpenBlockSettings: () => {},
   onChangeBlock: () => {},
   onDuplicateBlock: () => {},
   onDeleteBlock: () => {},
@@ -36,6 +37,7 @@ describe('block canvas hover toolbar', () => {
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('title="Drag to reorder"');
     expect(html).toContain('title="Open settings"');
+    expect(html).toContain('aria-label="Open settings"');
     expect(html).toContain('title="Duplicate"');
     expect(html).toContain('title="Delete"');
     expect(html).not.toContain('block-wrapper--selected');
@@ -46,5 +48,6 @@ describe('block canvas hover toolbar', () => {
 
     expect(html).toContain('class="block-wrapper block-wrapper--selected"');
     expect(html).toContain('title="Open settings"');
+    expect(html).toContain('aria-label="Open settings"');
   });
 });

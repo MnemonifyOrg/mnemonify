@@ -850,16 +850,52 @@
   pointer-events: auto;
 }
 .block-wrapper__handle {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: grab;
   color: var(--text-secondary);
   pointer-events: auto;
+  border-radius: var(--radius-input);
+  font-size: 18px;
+  line-height: 1;
 }
 .block-wrapper__bank-drag {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: grab;
   color: var(--accent);
   font-weight: 700;
   user-select: none;
   pointer-events: auto;
+  border-radius: var(--radius-input);
+  font-size: 18px;
+  line-height: 1;
+}
+.block-wrapper__toolbar > .btn-text {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-input);
+  font-size: 18px;
+  line-height: 1;
+}
+.block-wrapper__toolbar > .btn-text:hover,
+.block-wrapper__handle:hover,
+.block-wrapper__bank-drag:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .block-wrapper__label {
   font-weight: 600;
@@ -878,7 +914,7 @@
    a red hover state so it doesn't read as "just another icon" in the row. */
 .block-wrapper__delete-btn {
   margin-left: var(--space-2);
-  padding-left: var(--space-2);
+  padding-left: 0;
   border-left: 1px solid var(--color-border);
 }
 .block-wrapper__delete-btn:hover {

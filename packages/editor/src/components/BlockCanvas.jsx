@@ -40,6 +40,7 @@ function BlockWrapper({
   pageBlocks,
   selected,
   onSelect,
+  onOpenBlockSettings,
   onChange,
   onDuplicate,
   onDelete,
@@ -88,7 +89,7 @@ function BlockWrapper({
       <div className="block-wrapper__chrome">
         <span className="block-wrapper__label">{blockLabel(block, pageBlocks)}</span>
         <div className="block-wrapper__toolbar">
-          <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
+          <span className="block-wrapper__handle" title="Drag to reorder" aria-label="Drag to reorder" {...attributes} {...listeners}>
             ⠿
           </span>
           {featureFlags.linkedQuestions && !block.linked_entity_id && (
@@ -96,6 +97,7 @@ function BlockWrapper({
               className="block-wrapper__bank-drag"
               draggable
               title="Drag this question to the Question Banks panel"
+              aria-label="Drag this question to the Question Banks panel"
               onDragStart={(event) => {
                 event.stopPropagation();
                 event.dataTransfer.effectAllowed = 'link';
@@ -109,6 +111,7 @@ function BlockWrapper({
           <button
             className="btn-text"
             title="Move to page"
+            aria-label="Move to page"
             onClick={(e) => {
               e.stopPropagation();
               setMoveCopyMode('move');
@@ -119,6 +122,7 @@ function BlockWrapper({
           <button
             className="btn-text"
             title="Copy to page"
+            aria-label="Copy to page"
             onClick={(e) => {
               e.stopPropagation();
               setMoveCopyMode('copy');
@@ -129,9 +133,10 @@ function BlockWrapper({
           <button
             className="btn-text"
             title="Open settings"
+            aria-label="Open settings"
             onClick={(e) => {
               e.stopPropagation();
-              onSelect(block.block_id);
+              onOpenBlockSettings?.(block.block_id);
             }}
           >
             ⚙
@@ -140,6 +145,7 @@ function BlockWrapper({
             <button
               className="btn-text"
               title="Add to bank"
+              aria-label="Add to bank"
               onClick={(e) => {
                 e.stopPropagation();
                 setLinkBankOpen(true);
@@ -151,6 +157,7 @@ function BlockWrapper({
           <button
             className="btn-text"
             title="Duplicate"
+            aria-label="Duplicate"
             onClick={(e) => {
               e.stopPropagation();
               onDuplicate(block.block_id);
@@ -161,6 +168,7 @@ function BlockWrapper({
           <button
             className="btn-text block-wrapper__delete-btn"
             title="Delete"
+            aria-label="Delete"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(block.block_id);
@@ -215,6 +223,7 @@ export default function BlockCanvas({
   variables,
   selectedBlockId,
   onSelectBlock,
+  onOpenBlockSettings,
   onChangeBlock,
   onDuplicateBlock,
   onDeleteBlock,
@@ -261,6 +270,7 @@ export default function BlockCanvas({
                 variables={variables}
                 selected={block.block_id === selectedBlockId}
                 onSelect={onSelectBlock}
+                onOpenBlockSettings={onOpenBlockSettings}
                 onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}
                 onDuplicate={onDuplicateBlock}
                 onDelete={onDeleteBlock}

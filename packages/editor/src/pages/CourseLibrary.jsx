@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api.js';
 import { STARTER_TEMPLATES } from '../lib/starterTemplates.js';
 import { createBlankCourseJson } from '../lib/blockDefaults.js';
+import { getCourseAccent, getCourseCoverImage, getCourseInitial } from '../lib/courseCard.js';
 import ImportWordModal from '../components/ImportWordModal.jsx';
 import '../styles/courseLibrary.css';
 
@@ -10,23 +11,78 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function CourseCard({ course, onOpen, onDuplicate, onDelete }) {
+function KebabIcon() {
   return (
-    <div className="course-card card" onClick={() => onOpen(course.id)} role="button" tabIndex={0}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
+export function CourseCard({ course, onOpen, onDuplicate, onDelete }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const coverImage = getCourseCoverImage(course);
+  const accent = getCourseAccent(course);
+  const title = course.title || 'Untitled Course';
+
+  function openCourse() {
+    setMenuOpen(false);
+    onOpen(course.id);
+  }
+
+  function handleCardKeyDown(event) {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    openCourse();
+  }
+
+  return (
+    <article
+      className="course-card"
+      onClick={openCourse}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+    >
+      <div className={coverImage ? 'course-card__cover' : 'course-card__cover course-card__cover--fallback'} style={{ '--course-accent': accent }}>
+        {coverImage ? (
+          <img className="course-card__cover-image" src={coverImage} alt="" />
+        ) : (
+          <span className="course-card__cover-initial" aria-hidden="true">{getCourseInitial(title)}</span>
+        )}
+      </div>
       <div className="course-card__body">
-        <h3>{course.title}</h3>
-        <span className={`badge ${course.status === 'draft' ? '' : 'badge-accent'}`}>{course.status}</span>
-        <p className="course-card__meta">Updated {formatDate(course.updated_at)}</p>
+        <h3 title={title}>{title}</h3>
+        <div className="course-card__details">
+          <span className={`badge ${course.status === 'draft' ? '' : 'badge-accent'}`}>{course.status === 'published' ? 'Published' : 'Draft'}</span>
+          <p className="course-card__meta">Updated {formatDate(course.updated_at)}</p>
+        </div>
       </div>
-      <div className="course-card__actions" onClick={(e) => e.stopPropagation()}>
-        <button className="btn-text" onClick={() => onDuplicate(course.id)}>
-          Duplicate
+      <div className="course-card__menu" onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className="course-card__menu-toggle"
+          aria-label={`Actions for ${title}`}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <KebabIcon />
         </button>
-        <button className="btn-text" onClick={() => onDelete(course.id)}>
-          Delete
-        </button>
+        {menuOpen && (
+          <div className="course-card__menu-popover" role="menu">
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDuplicate(course.id); }}>
+              Duplicate
+            </button>
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDelete(course.id); }}>
+              Delete
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 

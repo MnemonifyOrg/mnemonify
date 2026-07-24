@@ -476,3 +476,51 @@ Learning-objective extensions deliberately out of scope for P1-68 and parked for
 Word template redesign: considered and parked. The current Mnemonify Word template (machine-parseable table format) is retained. Instead of redesigning it to match CAP storyboard format, a storyboard converter (P1-33, Phase 5) will allow authors to upload their existing storyboards and receive a draft Mnemonify course JSON, eliminating the need for SMEs to learn any new template format.
 
 Bigger future bets noted but not scheduled: spaced-repetition of missed concepts across SCORM sessions (courses that remember the learner), content-graph model where a concept updated once propagates to every course referencing it (living courses rather than static documents), deep-zoom whole-slide pathology viewer (scheduled as Phase 7).
+
+# P1-C / P1-D: Left Nav Cleanup + Icon Rail / Drawer Redesign
+
+Add this section to REQUIREMENTS.md (or ARCHITECTURE.md, whichever holds UI/IA specs in the current repo structure) and commit before generating any build prompt.
+
+## Problem
+
+The right inspector pane currently renders six tabs (Course, Page, Player, Variables, Question Banks, Course Health) in a single ~260-320px column, mixing course-global settings with page/block-contextual settings in the same space. The left nav additionally renders inline objective-assignment text fields and a per-page module-assignment dropdown, both always visible, which clutters the page/module list and is easy to lose track of.
+
+## Goals
+
+1. Separate global course tools from contextual (page/block) settings into two distinct UI surfaces.
+2. Remove objective-assignment UI and the module-assignment dropdown from the left nav entirely.
+3. Reduce the left nav to pure structure: modules (collapsible, draggable) and pages (draggable), with actions in a kebab menu.
+
+## Decisions (confirmed)
+
+- **Icon rail:** a 48px vertical icon rail, fixed at the right edge of the editor, always visible regardless of selection state. Icons: Course, Player, Variables, Question Banks, Objectives. (Glossary and Version History icons exist but stay hidden while their feature flags are off, per P1-A.)
+- **Drawer behavior:** clicking an icon-rail item opens a single overlay drawer (~400px wide) sliding in from the right edge, on top of the canvas. Only one panel is ever open at a time — **opening an icon-rail drawer deselects any selected block and closes its block-settings drawer, and vice versa: selecting a block closes any open icon-rail drawer.** There is no simultaneous dual-panel state.
+- **Objectives scope:** the Objectives icon-rail item is the single home for ALL objective mapping — both course-level objectives and module-level objective assignment live together in this one drawer (not split between the drawer and the Page/Module inspector). The drawer should let the author pick a module (or "Course-level") as a sub-context within the Objectives panel itself.
+- **Contextual inspector:** selecting a block opens a Block Settings drawer (same visual treatment as the icon-rail drawers: slides from the right edge, ~400px, one at a time) showing that block's settings. Selecting a page or module in the left nav opens a Page/Module Settings drawer. Nothing selected = no drawer open = full-width canvas.
+- **Question Banks drawer:** contains only the bank selector dropdown, "New bank" button, and "Open bank editor" button (which opens the existing P1-72 modal). Bank content editing (name field, question list, export/import buttons) stays entirely inside that modal, not in the drawer.
+- **Viewport support:** desktop-only for v1. No responsive/tablet-width handling required in this pass.
+
+## Left Nav (after this change)
+
+Left nav shows only structure:
+- Module rows: collapse/expand chevron, module name, kebab menu (rename, delete module — existing actions, relocated into the menu)
+- Page rows: drag handle (existing), page name, kebab menu with "Move to module" (submenu listing modules + "No module"), Duplicate, Delete
+- No inline objective text, no always-visible module-assignment dropdown
+- Existing drag-and-drop reorder behavior (pages within/between modules, modules themselves) is preserved exactly as-is — this task does not touch drag-and-drop logic, only what's rendered alongside it
+
+## Out of scope for this pass
+
+- Any changes to drag-and-drop mechanics (already implemented, do not touch)
+- Glossary/Version History icons' actual drawer content (stays flagged off per P1-A; only reserve their position in the rail)
+- Course Health: stays as-is for this pass (its own future item is converting it to a pre-publish check dialog — not part of P1-C/P1-D)
+- Mobile/tablet responsive behavior
+
+## Acceptance criteria
+
+- Right inspector's 6-tab layout is fully replaced; no tabbed panel remains
+- Icon rail always visible; each icon opens its drawer; only one drawer (icon-rail OR block/page-module) open at any time
+- Selecting a block closes any open icon-rail drawer and opens Block Settings; opening an icon-rail item closes any open block/page/module drawer
+- Left nav renders no objective UI and no module-assignment dropdown
+- All previously-accessible settings (Course, Player, Variables, Question Banks, Objectives incl. module-level, Page, Block) remain reachable and functional through the new drawers — this is a relocation of UI, not a removal of functionality
+- Existing drag-and-drop reorder (pages and modules) works unchanged
+- All automated tests pass; manual verification of drawer switching and objective mapping (course + module) performed by Sebastin before considering this done

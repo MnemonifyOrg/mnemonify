@@ -41,6 +41,8 @@ function BlockWrapper({
   selected,
   onSelect,
   onOpenBlockSettings,
+  showSettingsHint = false,
+  onDismissSettingsHint,
   onChange,
   onDuplicate,
   onDelete,
@@ -88,7 +90,7 @@ function BlockWrapper({
     >
       <div className="block-wrapper__chrome">
         <span className="block-wrapper__label">{blockLabel(block, pageBlocks)}</span>
-        <div className="block-wrapper__toolbar">
+        <div className="block-wrapper__toolbar" onMouseDown={() => onDismissSettingsHint?.()}>
           <span className="block-wrapper__handle" title="Drag to reorder" aria-label="Drag to reorder" {...attributes} {...listeners}>
             ⠿
           </span>
@@ -131,16 +133,23 @@ function BlockWrapper({
             ⎘
           </button>
           <button
-            className="btn-text"
+            className="btn-text block-wrapper__settings-btn"
             title="Open settings"
             aria-label="Open settings"
+            aria-describedby={showSettingsHint ? `block-settings-hint-${block.block_id}` : undefined}
             onClick={(e) => {
               e.stopPropagation();
+              onDismissSettingsHint?.();
               onOpenBlockSettings?.(block.block_id);
             }}
           >
             ⚙
           </button>
+          {showSettingsHint && (
+            <span className="block-wrapper__settings-hint" id={`block-settings-hint-${block.block_id}`} role="status">
+              Open block settings here
+            </span>
+          )}
           {featureFlags.linkedQuestions && !block.linked_entity_id && questionBanks?.length > 0 && (
             <button
               className="btn-text"
@@ -224,6 +233,8 @@ export default function BlockCanvas({
   selectedBlockId,
   onSelectBlock,
   onOpenBlockSettings,
+  showSettingsHint = false,
+  onDismissSettingsHint,
   onChangeBlock,
   onDuplicateBlock,
   onDeleteBlock,
@@ -271,6 +282,8 @@ export default function BlockCanvas({
                 selected={block.block_id === selectedBlockId}
                 onSelect={onSelectBlock}
                 onOpenBlockSettings={onOpenBlockSettings}
+                showSettingsHint={selectedBlockId === block.block_id && showSettingsHint}
+                onDismissSettingsHint={onDismissSettingsHint}
                 onChange={(updated, options) => onChangeBlock(block.block_id, updated, options)}
                 onDuplicate={onDuplicateBlock}
                 onDelete={onDeleteBlock}

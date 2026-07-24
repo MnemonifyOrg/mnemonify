@@ -16,6 +16,7 @@ const commonProps = {
   variables: [],
   onSelectBlock: () => {},
   onOpenBlockSettings: () => {},
+  onDismissSettingsHint: () => {},
   onChangeBlock: () => {},
   onDuplicateBlock: () => {},
   onDeleteBlock: () => {},
@@ -49,5 +50,14 @@ describe('block canvas hover toolbar', () => {
     expect(html).toContain('class="block-wrapper block-wrapper--selected"');
     expect(html).toContain('title="Open settings"');
     expect(html).toContain('aria-label="Open settings"');
+  });
+
+  it('shows the first-run settings hint only on the selected block', () => {
+    const html = renderToStaticMarkup(
+      <BlockCanvas {...commonProps} selectedBlockId="block_one" showSettingsHint />,
+    );
+
+    expect(html).toContain('Open block settings here');
+    expect(html).toContain('aria-describedby="block-settings-hint-block_one"');
   });
 });

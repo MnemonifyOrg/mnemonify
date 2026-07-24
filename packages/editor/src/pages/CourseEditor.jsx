@@ -37,6 +37,8 @@ import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
 const PREVIEW_WIDTHS = { phone: '375px', tablet: '768px', desktop: '100%' };
+const BLOCK_SETTINGS_HINT_STORAGE_KEY = 'mnemonify_block_settings_hint_seen';
+const BLOCK_SETTINGS_HINT_DURATION_MS = 5000;
 
 // Undo/redo (ARCHITECTURE.md 3.9). MAX_UNDO_STACK caps memory; TYPING_BURST_MS
 // coalesces a run of rapid changes (e.g. keystrokes in a controlled input)
@@ -109,6 +111,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [course, setCourse] = useState(null);
   const [activePageId, setActivePageId] = useState(null);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
+  const [showBlockSettingsHint, setShowBlockSettingsHint] = useState(false);
   const [activeRailItem, setActiveRailItem] = useState(null);
   const [contextualDrawer, setContextualDrawer] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
@@ -132,6 +135,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
   const [versionHistoryError, setVersionHistoryError] = useState(null);
 
+  const blockSettingsHintTimerRef = useRef(null);
+
   // Phase 4.6 Step 2: panel collapse + Focus Mode. Deliberately plain
   // useState, entirely separate from the undo/redo system below -- this is
   // view state (what the author is currently looking at), not document
@@ -142,6 +147,35 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const effectiveLeftCollapsed = leftPanelCollapsed || focusMode;
+
+  function dismissBlockSettingsHint() {
+    if (blockSettingsHintTimerRef.current) {
+      window.clearTimeout(blockSettingsHintTimerRef.current);
+      blockSettingsHintTimerRef.current = null;
+    }
+    setShowBlockSettingsHint(false);
+  }
+
+  function maybeShowBlockSettingsHint() {
+    if (typeof window === 'undefined') return;
+    try {
+      if (window.localStorage.getItem(BLOCK_SETTINGS_HINT_STORAGE_KEY)) return;
+      window.localStorage.setItem(BLOCK_SETTINGS_HINT_STORAGE_KEY, '1');
+    } catch {
+      // The hint still works in privacy-restricted browsers; it simply cannot
+      // persist across reloads when storage is unavailable.
+    }
+    setShowBlockSettingsHint(true);
+    if (blockSettingsHintTimerRef.current) window.clearTimeout(blockSettingsHintTimerRef.current);
+    blockSettingsHintTimerRef.current = window.setTimeout(() => {
+      setShowBlockSettingsHint(false);
+      blockSettingsHintTimerRef.current = null;
+    }, BLOCK_SETTINGS_HINT_DURATION_MS);
+  }
+
+  useEffect(() => () => {
+    if (blockSettingsHintTimerRef.current) window.clearTimeout(blockSettingsHintTimerRef.current);
+  }, []);
 
   function handleCloseDrawer() {
     setActiveRailItem(null);
@@ -158,15 +192,20 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setSelectedBlockId(blockId);
     setActiveRailItem(null);
     setContextualDrawer(null);
+    if (blockId && showBlockSettingsHint) dismissBlockSettingsHint();
+    else if (blockId) maybeShowBlockSettingsHint();
+    else dismissBlockSettingsHint();
   }
 
   function handleOpenBlockSettings(blockId) {
+    dismissBlockSettingsHint();
     setSelectedBlockId(blockId);
     setActiveRailItem(null);
     setContextualDrawer(blockId ? { kind: 'block', id: blockId } : null);
   }
 
   function clearContextualSelection() {
+    dismissBlockSettingsHint();
     setSelectedBlockId(null);
     setContextualDrawer(null);
   }
@@ -817,6 +856,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }
 
   function handleSelectPage(pageId) {
+    dismissBlockSettingsHint();
     setActivePageId(pageId);
     clearContextualSelection();
     setActiveRailItem(null);
@@ -824,6 +864,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }
 
   function handleSelectGroup(groupId) {
+    dismissBlockSettingsHint();
     setSelectedBlockId(null);
     setActiveRailItem(null);
     setContextualDrawer({ kind: 'module', id: groupId });
@@ -1459,6 +1500,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 selectedBlockId={selectedBlockId}
                 onSelectBlock={handleSelectBlock}
                 onOpenBlockSettings={handleOpenBlockSettings}
+                showSettingsHint={showBlockSettingsHint}
+                onDismissSettingsHint={dismissBlockSettingsHint}
                 onChangeBlock={handleChangeBlock}
                 onDuplicateBlock={handleDuplicateBlock}
                 onDeleteBlock={handleDeleteBlock}

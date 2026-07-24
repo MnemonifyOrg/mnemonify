@@ -1,4 +1,39 @@
-/* Mnemonify Brand Tokens */
+/* Mnemonify Design Tokens */
+:root {
+  --bg-canvas: #F6F7F9;
+  --bg-surface: #FFFFFF;
+  --border-subtle: #E4E7EC;
+  --border-strong: #CBD2DC;
+  --text-primary: #101828;
+  --text-secondary: #475467;
+  --text-tertiary: #98A2B3;
+  --accent: #0E7A8A;
+  --accent-soft: #E0F2F5;
+  --navy: #0B1530;
+  --success: #067647;
+  --success-soft: #ECFDF3;
+  --warning: #B54708;
+  --warning-soft: #FEF3C7;
+  --danger: #B42318;
+  --danger-soft: #FEF3F2;
+
+  --font-family-body: "Inter", Arial, sans-serif;
+  --font-family-heading: "DM Sans", "Inter", Arial, sans-serif;
+  --font-size-helper: 12px;
+  --font-size-label: 13px;
+  --font-size-body: 14px;
+  --font-size-section: 16px;
+  --font-size-page-title: 20px;
+  --line-height-base: 1.5;
+
+  --radius-input: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --shadow-card: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+  --shadow-overlay: 0 8px 24px rgba(16,24,40,.16);
+}
+
+/* Legacy Mnemonify aliases remain available for existing styles. */
 :root {
   --mn-color-deep-navy: #0A1020;
   --mn-color-primary-blue: #2563EB;

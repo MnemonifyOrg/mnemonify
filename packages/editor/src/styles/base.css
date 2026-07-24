@@ -12,12 +12,17 @@ textarea {
   color: inherit;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
 a {
   color: var(--color-primary);
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-border-focus);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -25,10 +30,10 @@ a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-subtle);
   background: transparent;
   color: var(--color-text-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-input);
   padding: var(--space-2) var(--space-4);
   font-family: var(--font-body);
   font-weight: 500;
@@ -43,8 +48,8 @@ a {
   cursor: not-allowed;
 }
 .btn-primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
   font-family: var(--font-heading);
   font-weight: 500;
@@ -54,9 +59,9 @@ a {
   border-color: var(--color-primary-hover);
 }
 .btn-accent {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-dark);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
   font-family: var(--font-heading);
   font-weight: 500;
 }
@@ -65,11 +70,11 @@ a {
   border-color: var(--color-accent-hover);
 }
 .btn-danger {
-  color: var(--color-error);
-  border-color: var(--color-error);
+  color: var(--danger);
+  border-color: var(--danger);
 }
 .btn-danger:hover {
-  background: #FEF2F2;
+  background: var(--danger-soft);
 }
 .btn-text {
   border: none;
@@ -81,24 +86,24 @@ a {
 }
 
 .input {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
   padding: var(--space-2) var(--space-3);
   width: 100%;
   background: var(--color-surface);
   font-family: var(--font-body);
 }
 .input:focus {
-  border-color: var(--color-border-focus);
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-primary-light);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .badge {
@@ -113,27 +118,27 @@ a {
   color: var(--color-text-secondary);
 }
 .badge-accent {
-  background: #FEF3C7;
-  color: #92400E;
+  background: var(--success-soft);
+  color: var(--success);
 }
 .badge-warning {
-  background: #FEF3C7;
-  color: #92400E;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(11, 21, 48, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: var(--bg-surface);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-overlay);
   width: min(560px, 92vw);
   max-height: 88vh;
   overflow-y: auto;
@@ -208,9 +213,9 @@ a {
   display: inline-block;
   padding: 0 0.2rem;
   border-radius: var(--radius-sm);
-  background: #DBEAFE;
-  color: #1E3A8A;
-  outline: 1px solid #93C5FD;
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: 1px solid var(--accent);
 }
 
 .top-bar {
@@ -218,7 +223,7 @@ a {
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-5);
-  background: var(--color-dark);
+  background: var(--navy);
   height: 56px;
   color: #fff;
 }

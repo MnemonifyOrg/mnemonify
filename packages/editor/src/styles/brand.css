@@ -2,36 +2,36 @@
   /* Brand colors -- aliased to --mn-* tokens from mnemonify-tokens.css so
      every component referencing --color-* inherits the brand kit with no
      per-component changes (see DECISIONS.md). */
-  --color-dark: var(--mn-color-deep-navy);
-  --color-primary: var(--mn-color-primary-blue);
-  --color-primary-hover: var(--mn-color-indigo);
-  --color-primary-light: var(--mn-color-light-gray);
-  --color-accent: var(--mn-color-violet);
-  --color-accent-hover: var(--mn-color-purple);
-  --color-bg: var(--mn-color-soft-white);
-  --color-bg-secondary: var(--mn-color-light-gray);
-  --color-surface: #FFFFFF;
-  --color-border: var(--mn-color-slate);
-  --color-border-focus: var(--mn-color-primary-blue);
-  --color-text-primary: var(--mn-color-deep-navy);
-  --color-text-secondary: var(--mn-color-slate);
-  --color-text-muted: var(--mn-color-slate);
-  --color-error: #EF4444;
-  --color-success: var(--mn-color-emerald);
-  --color-warning: var(--mn-color-coral);
+  --color-dark: var(--text-primary);
+  --color-primary: var(--accent);
+  --color-primary-hover: #0A6673;
+  --color-primary-light: var(--accent-soft);
+  --color-accent: var(--accent);
+  --color-accent-hover: #0A6673;
+  --color-bg: var(--bg-canvas);
+  --color-bg-secondary: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-border: var(--border-subtle);
+  --color-border-focus: var(--accent);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-tertiary);
+  --color-error: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
 
   /* Typography */
-  --font-heading: var(--mn-font-display, 'DM Sans', sans-serif);
-  --font-body: var(--mn-font-ui, 'Inter', sans-serif);
+  --font-heading: var(--font-family-heading);
+  --font-body: var(--font-family-body);
 
   /* Type scale */
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
+  --text-xs: var(--font-size-helper);
+  --text-sm: var(--font-size-label);
+  --text-base: var(--font-size-body);
+  --text-lg: var(--font-size-section);
+  --text-xl: var(--font-size-page-title);
+  --text-2xl: var(--font-size-page-title);
+  --text-3xl: 24px;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -46,13 +46,13 @@
 
   /* Radius */
   --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-md: var(--radius-input);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-modal);
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-sm: var(--shadow-card);
   --shadow-md: 0 4px 6px rgba(15,23,42,0.08);
   --shadow-lg: 0 10px 15px rgba(15,23,42,0.10);
 }

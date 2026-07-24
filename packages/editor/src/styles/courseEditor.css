@@ -40,7 +40,7 @@
 
 .course-editor__title {
   margin: 0;
-  font-size: var(--text-lg);
+  font-size: var(--font-size-page-title);
   font-family: var(--font-heading);
   cursor: text;
   padding: var(--space-1) var(--space-2);
@@ -315,20 +315,20 @@
   width: 100%;
   min-height: 2.5rem;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border, #CBD2DC);
-  border-radius: 8px;
-  background: var(--color-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface);
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
 }
 .styled-select__trigger:hover,
 .multi-select-checkbox__trigger:hover {
-  border-color: var(--color-border-focus);
+  border-color: var(--accent);
 }
 .styled-select__trigger:focus-visible,
 .multi-select-checkbox__trigger:focus-visible {
-  outline: 3px solid var(--color-border-focus);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 .styled-select__trigger:disabled,
@@ -359,10 +359,10 @@
   max-height: 18rem;
   overflow-y: auto;
   padding: var(--space-1);
-  border: 1px solid var(--color-border, #CBD2DC);
-  border-radius: 8px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-overlay);
 }
 .styled-select__option {
   display: block;
@@ -392,7 +392,7 @@
 }
 .multi-select-checkbox__search {
   padding: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .multi-select-checkbox__search label {
   display: block;
@@ -424,7 +424,7 @@
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--color-primary);
+  accent-color: var(--accent);
 }
 
 /* Grouped page display (Phase 4.6 Step 5): modules with clearly
@@ -568,11 +568,11 @@
    selecting a block never shifts layout. color-mix lightens the existing
    brand border color rather than introducing a second, unrelated gray. */
 .block-wrapper {
-  background: var(--color-surface);
+  background: var(--bg-surface);
   border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  outline: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-card);
+  outline: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
   transition: outline-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .block-wrapper--selected {
@@ -707,6 +707,12 @@
   align-items: center;
   margin-top: 0;
   font-size: var(--text-base);
+}
+.settings-panel__section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 .settings-panel__section label {
   display: block;
@@ -1342,7 +1348,7 @@
 }
 .image-block-editor__error {
   color: var(--color-error);
-  background: #FEF2F2;
+  background: var(--danger-soft);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
@@ -1540,7 +1546,7 @@
   padding: var(--space-1) var(--space-2);
 }
 .media-library-item__field--needs-alt {
-  background: #FEF3C7;
+  background: var(--warning-soft);
   border-color: var(--color-warning);
 }
 
@@ -1734,7 +1740,7 @@
 .embed-block-editor__warning {
   font-size: var(--text-sm);
   color: var(--color-warning);
-  background: #FEF3C7;
+  background: var(--warning-soft);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   margin: var(--space-1) 0;
@@ -1852,7 +1858,7 @@
 }
 .settings-panel__hint {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--text-tertiary);
   margin: var(--space-1) 0 var(--space-3);
 }
 .settings-panel__section h4 {

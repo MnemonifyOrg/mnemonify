@@ -107,12 +107,12 @@
 }
 /* Status badges: draft vs published */
 .course-card .badge {
-  background: #FEF3C7;
-  color: #92400E;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 .course-card .badge-accent {
-  background: #D1FAE5;
-  color: #065F46;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .tab-strip {

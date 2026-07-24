@@ -19,12 +19,12 @@ const flagsOn = {
 const noop = () => {};
 
 describe('EditorDrawerShell', () => {
-  it('shows the five core rail items and reserves flagged items only when enabled', () => {
+  it('shows the core rail items and reserves flagged items only when enabled', () => {
     expect(visibleRailItems(flagsOff).map((item) => item.label)).toEqual([
-      'Course', 'Player', 'Variables', 'Question Banks', 'Objectives',
+      'Course', 'Player', 'Variables', 'Question Banks', 'Objectives', 'Course Health',
     ]);
     expect(visibleRailItems(flagsOn).map((item) => item.label)).toEqual([
-      'Course', 'Player', 'Variables', 'Question Banks', 'Objectives', 'Glossary', 'Version History',
+      'Course', 'Player', 'Variables', 'Question Banks', 'Objectives', 'Course Health', 'Glossary', 'Version History',
     ]);
   });
 
@@ -38,7 +38,7 @@ describe('EditorDrawerShell', () => {
       />
     );
 
-    expect((html.match(/editor-icon-rail__item/g) || []).length).toBe(5);
+    expect((html.match(/editor-icon-rail__item/g) || []).length).toBe(6);
     expect(html).toContain('aria-label="Course"');
     expect(html).toContain('aria-label="Course" aria-pressed="true"');
     expect(html).toContain('role="dialog"');

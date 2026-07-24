@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { VersionHistoryButton } from './FeatureFlaggedControls.jsx';
-import SettingsPanel from './SettingsPanel.jsx';
+import EditorDrawerShell from './EditorDrawerShell.jsx';
 import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 import LinkedEntityPrompt from './LinkedEntityPrompt.jsx';
 
@@ -21,34 +21,20 @@ const noFeatures = {
   linkedQuestions: false,
 };
 const bank = { bank_id: 'bnk_one', name: 'Case bank', questions: [] };
-const commonSettingsProps = {
-  selectedBlock: null,
-  meta: { objectives: [] },
-  page: null,
-  pages: [],
-  variables: [],
-  questionBanks: [bank],
-  courseJson: { pages: [], question_banks: [bank] },
-  activeTab: 'Course',
-  findings: [],
-  onChangeMeta: () => {},
-  onChangePage: () => {},
-  onChangeVariables: () => {},
-  onChangeQuestionBanks: () => {},
-  onChangeTab: () => {},
-};
-
 describe('v1 feature-flagged editor surfaces', () => {
   it('fully hides and restores the Version History button', () => {
     expect(renderToStaticMarkup(<VersionHistoryButton onClick={() => {}} featureFlags={noFeatures} />)).toBe('');
     expect(renderToStaticMarkup(<VersionHistoryButton onClick={() => {}} featureFlags={allFeatures} />)).toContain('Version History');
   });
 
-  it('hides and restores the Glossary inspector tab', () => {
-    const off = renderToStaticMarkup(<SettingsPanel {...commonSettingsProps} featureFlags={noFeatures} />);
-    const on = renderToStaticMarkup(<SettingsPanel {...commonSettingsProps} featureFlags={allFeatures} />);
-    expect(off).not.toContain('>Glossary<');
-    expect(on).toContain('>Glossary<');
+  it('hides and restores the Glossary and Version History rail items', () => {
+    const props = { onRailItemClick: () => {}, onCloseDrawer: () => {} };
+    const off = renderToStaticMarkup(<EditorDrawerShell {...props} featureFlags={noFeatures} />);
+    const on = renderToStaticMarkup(<EditorDrawerShell {...props} featureFlags={allFeatures} />);
+    expect(off).not.toContain('aria-label="Glossary"');
+    expect(off).not.toContain('aria-label="Version History"');
+    expect(on).toContain('aria-label="Glossary"');
+    expect(on).toContain('aria-label="Version History"');
   });
 
   it('hides and restores bank transfer and linked-question controls', () => {

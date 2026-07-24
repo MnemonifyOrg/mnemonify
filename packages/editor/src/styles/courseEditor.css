@@ -96,7 +96,7 @@
 .course-editor__body {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--panel-left-width) 1fr var(--panel-right-width);
+  grid-template-columns: var(--panel-left-width) 1fr;
   overflow: hidden;
   /* Grid column widths transition smoothly on collapse/expand (Phase 4.6
      Step 2) -- the canvas (1fr) fills whatever width the side columns give
@@ -107,13 +107,7 @@
    the panel's own content unmounts entirely while collapsed (see
    CourseEditor.jsx), so there's nothing else to fit. */
 .course-editor__body--left-collapsed {
-  grid-template-columns: 32px 1fr var(--panel-right-width);
-}
-.course-editor__body--right-collapsed {
-  grid-template-columns: var(--panel-left-width) 1fr 32px;
-}
-.course-editor__body--left-collapsed.course-editor__body--right-collapsed {
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 32px 1fr;
 }
 
 .course-editor__left-panel {
@@ -125,18 +119,6 @@
   min-height: 0;
   overflow: hidden;
   overflow-x: hidden;
-}
-
-.course-editor__right-panel {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.course-editor__right-panel .settings-panel {
-  flex: 1;
-  min-width: var(--panel-right-width);
 }
 
 .course-editor__panel-toggle {
@@ -2094,32 +2076,6 @@
   letter-spacing: 0.03em;
 }
 
-/* Settings panel tabs (Phase 4 Part 2: Course / Page / Variables; Phase
-   4.5c added Course Health as a fifth, which no longer reliably fits on
-   one line at the panel's default width -- flex-wrap lets a 5th+ tab
-   drop to a second row instead of clipping/overflowing the panel). */
-.settings-panel__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-}
-.settings-panel__tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: var(--space-2) var(--space-1);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.settings-panel__tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
 .settings-panel__hint {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
@@ -2518,24 +2474,7 @@
   margin: 0 0 var(--space-2);
 }
 
-/* Course Health (Phase 4.5c): findings panel tab, top-bar issue badge, and
-   the publish-notice toast. */
-.settings-panel__tab-badge {
-  display: inline-block;
-  margin-left: var(--space-1);
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--color-warning);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  vertical-align: middle;
-}
-.settings-panel__tab-badge--error {
-  background: var(--color-error, #EF4444);
-}
-
+/* Course Health (Phase 4.5c): top-bar issue badge and publish-notice toast. */
 .course-health__clean {
   color: var(--color-success);
   font-weight: 600;

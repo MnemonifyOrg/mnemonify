@@ -10,7 +10,7 @@ import { MatchingBlockSettings } from './MatchingBlock.jsx';
 import { HotspotBlockSettings } from './HotspotBlock.jsx';
 import { QuestionBankDrawBlockSettings } from './QuestionBankDrawBlock.jsx';
 
-// block-type -> settings-panel component (right panel, shown when that
+// block-type -> settings component (block settings drawer, shown when that
 // block is selected). Types without extra settings simply have no entry.
 export const BLOCK_SETTINGS = {
   heading: HeadingBlockSettings,

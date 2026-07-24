@@ -143,7 +143,7 @@ function ScoredToggle({ block, onChange }) {
 function BlockNameField({ block, pageBlocks, onChange }) {
   function handleChange(value) {
     if (!value) {
-      const { label, ...rest } = block;
+      const { label: _label, ...rest } = block;
       onChange(rest);
       return;
     }
@@ -171,7 +171,7 @@ function FacultyNotesField({ block, onChange }) {
   function handleChange(text) {
     const trimmed = text.trim();
     if (!trimmed) {
-      const { faculty_notes, ...rest } = block;
+      const { faculty_notes: _facultyNotes, ...rest } = block;
       onChange(rest);
       return;
     }
@@ -217,7 +217,7 @@ function BlockVisibilityToggle({ block, onChange }) {
     if (checked) {
       onChange({ ...block, visibility: { ...block.visibility, initial: 'hidden' } });
     } else {
-      const { visibility, ...rest } = block;
+      const { visibility: _visibility, ...rest } = block;
       onChange(rest);
     }
   }
@@ -248,7 +248,7 @@ function VisibilityConditionSection({ block, variables, onChangeBlock, onOpenVar
     if (condition) {
       onChangeBlock({ ...block, visibility_condition: condition }, { forceSnapshot: true });
     } else {
-      const { visibility_condition, ...rest } = block;
+      const { visibility_condition: _visibilityCondition, ...rest } = block;
       onChangeBlock(rest, { forceSnapshot: true });
     }
   }
@@ -318,16 +318,7 @@ function AdvancedSection({ blockId, children }) {
   );
 }
 
-const BASE_COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Question Banks', 'Course Health'];
-
-// Course-level settings area (Step 1: "accessible from the course-level
-// settings area (alongside where Course Settings, header/footer, etc.
-// already live -- add a new tab or section)") -- turned the previously
-// single-purpose panel into three tabs rather than stacking Variables
-// below Course Settings, since Page Settings (Step 5's Continue gate) also
-// needed a home and three unrelated always-visible sections would crowd
-// the panel more than a tab switcher does.
-export default function SettingsPanel({
+function BlockSettingsContent({
   selectedBlock,
   courseId,
   meta,
@@ -335,123 +326,12 @@ export default function SettingsPanel({
   pages,
   variables,
   questionBanks,
-  courseJson,
-  onChangeMeta,
-  onChangePage,
-  onChangeVariables,
-  onChangeQuestionBanks,
-  onImportBank,
-  onLinkBlockToBank,
-  onRequestLinkedQuestionEdit,
-  onRequestLinkedQuestionDelete,
-  onRenameVariable,
   onChangeBlock,
   assets,
   onUpdateCourseAsset,
-  onAddCourseResource,
-  onRemoveCourseResource,
-  onUpdateCourseResource,
-  activeTab,
-  onChangeTab,
   onOpenVariableManager,
-  findings,
-  onNavigateToFinding,
-  onOpenAltTextReview,
-  onAddCourseAssets,
-  libraryGlossaries,
-  libraryGlossaryTerms,
-  onChangeGlossaryTerms,
-  onCreateGlossary,
-  onPublishGlossaryTerm,
-  onApplyGlossarySuggestion,
-  featureFlags = FEATURE_FLAGS,
 }) {
-  const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
-  const courseLevelTabs = featureFlags.glossary
-    ? [...BASE_COURSE_LEVEL_TABS.slice(0, 5), 'Glossary', ...BASE_COURSE_LEVEL_TABS.slice(5)]
-    : BASE_COURSE_LEVEL_TABS;
-
-  if (!selectedBlock) {
-    return (
-      <aside className="settings-panel">
-        <div className="settings-panel__tabs">
-          {courseLevelTabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={activeTab === tab ? 'settings-panel__tab settings-panel__tab--active' : 'settings-panel__tab'}
-              onClick={() => onChangeTab(tab)}
-            >
-              {tab}
-              {tab === 'Course Health' && findings?.length > 0 && (
-                <span className={errorCount > 0 ? 'settings-panel__tab-badge settings-panel__tab-badge--error' : 'settings-panel__tab-badge'}>
-                  {findings.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        {activeTab === 'Page' && page ? (
-          <PageSettingsPanel
-            page={page}
-            pages={pages}
-            variables={conditionVariables}
-            onChangePage={onChangePage}
-            onOpenVariableManager={onOpenVariableManager}
-          />
-        ) : activeTab === 'Player' ? (
-          <PlayerSettingsPanel
-            meta={meta}
-            pages={pages}
-            onChangeMeta={onChangeMeta}
-            onAddCourseResource={onAddCourseResource}
-            onRemoveCourseResource={onRemoveCourseResource}
-            onUpdateCourseResource={onUpdateCourseResource}
-          />
-        ) : activeTab === 'Variables' ? (
-          <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
-        ) : activeTab === 'Objectives' ? (
-          <ObjectivesPanel objectives={meta.objectives || []} onChange={(objectives) => onChangeMeta({ ...meta, objectives })} />
-        ) : activeTab === 'Glossary' && featureFlags.glossary ? (
-          <GlossaryPanel
-            courseJson={courseJson}
-            meta={meta}
-            libraryGlossaries={libraryGlossaries}
-            libraryTerms={libraryGlossaryTerms}
-            onChangeMeta={onChangeMeta}
-            onChangeTerms={onChangeGlossaryTerms}
-            onCreateGlossary={onCreateGlossary}
-            onPublishTerm={onPublishGlossaryTerm}
-            onApplySuggestion={onApplyGlossarySuggestion}
-            featureFlags={featureFlags}
-          />
-        ) : activeTab === 'Question Banks' ? (
-          <QuestionBankManagerPanel
-            questionBanks={questionBanks}
-            courseJson={courseJson}
-            assets={assets}
-            courseId={courseId}
-            onChangeQuestionBanks={onChangeQuestionBanks}
-            onImportBank={onImportBank}
-            onLinkBlockToBank={onLinkBlockToBank}
-            onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
-            onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}
-            featureFlags={featureFlags}
-            onAddCourseAssets={onAddCourseAssets}
-            onUpdateCourseAsset={onUpdateCourseAsset}
-            variables={variables}
-            objectives={meta.objectives || []}
-          />
-        ) : activeTab === 'Course Health' ? (
-          <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />
-        ) : (
-          <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />
-        )}
-      </aside>
-    );
-  }
-
   const SettingsFields = BLOCK_SETTINGS[selectedBlock.type];
   const definition = getBlockDefinition(selectedBlock.type);
   // Falls back to "everything is Advanced, nothing is Basic content" for a
@@ -461,7 +341,7 @@ export default function SettingsPanel({
   const groups = definition?.settingsGroups || { basic: [], advanced: ['blockName', 'visibility', 'triggers', 'facultyNotes'] };
 
   return (
-    <aside className="settings-panel">
+    <div className="settings-panel">
       <div className="settings-panel__section">
         <h3>{BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} Settings</h3>
         {groups.basic.includes('content') && SettingsFields ? (
@@ -513,6 +393,156 @@ export default function SettingsPanel({
         )}
         {groups.advanced.includes('facultyNotes') && <FacultyNotesField block={selectedBlock} onChange={onChangeBlock} />}
       </AdvancedSection>
-    </aside>
+    </div>
   );
+}
+
+// Drawer router for the migrated settings surfaces. The old tabbed inspector
+// used this same content and callbacks; the drawer identity now selects the
+// destination instead of an inspector tab.
+export default function DrawerSettingsContent({
+  drawer,
+  contextId,
+  courseId,
+  meta,
+  page,
+  pages,
+  variables,
+  questionBanks,
+  courseJson,
+  onChangeMeta,
+  onChangePage,
+  onChangeVariables,
+  onChangeQuestionBanks,
+  onImportBank,
+  onLinkBlockToBank,
+  onRequestLinkedQuestionEdit,
+  onRequestLinkedQuestionDelete,
+  onRenameVariable,
+  selectedBlock,
+  onChangeBlock,
+  assets,
+  onUpdateCourseAsset,
+  onAddCourseResource,
+  onRemoveCourseResource,
+  onUpdateCourseResource,
+  onOpenVariableManager,
+  findings,
+  onNavigateToFinding,
+  onOpenAltTextReview,
+  onAddCourseAssets,
+  libraryGlossaries,
+  libraryGlossaryTerms,
+  onChangeGlossaryTerms,
+  onCreateGlossary,
+  onPublishGlossaryTerm,
+  onApplyGlossarySuggestion,
+  featureFlags = FEATURE_FLAGS,
+}) {
+  const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
+
+  if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />;
+  if (drawer === 'player') {
+    return (
+      <PlayerSettingsPanel
+        meta={meta}
+        pages={pages}
+        onChangeMeta={onChangeMeta}
+        onAddCourseResource={onAddCourseResource}
+        onRemoveCourseResource={onRemoveCourseResource}
+        onUpdateCourseResource={onUpdateCourseResource}
+      />
+    );
+  }
+  if (drawer === 'variables') {
+    return <VariableManagerPanel variables={variables} courseJson={courseJson} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />;
+  }
+  if (drawer === 'objectives') {
+    return (
+      <ObjectivesPanel
+        objectives={meta.objectives || []}
+        pageGroups={meta.page_groups || []}
+        initialContext={contextId ? `module:${contextId}` : 'course'}
+        onChange={(objectives) => onChangeMeta({ ...meta, objectives })}
+        onChangePageGroups={(pageGroups) => onChangeMeta({ ...meta, page_groups: pageGroups })}
+      />
+    );
+  }
+  if (drawer === 'glossary' && featureFlags.glossary) {
+    return (
+      <GlossaryPanel
+        courseJson={courseJson}
+        meta={meta}
+        libraryGlossaries={libraryGlossaries}
+        libraryTerms={libraryGlossaryTerms}
+        onChangeMeta={onChangeMeta}
+        onChangeTerms={onChangeGlossaryTerms}
+        onCreateGlossary={onCreateGlossary}
+        onPublishTerm={onPublishGlossaryTerm}
+        onApplySuggestion={onApplyGlossarySuggestion}
+        featureFlags={featureFlags}
+      />
+    );
+  }
+  if (drawer === 'question-banks') {
+    return (
+      <QuestionBankManagerPanel
+        compact
+        questionBanks={questionBanks}
+        courseJson={courseJson}
+        assets={assets}
+        courseId={courseId}
+        onChangeQuestionBanks={onChangeQuestionBanks}
+        onImportBank={onImportBank}
+        onLinkBlockToBank={onLinkBlockToBank}
+        onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
+        onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}
+        featureFlags={featureFlags}
+        onAddCourseAssets={onAddCourseAssets}
+        onUpdateCourseAsset={onUpdateCourseAsset}
+        variables={variables}
+        objectives={meta.objectives || []}
+      />
+    );
+  }
+  if (drawer === 'course-health') {
+    return <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />;
+  }
+  if (drawer === 'page' && page) {
+    return <PageSettingsPanel page={page} pages={pages} variables={conditionVariables} onChangePage={onChangePage} onOpenVariableManager={onOpenVariableManager} />;
+  }
+  if (drawer === 'module') {
+    return (
+      <div className="settings-panel__section">
+        <h3>Module Settings</h3>
+        <p className="settings-panel__hint">Module objective assignments are managed in the Objectives drawer.</p>
+        <ObjectivesPanel
+          objectives={meta.objectives || []}
+          pageGroups={meta.page_groups || []}
+          initialContext={contextId ? `module:${contextId}` : 'course'}
+          showCourseObjectives={false}
+          onChange={(objectives) => onChangeMeta({ ...meta, objectives })}
+          onChangePageGroups={(pageGroups) => onChangeMeta({ ...meta, page_groups: pageGroups })}
+        />
+      </div>
+    );
+  }
+  if (drawer === 'block' && selectedBlock) {
+    return (
+      <BlockSettingsContent
+        selectedBlock={selectedBlock}
+        courseId={courseId}
+        meta={meta}
+        page={page}
+        pages={pages}
+        variables={variables}
+        questionBanks={questionBanks}
+        assets={assets}
+        onChangeBlock={onChangeBlock}
+        onUpdateCourseAsset={onUpdateCourseAsset}
+        onOpenVariableManager={onOpenVariableManager}
+      />
+    );
+  }
+  return <p className="settings-panel__empty">Select a setting to begin.</p>;
 }

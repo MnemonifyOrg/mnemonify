@@ -9,6 +9,7 @@ function RailIcon({ itemId }) {
     variables: <><path d="M8 4 4 12l4 8M16 4l4 8-4 8M14 4l-4 16" /></>,
     'question-banks': <><path d="M5 5h14v14H5z" /><path d="M8 9h8M8 13h6M8 17h4" /></>,
     objectives: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>,
+    'course-health': <><path d="M12 3 20 7v5c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V7z" /><path d="m9 12 2 2 4-4" /></>,
     glossary: <><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M8 4v13a3 3 0 0 0 3 3" /></>,
     'version-history': <><path d="M4 12a8 8 0 1 0 2-5.3" /><path d="M4 4v5h5M12 8v4l3 2" /></>,
   };
@@ -51,6 +52,7 @@ export default function EditorDrawerShell({
   featureFlags = FEATURE_FLAGS,
   onRailItemClick,
   onCloseDrawer,
+  drawerContent = null,
 }) {
   const drawerOpen = !!activeRailItem || !!contextualDrawer;
 
@@ -99,7 +101,7 @@ export default function EditorDrawerShell({
               <button type="button" className="btn-text editor-drawer__close" aria-label="Close drawer" onClick={onCloseDrawer}>×</button>
             </header>
             <div className="editor-drawer__body">
-              <DrawerContent activeRailItem={activeRailItem} contextualDrawer={contextualDrawer} />
+              {drawerContent || <DrawerContent activeRailItem={activeRailItem} contextualDrawer={contextualDrawer} />}
             </div>
           </aside>
         </>

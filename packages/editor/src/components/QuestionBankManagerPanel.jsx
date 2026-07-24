@@ -23,7 +23,7 @@ function emptyQuestion() {
   };
 }
 
-export default function QuestionBankManagerPanel({ questionBanks, courseJson, assets, courseId, onChangeQuestionBanks, onImportBank, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], onLinkBlockToBank, onRequestLinkedQuestionEdit, onRequestLinkedQuestionDelete, featureFlags = FEATURE_FLAGS }) {
+export default function QuestionBankManagerPanel({ questionBanks, courseJson, assets, courseId, onChangeQuestionBanks, onImportBank, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], onLinkBlockToBank, onRequestLinkedQuestionEdit, onRequestLinkedQuestionDelete, featureFlags = FEATURE_FLAGS, compact = false }) {
   const banks = questionBanks || [];
   const [selectedBankId, setSelectedBankId] = useState(banks[0]?.bank_id || null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -107,11 +107,19 @@ export default function QuestionBankManagerPanel({ questionBanks, courseJson, as
           {banks.map((bank) => <option key={bank.bank_id} value={bank.bank_id}>{bank.name || bank.bank_id}</option>)}
         </select>
         <button type="button" className="btn" onClick={createBank}>+ New bank</button>
-        {showBankTransfers && <button type="button" className="btn" onClick={() => importInputRef.current?.click()}>Import bank</button>}
-        {showBankTransfers && <input ref={importInputRef} type="file" accept=".json,application/json" hidden onChange={readImportFile} />}
+        {!compact && showBankTransfers && <button type="button" className="btn" onClick={() => importInputRef.current?.click()}>Import bank</button>}
+        {!compact && showBankTransfers && <input ref={importInputRef} type="file" accept=".json,application/json" hidden onChange={readImportFile} />}
       </div>
-      {importError && <p className="bank-transfer-error" role="alert">{importError}</p>}
-      {!selectedBank ? <p className="settings-panel__empty">Create a bank to start adding reusable questions.</p> : (
+      {!compact && importError && <p className="bank-transfer-error" role="alert">{importError}</p>}
+      {compact ? (
+        <div className="question-bank-manager__actions">
+          {selectedBank ? (
+            <button type="button" className="btn btn-primary" onClick={() => setEditorOpen(true)}>Open bank editor</button>
+          ) : (
+            <p className="settings-panel__empty">Create a bank to start adding reusable questions.</p>
+          )}
+        </div>
+      ) : (!selectedBank ? <p className="settings-panel__empty">Create a bank to start adding reusable questions.</p> : (
         <>
           <label>Bank name</label>
           <input className="input" value={selectedBank.name || ''} onChange={(event) => updateBank({ name: event.target.value })} />
@@ -144,7 +152,7 @@ export default function QuestionBankManagerPanel({ questionBanks, courseJson, as
             </div>
           )}
         </>
-      )}
+      ))}
       {editorOpen && selectedBank && (
         <QuestionBankEditorModal
           bank={selectedBank}

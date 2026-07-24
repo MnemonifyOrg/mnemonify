@@ -6,7 +6,7 @@ import { BLOCK_TYPES, BLOCK_REGISTRY, getBlockDefinition } from '@mnemonify/sche
 // starter templates and by the "Add Block" picker in the editor.
 //
 // BLOCK_TYPES and BLOCK_LABELS are re-exported here (Phase 4.5b) rather
-// than removed, so existing consumers (SettingsPanel.jsx, triggerUtils.js)
+// than removed, so existing consumers (DrawerSettingsContent.jsx, triggerUtils.js)
 // keep working unchanged -- the actual source of truth for the type list
 // and display names is now packages/schema/block-registry.js. See
 // DECISIONS.md.

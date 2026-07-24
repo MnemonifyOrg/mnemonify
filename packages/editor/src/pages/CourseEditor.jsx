@@ -4,7 +4,7 @@ import api from '../lib/api.js';
 import { genPageId } from '../lib/idGen.js';
 import PageList from '../components/PageList.jsx';
 import BlockCanvas from '../components/BlockCanvas.jsx';
-import SettingsPanel from '../components/SettingsPanel.jsx';
+import DrawerSettingsContent from '../components/DrawerSettingsContent.jsx';
 import SaveAsTemplateModal from '../components/SaveAsTemplateModal.jsx';
 import SavePageAsTemplateModal from '../components/SavePageAsTemplateModal.jsx';
 import PageTemplateGalleryModal from '../components/PageTemplateGalleryModal.jsx';
@@ -93,7 +93,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [showExportSaving, setShowExportSaving] = useState(false);
   const [pageToSaveAsTemplate, setPageToSaveAsTemplate] = useState(null);
   const [showInsertFromTemplate, setShowInsertFromTemplate] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('Course');
   const [publishing, setPublishing] = useState(false);
   const [publishNotice, setPublishNotice] = useState(null);
   const [pendingLinkedEdit, setPendingLinkedEdit] = useState(null);
@@ -113,10 +112,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // DECISIONS.md. Session-level only (resets on reload), per this step's
   // own "doesn't need to persist across sessions" allowance.
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const effectiveLeftCollapsed = leftPanelCollapsed || focusMode;
-  const effectiveRightCollapsed = rightPanelCollapsed || focusMode;
 
   function handleCloseDrawer() {
     setActiveRailItem(null);
@@ -320,7 +317,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setActivePageId(result.course.course_json.pages?.[0]?.page_id || null);
     clearContextualSelection();
     setActiveRailItem(null);
-    setSettingsTab('Course');
     undoStackRef.current = [];
     redoStackRef.current = [];
     setCanUndo(false);
@@ -367,7 +363,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     if (errorFindings.length > 0) {
       clearContextualSelection();
       setActiveRailItem(null);
-      setSettingsTab('Course Health');
+      setActiveRailItem('course-health');
       setPublishNotice({
         type: 'error',
         message: `Cannot publish: ${errorFindings.length} error${errorFindings.length === 1 ? '' : 's'} must be fixed first.`,
@@ -659,7 +655,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // SET_VAR/ADJUST_VAR action has no variables to offer yet (Step 4).
   function openVariableManager() {
     clearContextualSelection();
-    setSettingsTab('Variables');
+    setActiveRailItem('variables');
   }
 
   // Course Health "click a finding, go to what it's about" (Phase 4.5c
@@ -667,14 +663,14 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // navigate to the Variables tab or Media Library instead, the same way
   // an author would go find that entity themselves. Block-scoped findings
   // switch to the block's own page, select it (which switches
-  // SettingsPanel out of the tabbed course-level view into that block's
+  // drawer settings out of the course-level view into that block's
   // settings, same as clicking the block in the canvas would), and
   // scroll it into view -- selection alone doesn't guarantee visibility
   // if the block is below the fold or on a page that wasn't open yet.
   function handleNavigateToFinding(finding) {
     if (finding.entityType === 'variable') {
       clearContextualSelection();
-      setSettingsTab('Variables');
+      setActiveRailItem('variables');
       return;
     }
     if (finding.entityType === 'asset') {
@@ -1212,7 +1208,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           className={focusMode ? 'btn btn-primary' : 'btn'}
           onClick={() => setFocusMode((v) => !v)}
           aria-pressed={focusMode}
-          title="Hide both side panels to focus on the canvas"
+          title="Hide the page list to focus on the canvas"
         >
           {focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
         </button>
@@ -1244,7 +1240,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             onClick={() => {
               clearContextualSelection();
               setActiveRailItem(null);
-              setSettingsTab('Course Health');
+              setActiveRailItem('course-health');
             }}
             title="Open Course Health"
           >
@@ -1339,8 +1335,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       <div
         className={
           'course-editor__body' +
-          (effectiveLeftCollapsed ? ' course-editor__body--left-collapsed' : '') +
-          (effectiveRightCollapsed ? ' course-editor__body--right-collapsed' : '')
+          (effectiveLeftCollapsed ? ' course-editor__body--left-collapsed' : '')
         }
       >
         <nav className="course-editor__left-panel" data-tour="page-list">
@@ -1433,59 +1428,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           )}
         </main>
 
-        <div className="course-editor__right-panel">
-          <button
-            type="button"
-            className="course-editor__panel-toggle course-editor__panel-toggle--right"
-            onClick={() => setRightPanelCollapsed((v) => !v)}
-            disabled={focusMode}
-            aria-expanded={!effectiveRightCollapsed}
-            aria-label={effectiveRightCollapsed ? 'Expand settings panel' : 'Collapse settings panel'}
-            title={effectiveRightCollapsed ? 'Expand settings' : 'Collapse settings'}
-          >
-            {effectiveRightCollapsed ? '◀' : '▶'}
-          </button>
-          {!effectiveRightCollapsed && (
-            <SettingsPanel
-              courseId={course.id}
-              selectedBlock={selectedBlock}
-              meta={json.meta}
-              page={page}
-              pages={json.pages}
-              variables={json.variables || []}
-              questionBanks={json.question_banks || []}
-              assets={json.assets}
-              onChangeMeta={handleChangeMeta}
-              onChangePage={handleChangePage}
-              onChangeVariables={handleChangeVariables}
-              onChangeQuestionBanks={handleChangeQuestionBanks}
-              onImportBank={handleImportBank}
-              onLinkBlockToBank={handleLinkBlockToBank}
-              onRequestLinkedQuestionEdit={handleRequestLinkedQuestionEdit}
-              onRequestLinkedQuestionDelete={handleRequestLinkedQuestionDelete}
-              featureFlags={featureFlags}
-              onRenameVariable={renameVariable}
-              onUpdateCourseAsset={handleUpdateCourseAsset}
-              onAddCourseAssets={handleAddCourseAssets}
-              onAddCourseResource={handleAddCourseResource}
-              onRemoveCourseResource={handleRemoveCourseResource}
-              onUpdateCourseResource={handleUpdateCourseResource}
-              onChangeBlock={(updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options)}
-              activeTab={settingsTab}
-              onChangeTab={setSettingsTab}
-              onOpenVariableManager={openVariableManager}
-              findings={findings}
-              onNavigateToFinding={handleNavigateToFinding}
-              onOpenAltTextReview={() => setShowAltTextReview(true)}
-              libraryGlossaries={libraryGlossaries}
-              libraryGlossaryTerms={libraryGlossaryTerms}
-              onChangeGlossaryTerms={handleChangeGlossaryTerms}
-              onCreateGlossary={handleCreateGlossary}
-              onPublishGlossaryTerm={handlePublishGlossaryTerm}
-              onApplyGlossarySuggestion={handleApplyGlossarySuggestion}
-            />
-          )}
-        </div>
       </div>
 
       <EditorDrawerShell
@@ -1494,6 +1436,47 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
         featureFlags={featureFlags}
         onRailItemClick={handleRailItemClick}
         onCloseDrawer={handleCloseDrawer}
+        drawerContent={(
+          <DrawerSettingsContent
+            drawer={activeRailItem || contextualDrawer?.kind}
+            contextId={contextualDrawer?.id}
+            courseId={course.id}
+            meta={json.meta}
+            page={page}
+            pages={json.pages}
+            variables={json.variables || []}
+            questionBanks={json.question_banks || []}
+            courseJson={course.course_json}
+            onChangeMeta={handleChangeMeta}
+            onChangePage={handleChangePage}
+            onChangeVariables={handleChangeVariables}
+            onRenameVariable={renameVariable}
+            onChangeQuestionBanks={handleChangeQuestionBanks}
+            onImportBank={handleImportBank}
+            onLinkBlockToBank={handleLinkBlockToBank}
+            onRequestLinkedQuestionEdit={handleRequestLinkedQuestionEdit}
+            onRequestLinkedQuestionDelete={handleRequestLinkedQuestionDelete}
+            selectedBlock={selectedBlock}
+            onChangeBlock={selectedBlock ? (updated, options) => handleChangeBlock(selectedBlock.block_id, updated, options) : undefined}
+            assets={json.assets}
+            onUpdateCourseAsset={handleUpdateCourseAsset}
+            onAddCourseAssets={handleAddCourseAssets}
+            onAddCourseResource={handleAddCourseResource}
+            onRemoveCourseResource={handleRemoveCourseResource}
+            onUpdateCourseResource={handleUpdateCourseResource}
+            onOpenVariableManager={openVariableManager}
+            findings={findings}
+            onNavigateToFinding={handleNavigateToFinding}
+            onOpenAltTextReview={() => setShowAltTextReview(true)}
+            libraryGlossaries={libraryGlossaries}
+            libraryGlossaryTerms={libraryGlossaryTerms}
+            onChangeGlossaryTerms={handleChangeGlossaryTerms}
+            onCreateGlossary={handleCreateGlossary}
+            onPublishGlossaryTerm={handlePublishGlossaryTerm}
+            onApplyGlossarySuggestion={handleApplyGlossarySuggestion}
+            featureFlags={featureFlags}
+          />
+        )}
       />
     </div>
   );

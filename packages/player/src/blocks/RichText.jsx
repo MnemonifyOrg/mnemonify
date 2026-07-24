@@ -1,7 +1,8 @@
 import { createContext, useContext, useState } from 'react';
 import { htmlToRichAst, RICH_TEXT_TAGS } from '../lib/richText.js';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
-export const GlossaryContext = createContext({ terms: [], onOpenGlossary: null });
+export const GlossaryContext = createContext({ terms: [], onOpenGlossary: null, featureFlags: FEATURE_FLAGS });
 
 const TAG_MAP = { b: 'b', strong: 'strong', i: 'i', em: 'em', u: 'u', sup: 'sup', sub: 'sub' };
 const VARIABLE_TOKEN_PATTERN = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
@@ -51,9 +52,9 @@ function renderInlineText(value, variables, keyPrefix) {
   ));
 }
 
-export function GlossaryLink({ segment, glossaryTerm, onOpenGlossary, variables, assets, allowedTags }) {
+export function GlossaryLink({ segment, glossaryTerm, onOpenGlossary, variables, assets, allowedTags, featureFlags = FEATURE_FLAGS }) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  if (!glossaryTerm) return <span>{segment.v || ''}</span>;
+  if (!featureFlags.glossary || !glossaryTerm) return <span>{segment.v || ''}</span>;
   return (
     <span className="glossary-link__wrapper">
       <button
@@ -70,7 +71,7 @@ export function GlossaryLink({ segment, glossaryTerm, onOpenGlossary, variables,
       </button>
       {previewOpen && (
         <span className="glossary-link__tooltip" role="tooltip">
-          <RichText value={glossaryTerm.definition} variables={variables} assets={assets} allowedTags={allowedTags} />
+          <RichText value={glossaryTerm.definition} variables={variables} assets={assets} allowedTags={allowedTags} featureFlags={featureFlags} />
         </span>
       )}
     </span>
@@ -81,7 +82,7 @@ function plainDefinition(definition) {
   return (definition?.rich_text || []).map((segment) => segment.v || '').join('').replace(/<[^>]+>/g, '');
 }
 
-function renderSegments(segments, { variables, assets = [], onOpenModal, glossaryTerms = [], onOpenGlossary, allowedTags }) {
+function renderSegments(segments, { variables, assets = [], onOpenModal, glossaryTerms = [], onOpenGlossary, allowedTags, featureFlags }) {
   const termsById = new Map(glossaryTerms.map((term) => [term.term_id, term]));
   return (segments || []).map((segment, i) => {
     if (segment.t === 'variable') {
@@ -96,9 +97,9 @@ function renderSegments(segments, { variables, assets = [], onOpenModal, glossar
       );
     }
     if (segment.t === 'glossary_link') {
-      return <GlossaryLink key={i} segment={segment} glossaryTerm={termsById.get(segment.term_id)} onOpenGlossary={onOpenGlossary} variables={variables} assets={assets} allowedTags={allowedTags} />;
+      return <GlossaryLink key={i} segment={segment} glossaryTerm={termsById.get(segment.term_id)} onOpenGlossary={onOpenGlossary} variables={variables} assets={assets} allowedTags={allowedTags} featureFlags={featureFlags} />;
     }
-    if (segment.t === 'html') return <span key={i}><RichText value={segment.v} variables={variables} allowedTags={allowedTags} /></span>;
+    if (segment.t === 'html') return <span key={i}><RichText value={segment.v} variables={variables} allowedTags={allowedTags} featureFlags={featureFlags} /></span>;
     return <span key={i}>{renderInlineText(segment.v || '', variables, `segment-${i}`)}</span>;
   });
 }
@@ -110,12 +111,13 @@ function renderSegments(segments, { variables, assets = [], onOpenModal, glossar
 // fields" rule). Re-sanitizes defensively at render time (not just trusting
 // that the editor already sanitized on save), in case content ever arrives
 // through another path, e.g. a future Word import.
-export default function RichText({ value, variables, assets, onOpenModal, glossaryTerms, onOpenGlossary, allowedTags = RICH_TEXT_TAGS }) {
+export default function RichText({ value, variables, assets, onOpenModal, glossaryTerms, onOpenGlossary, allowedTags = RICH_TEXT_TAGS, featureFlags }) {
   const glossaryContext = useContext(GlossaryContext);
   const resolvedGlossaryTerms = glossaryTerms ?? glossaryContext.terms ?? [];
   const resolvedOpenGlossary = onOpenGlossary ?? glossaryContext.onOpenGlossary;
+  const resolvedFeatureFlags = featureFlags ?? glossaryContext.featureFlags ?? FEATURE_FLAGS;
   if (!value) return null;
-  if (Array.isArray(value)) return <>{renderSegments(value, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags })}</>;
-  if (value?.rich_text) return <>{renderSegments(value.rich_text, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags })}</>;
+  if (Array.isArray(value)) return <>{renderSegments(value, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags, featureFlags: resolvedFeatureFlags })}</>;
+  if (value?.rich_text) return <>{renderSegments(value.rich_text, { variables, assets, onOpenModal, glossaryTerms: resolvedGlossaryTerms, onOpenGlossary: resolvedOpenGlossary, allowedTags, featureFlags: resolvedFeatureFlags })}</>;
   return <>{renderNodes(htmlToRichAst(value, allowedTags), variables)}</>;
 }

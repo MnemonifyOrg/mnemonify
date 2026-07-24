@@ -7,6 +7,7 @@ import MessagePayload from './modal-payloads/MessagePayload.jsx';
 import ResourcesPayload from './modal-payloads/ResourcesPayload.jsx';
 import GlossaryPayload from './GlossaryPayload.jsx';
 import BlockRenderer from '../blocks/BlockRenderer.jsx';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 // Unified in-player modal layer (ARCHITECTURE.md 5.3). One component
 // handles every OPEN_MODAL payload type; only `image` has a real caller
@@ -26,7 +27,7 @@ const PAYLOAD_RENDERERS = {
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export default function Modal({ payload, onClose }) {
+export default function Modal({ payload, onClose, featureFlags = FEATURE_FLAGS }) {
   const dialogRef = useRef(null);
   const triggerElRef = useRef(null);
 
@@ -72,7 +73,7 @@ export default function Modal({ payload, onClose }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [payload, onClose]);
 
-  if (!payload) return null;
+  if (!payload || (payload.type === 'glossary' && !featureFlags.glossary)) return null;
 
   const isOverlay = payload.type === 'interactive_video_overlay';
   const PayloadComponent = isOverlay ? null : PAYLOAD_RENDERERS[payload.type];
@@ -112,7 +113,7 @@ export default function Modal({ payload, onClose }) {
             <p className="modal-payload__placeholder">No overlay content.</p>
           )
         ) : PayloadComponent ? (
-          <PayloadComponent payload={payload} onClose={onClose} />
+          <PayloadComponent payload={payload} onClose={onClose} featureFlags={featureFlags} />
         ) : (
           <p className="modal-payload__placeholder">Unsupported content.</p>
         )}

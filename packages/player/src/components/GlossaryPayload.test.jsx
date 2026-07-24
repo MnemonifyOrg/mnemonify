@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import GlossaryPayload from './GlossaryPayload.jsx';
+import Modal from './Modal.jsx';
 import { filterGlossaryTerms } from './glossary.js';
 import { GlossaryLink } from '../blocks/RichText.jsx';
 
@@ -15,7 +16,7 @@ describe('learner glossary', () => {
   });
 
   it('renders a searchable full glossary panel', () => {
-    const html = renderToStaticMarkup(<GlossaryPayload payload={{ terms }} />);
+    const html = renderToStaticMarkup(<GlossaryPayload payload={{ terms }} featureFlags={{ glossary: true }} />);
     expect(html).toContain('Glossary');
     expect(html).toContain('role="searchbox"');
     expect(html).toContain('Anemia');
@@ -28,10 +29,30 @@ describe('learner glossary', () => {
         segment={{ t: 'glossary_link', term_id: 'term_one', v: 'anemia' }}
         glossaryTerm={terms[0]}
         onOpenGlossary={() => {}}
+        featureFlags={{ glossary: true }}
       />
     );
     expect(html).toContain('class="glossary-link"');
     expect(html).toContain('aria-label="anemia: Low red-cell mass."');
     expect(html).toContain('anemia');
+  });
+
+  it('renders glossary content as plain text when the flag is off', () => {
+    const html = renderToStaticMarkup(
+      <GlossaryLink
+        segment={{ t: 'glossary_link', term_id: 'term_one', v: 'anemia' }}
+        glossaryTerm={terms[0]}
+        onOpenGlossary={() => {}}
+        featureFlags={{ glossary: false }}
+      />
+    );
+    expect(html).not.toContain('class="glossary-link"');
+    expect(html).toContain('anemia');
+  });
+
+  it('hides the glossary modal payload when the flag is off and restores it when on', () => {
+    const payload = { type: 'glossary', terms, ariaLabel: 'Course glossary' };
+    expect(renderToStaticMarkup(<Modal payload={payload} onClose={() => {}} featureFlags={{ glossary: false }} />)).toBe('');
+    expect(renderToStaticMarkup(<Modal payload={payload} onClose={() => {}} featureFlags={{ glossary: true }} />)).toContain('Glossary');
   });
 });

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { effectiveGlossaryTerms, findGlossarySuggestions } from '@mnemonify/schema/glossary.js';
 import { genGlossaryTermId } from '../lib/idGen.js';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 function definitionText(definition) {
   return (definition?.rich_text || []).map((segment) => segment.v || '').join('');
@@ -26,6 +27,7 @@ export default function GlossaryPanel({
   onCreateGlossary,
   onPublishTerm,
   onApplySuggestion,
+  featureFlags = FEATURE_FLAGS,
 }) {
   const [rejectedSuggestions, setRejectedSuggestions] = useState(() => new Set());
   const [newGlossaryName, setNewGlossaryName] = useState('');
@@ -33,10 +35,16 @@ export default function GlossaryPanel({
   const [publishingTermId, setPublishingTermId] = useState(null);
   const courseTerms = courseJson.glossary_terms || [];
   const suggestions = useMemo(
-    () => findGlossarySuggestions(courseJson, { libraryTerms }).filter((suggestion) => !rejectedSuggestions.has(suggestion.suggestion_id)),
-    [courseJson, libraryTerms, rejectedSuggestions]
+    () => featureFlags.glossary
+      ? findGlossarySuggestions(courseJson, { libraryTerms }).filter((suggestion) => !rejectedSuggestions.has(suggestion.suggestion_id))
+      : [],
+    [courseJson, libraryTerms, rejectedSuggestions, featureFlags.glossary]
   );
-  const effectiveTerms = useMemo(() => effectiveGlossaryTerms({ libraryTerms, courseTerms: courseJson.glossary_terms || [] }), [libraryTerms, courseJson.glossary_terms]);
+  const effectiveTerms = useMemo(() => featureFlags.glossary
+    ? effectiveGlossaryTerms({ libraryTerms, courseTerms: courseJson.glossary_terms || [] })
+    : [], [libraryTerms, courseJson.glossary_terms, featureFlags.glossary]);
+
+  if (!featureFlags.glossary) return null;
 
   function updateTerm(termId, patch) {
     onChangeTerms(courseTerms.map((term) => (term.term_id === termId ? { ...term, ...patch } : term)));

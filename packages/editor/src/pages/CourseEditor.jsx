@@ -13,6 +13,7 @@ import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
+import { VersionHistoryButton } from '../components/FeatureFlaggedControls.jsx';
 import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
 import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
@@ -30,6 +31,7 @@ import {
   updateLinkedEntityFromBlock,
 } from '@mnemonify/schema/linked-entities.js';
 import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transfer.js';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -69,7 +71,7 @@ function RedoIcon() {
   );
 }
 
-export default function CourseEditor() {
+export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -130,10 +132,13 @@ export default function CourseEditor() {
   const [canRedo, setCanRedo] = useState(false);
 
   useEffect(() => {
+    if (!featureFlags.glossary) return undefined;
     api.listGlossaries().then(setLibraryGlossaries).catch((error) => console.warn('[course-editor] could not load glossary library:', error));
-  }, []);
+    return undefined;
+  }, [featureFlags.glossary]);
 
   useEffect(() => {
+    if (!featureFlags.glossary) return undefined;
     const glossaryId = course?.course_json?.meta?.glossary_id;
     if (!glossaryId) {
       setLibraryGlossaryTerms([]);
@@ -149,7 +154,7 @@ export default function CourseEditor() {
       }
     });
     return () => { cancelled = true; };
-  }, [course?.course_json?.meta?.glossary_id]);
+  }, [course?.course_json?.meta?.glossary_id, featureFlags.glossary]);
 
   useEffect(() => {
     api.getCourse(id).then((c) => {
@@ -262,6 +267,7 @@ export default function CourseEditor() {
   }
 
   async function openVersionHistory() {
+    if (!featureFlags.versionHistory) return;
     setShowVersionHistory(true);
     const saved = await saveNow();
     if (!saved) {
@@ -272,6 +278,7 @@ export default function CourseEditor() {
   }
 
   async function handleSaveVersion(name) {
+    if (!featureFlags.versionHistory) return;
     const saved = await saveNow();
     if (!saved) throw new Error('The current course could not be saved, so no snapshot was created.');
     const version = await api.createCourseVersion(course.id, { name });
@@ -279,6 +286,7 @@ export default function CourseEditor() {
   }
 
   async function handleRestoreVersion(version) {
+    if (!featureFlags.versionHistory) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     const result = await api.restoreCourseVersion(course.id, version.version_id);
     courseRef.current = result.course;
@@ -474,16 +482,19 @@ export default function CourseEditor() {
   }
 
   function handleChangeGlossaryTerms(newTerms, options = { forceSnapshot: false }) {
+    if (!featureFlags.glossary) return;
     updateCourseJson((json) => ({ ...json, glossary_terms: newTerms }), options);
   }
 
   async function handleCreateGlossary(name) {
+    if (!featureFlags.glossary) return null;
     const glossary = await api.createGlossary({ name });
     setLibraryGlossaries((current) => [...current, glossary].sort((a, b) => a.name.localeCompare(b.name)));
     return glossary;
   }
 
   async function handlePublishGlossaryTerm(term) {
+    if (!featureFlags.glossary) return;
     const glossaryId = courseRef.current.course_json.meta?.glossary_id;
     if (!glossaryId) throw new Error('Attach a library glossary before publishing a term.');
     const libraryTerm = await api.publishGlossaryTerm(glossaryId, { term: term.term, definition: term.definition });
@@ -502,14 +513,17 @@ export default function CourseEditor() {
   }
 
   function handleApplyGlossarySuggestion(suggestion) {
+    if (!featureFlags.glossary) return;
     updateCourseJson((json) => applyGlossarySuggestion(json, suggestion), { forceSnapshot: true });
   }
 
   function handleImportBank({ payload, mode, targetBankId }) {
+    if (!featureFlags.bankImportExport) return;
     updateCourseJson((json) => importNativeQuestionBank(json, payload, { mode, targetBankId }).course, { forceSnapshot: true });
   }
 
   function requestLinkedEdit({ entityId, usage, updated }) {
+    if (!featureFlags.linkedQuestions) return;
     const usages = findLinkedUsages(courseRef.current.course_json, entityId);
     setPendingLinkedEdit({ entityId, usage, updated, usages });
   }
@@ -545,6 +559,7 @@ export default function CourseEditor() {
   }
 
   function handleRequestLinkedQuestionDelete({ entityId, usage }) {
+    if (!featureFlags.linkedQuestions) return;
     requestLinkedDelete({ entityId, usage });
   }
 
@@ -565,6 +580,7 @@ export default function CourseEditor() {
   }
 
   function handleLinkBlockToBank(pageId, blockId, bankId) {
+    if (!featureFlags.linkedQuestions) return;
     updateCourseJson((json) => linkBlockToBank(json, pageId, blockId, bankId).course, { forceSnapshot: true });
   }
 
@@ -1149,9 +1165,7 @@ export default function CourseEditor() {
           ]}
         />
 
-        <button type="button" className="btn" onClick={openVersionHistory}>
-          Version History
-        </button>
+        <VersionHistoryButton onClick={openVersionHistory} featureFlags={featureFlags} />
 
         {findings.length > 0 && (
           <button
@@ -1188,7 +1202,7 @@ export default function CourseEditor() {
 
       {showTour && <OnboardingTour onComplete={handleTourComplete} />}
 
-      {showVersionHistory && (
+      {featureFlags.versionHistory && showVersionHistory && (
         <VersionHistoryModal
           versions={courseVersions}
           loading={versionHistoryLoading}
@@ -1233,23 +1247,25 @@ export default function CourseEditor() {
         />
       )}
 
-      {pendingLinkedEdit && (
+      {featureFlags.linkedQuestions && pendingLinkedEdit && (
         <LinkedEntityPrompt
           mode="edit"
           usages={pendingLinkedEdit.usages}
           onConfirm={confirmLinkedEdit}
           onDetach={detachLinkedEdit}
           onCancel={() => setPendingLinkedEdit(null)}
+          featureFlags={featureFlags}
         />
       )}
 
-      {pendingLinkedDelete && (
+      {featureFlags.linkedQuestions && pendingLinkedDelete && (
         <LinkedEntityPrompt
           mode="delete"
           usages={pendingLinkedDelete.usages}
           onConfirm={deleteLinkedEntityEverywhere}
           onDetach={unlinkDeletedUsage}
           onCancel={() => setPendingLinkedDelete(null)}
+          featureFlags={featureFlags}
         />
       )}
 
@@ -1342,6 +1358,7 @@ export default function CourseEditor() {
                 onCopyBlockToPage={handleCopyBlockToPage}
                 questionBanks={json.question_banks || []}
                 onLinkBlockToBank={handleLinkBlockToBank}
+                featureFlags={featureFlags}
               />
             )
           )}
@@ -1377,6 +1394,7 @@ export default function CourseEditor() {
               onLinkBlockToBank={handleLinkBlockToBank}
               onRequestLinkedQuestionEdit={handleRequestLinkedQuestionEdit}
               onRequestLinkedQuestionDelete={handleRequestLinkedQuestionDelete}
+              featureFlags={featureFlags}
               onRenameVariable={renameVariable}
               onUpdateCourseAsset={handleUpdateCourseAsset}
               onAddCourseAssets={handleAddCourseAssets}

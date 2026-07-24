@@ -16,6 +16,7 @@ import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import ObjectivesPanel from './ObjectivesPanel.jsx';
 import GlossaryPanel from './GlossaryPanel.jsx';
 import StyledSelect from './StyledSelect.jsx';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -317,7 +318,7 @@ function AdvancedSection({ blockId, children }) {
   );
 }
 
-const COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Glossary', 'Question Banks', 'Course Health'];
+const BASE_COURSE_LEVEL_TABS = ['Course', 'Page', 'Player', 'Variables', 'Objectives', 'Question Banks', 'Course Health'];
 
 // Course-level settings area (Step 1: "accessible from the course-level
 // settings area (alongside where Course Settings, header/footer, etc.
@@ -363,15 +364,19 @@ export default function SettingsPanel({
   onCreateGlossary,
   onPublishGlossaryTerm,
   onApplyGlossarySuggestion,
+  featureFlags = FEATURE_FLAGS,
 }) {
   const errorCount = (findings || []).filter((f) => f.severity === 'error').length;
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
+  const courseLevelTabs = featureFlags.glossary
+    ? [...BASE_COURSE_LEVEL_TABS.slice(0, 5), 'Glossary', ...BASE_COURSE_LEVEL_TABS.slice(5)]
+    : BASE_COURSE_LEVEL_TABS;
 
   if (!selectedBlock) {
     return (
       <aside className="settings-panel">
         <div className="settings-panel__tabs">
-          {COURSE_LEVEL_TABS.map((tab) => (
+          {courseLevelTabs.map((tab) => (
             <button
               key={tab}
               type="button"
@@ -408,7 +413,7 @@ export default function SettingsPanel({
           <VariableManagerPanel variables={variables} courseJson={{ pages }} onChangeVariables={onChangeVariables} onRenameVariable={onRenameVariable} />
         ) : activeTab === 'Objectives' ? (
           <ObjectivesPanel objectives={meta.objectives || []} onChange={(objectives) => onChangeMeta({ ...meta, objectives })} />
-        ) : activeTab === 'Glossary' ? (
+        ) : activeTab === 'Glossary' && featureFlags.glossary ? (
           <GlossaryPanel
             courseJson={courseJson}
             meta={meta}
@@ -419,6 +424,7 @@ export default function SettingsPanel({
             onCreateGlossary={onCreateGlossary}
             onPublishTerm={onPublishGlossaryTerm}
             onApplySuggestion={onApplyGlossarySuggestion}
+            featureFlags={featureFlags}
           />
         ) : activeTab === 'Question Banks' ? (
           <QuestionBankManagerPanel
@@ -431,6 +437,7 @@ export default function SettingsPanel({
             onLinkBlockToBank={onLinkBlockToBank}
             onRequestLinkedQuestionEdit={onRequestLinkedQuestionEdit}
             onRequestLinkedQuestionDelete={onRequestLinkedQuestionDelete}
+            featureFlags={featureFlags}
             onAddCourseAssets={onAddCourseAssets}
             onUpdateCourseAsset={onUpdateCourseAsset}
             variables={variables}

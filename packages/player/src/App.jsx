@@ -19,6 +19,7 @@ import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
 import { effectiveGlossaryTerms } from '@mnemonify/schema/glossary.js';
 import { GlossaryContext } from './blocks/RichText.jsx';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -50,7 +51,7 @@ function isDesktopViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches;
 }
 
-export default function App() {
+export default function App({ featureFlags = FEATURE_FLAGS }) {
   const [course, setCourse] = useState(null);
   const [courseResources, setCourseResources] = useState([]);
   const [variables, setVariables] = useState({});
@@ -168,7 +169,7 @@ export default function App() {
       let restoredInteractionStates = {};
       let restoredQuestionBankDraws = {};
       let restoredInteractionStatePayload = {};
-      let restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] });
+      let restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] }) : [];
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -191,7 +192,7 @@ export default function App() {
           restoredPageId = printPageId || loadedCourse.pages[0].page_id;
           restoredScoreState = createScoreState(loadedCourse);
           restoredInteractionStates = {};
-          restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] });
+          restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] }) : [];
         } else {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
@@ -203,7 +204,7 @@ export default function App() {
             loadedCourse = await response.json();
             if (cancelled) return;
 
-            restoredGlossaryTerms = await fetchEffectiveGlossaryTerms(loadedCourse, contentServerUrl);
+            restoredGlossaryTerms = featureFlags.glossary ? await fetchEffectiveGlossaryTerms(loadedCourse, contentServerUrl, featureFlags) : [];
 
             const suspend = await scorm2004.getSuspendData();
             learnerId = await scorm2004.getLearnerId();
@@ -229,7 +230,7 @@ export default function App() {
         restoredInteractionStates = {};
         restoredQuestionBankDraws = {};
         restoredInteractionStatePayload = {};
-        restoredGlossaryTerms = effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] });
+        restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] }) : [];
       }
 
       // Published documents store linked usages without duplicate content.
@@ -476,10 +477,12 @@ export default function App() {
   }, [course, variables, currentPageId, completedPageIds, scoreState, interactionStates, questionBankDraws]);
 
   function handleOpenModal(payload) {
+    if (payload?.type === 'glossary' && !featureFlags.glossary) return;
     setModalPayload(payload);
   }
 
   function handleOpenGlossary() {
+    if (!featureFlags.glossary) return;
     setModalPayload({ type: 'glossary', terms: glossaryTerms, ariaLabel: 'Course glossary' });
   }
 
@@ -670,7 +673,7 @@ export default function App() {
   const continueDisabled = page.continue_gate ? !evaluateCondition(page.continue_gate, playerVariables) : false;
 
   return (
-    <GlossaryContext.Provider value={{ terms: glossaryTerms, onOpenGlossary: handleOpenGlossary }}>
+    <GlossaryContext.Provider value={{ terms: featureFlags.glossary ? glossaryTerms : [], onOpenGlossary: featureFlags.glossary ? handleOpenGlossary : null, featureFlags }}>
     <div className="player-shell">
       <TopBar
         courseTitle={course.meta.title}
@@ -745,13 +748,14 @@ export default function App() {
         onJumpToPage={handleJumpToPage}
         layout="bottom"
       />
-      <Modal payload={modalPayload} onClose={handleCloseModal} />
+      <Modal payload={modalPayload} onClose={handleCloseModal} featureFlags={featureFlags} />
     </div>
     </GlossaryContext.Provider>
   );
 }
 
-async function fetchEffectiveGlossaryTerms(course, contentServerUrl) {
+async function fetchEffectiveGlossaryTerms(course, contentServerUrl, featureFlags = FEATURE_FLAGS) {
+  if (!featureFlags.glossary) return [];
   const localTerms = course?.glossary_terms || [];
   if (!course?.meta?.glossary_id) return effectiveGlossaryTerms({ courseTerms: localTerms });
   try {

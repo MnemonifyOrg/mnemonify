@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import RichText from '../blocks/RichText.jsx';
 import { filterGlossaryTerms } from './glossary.js';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
-export default function GlossaryPayload({ payload }) {
+export default function GlossaryPayload({ payload, featureFlags = FEATURE_FLAGS }) {
   const [query, setQuery] = useState('');
   const terms = useMemo(() => filterGlossaryTerms(payload.terms || [], query), [payload.terms, query]);
+  if (!featureFlags.glossary) return null;
   return (
     <div className="glossary-payload">
       <h2>Glossary</h2>

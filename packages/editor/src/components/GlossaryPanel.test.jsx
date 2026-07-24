@@ -23,6 +23,7 @@ describe('glossary authoring panel', () => {
         onCreateGlossary={() => {}}
         onPublishTerm={() => {}}
         onApplySuggestion={() => {}}
+        featureFlags={{ glossary: true }}
       />
     );
     expect(html).toContain('Attached library glossary');
@@ -33,8 +34,13 @@ describe('glossary authoring panel', () => {
   });
 
   it('keeps the no-glossary empty state graceful', () => {
-    const html = renderToStaticMarkup(<GlossaryPanel courseJson={{ glossary_terms: [], pages: [] }} meta={{}} onChangeMeta={() => {}} onChangeTerms={() => {}} />);
+    const html = renderToStaticMarkup(<GlossaryPanel courseJson={{ glossary_terms: [], pages: [] }} meta={{}} onChangeMeta={() => {}} onChangeTerms={() => {}} featureFlags={{ glossary: true }} />);
     expect(html).toContain('No course-specific terms yet.');
     expect(html).toContain('No unreviewed glossary matches found.');
+  });
+
+  it('renders no glossary UI when the feature flag is off', () => {
+    const html = renderToStaticMarkup(<GlossaryPanel courseJson={courseJson} meta={{}} featureFlags={{ glossary: false }} />);
+    expect(html).toBe('');
   });
 });

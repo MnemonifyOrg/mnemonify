@@ -9,6 +9,7 @@ import GenericBlockPreview from './GenericBlockPreview.jsx';
 import BlockPickerModal from './BlockPickerModal.jsx';
 import MoveCopyBlockModal from './MoveCopyBlockModal.jsx';
 import LinkToBankModal from './LinkToBankModal.jsx';
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 // Phase 4.6 Step 3: a between-block "+" insertion point. Always present in
 // the DOM (not conditionally rendered only on hover) so it's a real button
@@ -54,6 +55,7 @@ function BlockWrapper({
   onCopyBlockToPage,
   questionBanks,
   onLinkBlockToBank,
+  featureFlags = FEATURE_FLAGS,
 }) {
   const Editor = BLOCK_EDITORS[block.type] || GenericBlockPreview;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.block_id });
@@ -81,7 +83,7 @@ function BlockWrapper({
         <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
           ⠿
         </span>
-        {!block.linked_entity_id && (
+        {featureFlags.linkedQuestions && !block.linked_entity_id && (
           <span
             className="block-wrapper__bank-drag"
             draggable
@@ -117,7 +119,7 @@ function BlockWrapper({
         >
           ⎘
         </button>
-        {!block.linked_entity_id && questionBanks?.length > 0 && (
+        {featureFlags.linkedQuestions && !block.linked_entity_id && questionBanks?.length > 0 && (
           <button
             className="btn-text"
             title="Add to bank"
@@ -175,7 +177,7 @@ function BlockWrapper({
           }}
         />
       )}
-      {linkBankOpen && (
+      {featureFlags.linkedQuestions && linkBankOpen && (
         <LinkToBankModal
           questionBanks={questionBanks}
           onClose={() => setLinkBankOpen(false)}
@@ -208,6 +210,7 @@ export default function BlockCanvas({
   onCopyBlockToPage,
   questionBanks,
   onLinkBlockToBank,
+  featureFlags = FEATURE_FLAGS,
 }) {
   // null = closed; a number = open, inserting at that block index.
   const [pickerInsertIndex, setPickerInsertIndex] = useState(null);
@@ -249,6 +252,7 @@ export default function BlockCanvas({
                 onCopyBlockToPage={onCopyBlockToPage}
                 questionBanks={questionBanks}
                 onLinkBlockToBank={onLinkBlockToBank}
+                featureFlags={featureFlags}
               />
               <InsertionPoint index={index + 1} onInsert={setPickerInsertIndex} />
             </Fragment>

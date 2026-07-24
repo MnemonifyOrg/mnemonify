@@ -48,6 +48,7 @@ describe('question bank editor redesign', () => {
         objectives={[]}
         variables={[]}
         assets={[]}
+        featureFlags={{ versionHistory: true, glossary: true, bankImportExport: true, linkedQuestions: true }}
         onChangeQuestionBanks={() => {}}
       />
     );

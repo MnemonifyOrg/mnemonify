@@ -1,10 +1,13 @@
+import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
+
 function usageLabel(usage) {
   return usage.kind === 'page'
     ? `Page: ${usage.label} (${usage.block_id})`
     : `Question bank: ${usage.label} (${usage.question_id})`;
 }
 
-export default function LinkedEntityPrompt({ mode, usages = [], onConfirm, onDetach, onCancel }) {
+export default function LinkedEntityPrompt({ mode, usages = [], onConfirm, onDetach, onCancel, featureFlags = FEATURE_FLAGS }) {
+  if (!featureFlags.linkedQuestions) return null;
   const isEdit = mode === 'edit';
   return (
     <div className="modal-overlay" role="presentation">

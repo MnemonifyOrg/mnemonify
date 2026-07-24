@@ -12,6 +12,7 @@ const usages = [
   { kind: 'page', page_id: 'pg_one', block_id: 'blk_one', label: 'Case 1' },
   { kind: 'bank', bank_id: 'bnk_one', question_id: 'bq_one', label: 'Case bank' },
 ];
+const linkedQuestionsOn = { versionHistory: true, glossary: true, bankImportExport: true, linkedQuestions: true };
 
 describe('linked question authoring controls', () => {
   it('offers an existing bank for the Add to bank action', () => {
@@ -22,7 +23,7 @@ describe('linked question authoring controls', () => {
   });
 
   it('uses the same explicit prompt for confirmed propagation or instance-only detachment', () => {
-    const html = renderToStaticMarkup(<LinkedEntityPrompt mode="edit" usages={usages} onConfirm={() => {}} onDetach={() => {}} onCancel={() => {}} />);
+    const html = renderToStaticMarkup(<LinkedEntityPrompt mode="edit" usages={usages} onConfirm={() => {}} onDetach={() => {}} onCancel={() => {}} featureFlags={linkedQuestionsOn} />);
     expect(html).toContain('Update all usages');
     expect(html).toContain('Keep this instance only');
     expect(html).toContain('Page: Case 1');
@@ -38,13 +39,14 @@ describe('linked question authoring controls', () => {
         assets={[]}
         onChangeQuestionBanks={() => {}}
         onLinkBlockToBank={() => {}}
+        featureFlags={linkedQuestionsOn}
       />
     );
     expect(html).toContain('Drop a question block here to link it to');
   });
 
   it('offers unlink and delete-everywhere outcomes for linked deletion', () => {
-    const html = renderToStaticMarkup(<LinkedEntityPrompt mode="delete" usages={usages} onConfirm={() => {}} onDetach={() => {}} onCancel={() => {}} />);
+    const html = renderToStaticMarkup(<LinkedEntityPrompt mode="delete" usages={usages} onConfirm={() => {}} onDetach={() => {}} onCancel={() => {}} featureFlags={linkedQuestionsOn} />);
     expect(html).toContain('Unlink this instance');
     expect(html).toContain('Delete everywhere');
   });

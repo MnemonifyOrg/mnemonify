@@ -4,7 +4,7 @@ import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 
 export const GlossaryContext = createContext({ terms: [], onOpenGlossary: null, featureFlags: FEATURE_FLAGS });
 
-const TAG_MAP = { b: 'b', strong: 'strong', i: 'i', em: 'em', u: 'u', sup: 'sup', sub: 'sub' };
+const TAG_MAP = { b: 'b', strong: 'strong', i: 'i', em: 'em', u: 'u', sup: 'sup', sub: 'sub', ul: 'ul', ol: 'ol', li: 'li' };
 const VARIABLE_TOKEN_PATTERN = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 
 export function interpolateText(value, variables = {}) {
@@ -32,6 +32,9 @@ function renderNodes(nodes, variables) {
           {renderNodes(node.children, variables)}
         </span>
       );
+    }
+    if (node.type === 'align') {
+      return <span key={i} style={{ display: 'block', textAlign: node.align }}>{renderNodes(node.children, variables)}</span>;
     }
     const Tag = TAG_MAP[node.type] || 'span';
     return <Tag key={i}>{renderNodes(node.children, variables)}</Tag>;

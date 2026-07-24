@@ -107,8 +107,13 @@ input:focus-visible {
   font-size: var(--text-base);
   color: var(--color-text-primary);
 }
-.block-text p {
+.block-text__body {
   margin: 0;
+}
+.block-text__body ul,
+.block-text__body ol {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
 }
 .block-text__asset-link {
   color: var(--color-primary);

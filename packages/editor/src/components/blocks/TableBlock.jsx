@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import EditableRichField from './EditableRichField.jsx';
+import RichTextToolbar from '../RichTextToolbar.jsx';
 import { CELL_TAGS, escapeHtml } from '../../lib/richText.js';
 
 const BLUR_HIDE_DELAY_MS = 150;
@@ -34,6 +35,8 @@ export default function TableBlockEditor({ block, onChange }) {
   const { caption = '', has_header_row: hasHeaderRow, has_header_col: hasHeaderCol, rows = [] } = block.content;
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
+  const activeFieldRef = useRef(null);
+  const selectionRef = useRef(null);
   const [toolbarPos, setToolbarPos] = useState(null);
 
   function setContent(patch, options) {
@@ -85,6 +88,7 @@ export default function TableBlockEditor({ block, onChange }) {
   }
 
   function handleFieldFocus(e) {
+    activeFieldRef.current = e.currentTarget;
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
@@ -98,27 +102,18 @@ export default function TableBlockEditor({ block, onChange }) {
     blurTimeoutRef.current = setTimeout(() => setToolbarPos(null), BLUR_HIDE_DELAY_MS);
   }
 
-  function format(command) {
-    document.execCommand(command);
-  }
-
   return (
     <div className="table-block-editor" ref={containerRef} style={{ position: 'relative' }}>
       {toolbarPos && (
-        <div className="rich-text-toolbar table-block-editor__toolbar" style={{ top: toolbarPos.top, left: toolbarPos.left }}>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('bold')}>
-            <strong>B</strong>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('italic')}>
-            <em>I</em>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
-            X<sup>2</sup>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
-            X<sub>2</sub>
-          </button>
-        </div>
+        <RichTextToolbar
+          className="table-block-editor__toolbar"
+          fieldRef={activeFieldRef}
+          selectionRef={selectionRef}
+          enableColor={false}
+          enableLists={false}
+          enableAlignment={false}
+          style={{ top: toolbarPos.top, left: toolbarPos.left, position: 'absolute' }}
+        />
       )}
       <input
         className="input table-block-editor__caption"
@@ -146,6 +141,7 @@ export default function TableBlockEditor({ block, onChange }) {
                           : 'table-block-editor__cell'
                       }
                       value={cell}
+                      selectionRef={selectionRef}
                       onFocus={handleFieldFocus}
                       onBlur={handleFieldBlur}
                       onCommit={(html) => updateCell(rowIndex, colIndex, html)}

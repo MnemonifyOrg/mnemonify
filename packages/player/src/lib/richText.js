@@ -13,39 +13,30 @@
 // import), since neither package depends on the other and this file has
 // zero dependencies of its own (pure DOM API, no React).
 
-export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN']);
-// Curated text-color palette (item 8) -- deliberately NOT an open color
-// picker, a fixed set applied via document.execCommand('foreColor', ...).
-// Each non-null value is pre-verified against the light default background
-// (#FFFFFF); two (Emerald, Coral) are darkened from their raw --mn-* brand
-// token because the token itself falls short of 4.5:1 on white -- see
-// DECISIONS.md for the exact measured ratios, including why a single fixed
-// hex cannot also clear 4.5:1 against a dark-navy background (mathematically
-// impossible for these two background extremes at once; DECISIONS.md has
-// the proof) and why that's acceptable given headings/text never actually
-// render against a dark-navy background anywhere in this app today.
-export const TEXT_COLORS = [
-  { name: 'Default', value: null },
-  { name: 'Primary Blue', value: '#2563EB' },
-  { name: 'Violet', value: '#6D28D9' },
-  { name: 'Emerald', value: '#127D59' },
-  { name: 'Coral', value: '#A82424' },
-  { name: 'Deep Navy', value: '#0A1020' },
-];
-const TEXT_COLOR_VALUES = new Set(TEXT_COLORS.map((c) => c.value?.toLowerCase()).filter(Boolean));
-
+export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN', 'UL', 'OL', 'LI']);
 // DOM-normalizes an inline color (the browser reports `node.style.color` as
 // `rgb(r, g, b)` even when the HTML source said `#rrggbb`) back to lowercase
-// hex so it can be checked against TEXT_COLOR_VALUES.
+// hex. Arbitrary valid hex values are safe to preserve; style attributes and
+// malformed values are never copied through the sanitizer.
 function normalizeColorToHex(colorStr) {
   if (!colorStr) return null;
   const trimmed = colorStr.trim();
-  const hexMatch = /^#([0-9a-f]{6})$/i.exec(trimmed);
-  if (hexMatch) return `#${hexMatch[1].toLowerCase()}`;
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
+  if (hexMatch) {
+    const value = hexMatch[1].length === 3
+      ? hexMatch[1].split('').map((character) => character + character).join('')
+      : hexMatch[1];
+    return `#${value.toLowerCase()}`;
+  }
   const rgbMatch = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/i.exec(trimmed);
   if (!rgbMatch) return null;
   const toHex = (n) => Number(n).toString(16).padStart(2, '0');
   return `#${toHex(rgbMatch[1])}${toHex(rgbMatch[2])}${toHex(rgbMatch[3])}`;
+}
+
+function normalizeTextAlign(value) {
+  const normalized = String(value || '').toLowerCase().trim();
+  return ['center', 'right', 'justify'].includes(normalized) ? normalized : null;
 }
 // Narrower allowlist for table cells (ARCHITECTURE.md 3.7: "Cell content is
 // plain text only" -- sup/sub is the original deliberate, narrow exception;
@@ -69,19 +60,21 @@ function nodeToAst(node, allowedTags) {
   // (e.g. bolded text), execCommand('foreColor', ...) with styleWithCSS
   // attaches the style directly to that element (a <b style="color:...">)
   // rather than wrapping a new span around it -- checked and confirmed by
-  // hand, not assumed. So every element is checked for a valid palette
-  // color here, before the tag-specific handling below, and its children
-  // wrapped in a color node regardless of which tag actually carried the
-  // style. Validated against the fixed TEXT_COLOR_VALUES allowlist rather
-  // than copied through, so this doesn't reopen the "no attribute is ever
-  // copied" invariant to arbitrary style/injection payloads: an element
-  // with no color, or a color outside the curated palette (e.g. from a
-  // paste), contributes nothing extra here.
+  // hand, not assumed. So every element is checked for a valid color here,
+  // before the tag-specific handling below, and its children wrapped in a
+  // color node regardless of which tag actually carried the style. Values
+  // are normalized to hex rather than copied through, so this doesn't reopen
+  // the "no attribute is ever copied" invariant to arbitrary CSS payloads.
   if (allowedTags.has('SPAN')) {
     const hex = normalizeColorToHex(node.style?.color || '');
-    if (hex && TEXT_COLOR_VALUES.has(hex)) {
+    if (hex) {
       children = [{ type: 'span', color: hex, children }];
     }
+  }
+
+  const alignment = normalizeTextAlign(node.style?.textAlign);
+  if (alignment && (tag === 'DIV' || tag === 'P')) {
+    return [{ type: 'align', align: alignment, children }];
   }
 
   if (tag === 'BR') return allowedTags.has('BR') ? [{ type: 'br' }] : [];
@@ -137,6 +130,7 @@ function astToHtml(ast) {
       if (node.type === 'text') return escapeHtml(node.value);
       if (node.type === 'br') return '<br>';
       if (node.type === 'span') return `<span style="color:${node.color}">${astToHtml(node.children)}</span>`;
+      if (node.type === 'align') return `<div style="text-align:${node.align}">${astToHtml(node.children)}</div>`;
       return `<${node.type}>${astToHtml(node.children)}</${node.type}>`;
     })
     .join('');

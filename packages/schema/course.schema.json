@@ -348,7 +348,11 @@
         "id": { "type": "string" },
         "label": { "type": "string", "minLength": 1 },
         "action": { "enum": ["modal", "jump_page"] },
-        "target": { "type": "string" }
+        "target": { "type": "string" },
+        "target_rich_text": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/rich_text_segment" }
+        }
       }
     },
     "resource": {

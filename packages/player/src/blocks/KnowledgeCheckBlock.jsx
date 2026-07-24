@@ -102,14 +102,14 @@ export default function KnowledgeCheckBlock({ block, assets, onTrigger, onOpenMo
   }
 
   if (printMode && worksheetMode) {
-    return <div className="block block-knowledge-check block-knowledge-check--worksheet"><p className="knowledge-check__question"><RichText value={question} variables={variables} /></p><ul className="knowledge-check__options">{options.map((option) => <li key={option.id} className="knowledge-check__worksheet-option">□ <RichText value={option.text} variables={variables} /></li>)}</ul></div>;
+    return <div className="block block-knowledge-check block-knowledge-check--worksheet"><div className="knowledge-check__question"><RichText value={question} variables={variables} /></div><ul className="knowledge-check__options">{options.map((option) => <li key={option.id} className="knowledge-check__worksheet-option">□ <RichText value={option.text} variables={variables} /></li>)}</ul></div>;
   }
   return (
     <div className="block block-knowledge-check">
       <KcImage assetId={questionImageId} assets={assets} onOpenModal={onOpenModal} />
-      <p className="knowledge-check__question">
+      <div className="knowledge-check__question">
 <RichText value={question} variables={variables} />
-      </p>
+      </div>
       <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
         <legend className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}>
           <RichText value={question} variables={variables} />

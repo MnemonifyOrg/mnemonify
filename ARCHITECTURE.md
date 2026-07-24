@@ -88,6 +88,8 @@ Course
 4. **All learner-facing text lives in the JSON**, never hardcoded in the player. This is what makes translation possible.
 5. **Schema is versioned.** "schema_version": 1 at the top. The player refuses or migrates mismatched versions, never guesses.
 6. **include_in_pdf is a block-level boolean.** Defaults by type: true for text, heading, image, list, accordion, tabs, carousel, references; false for knowledge_check, embed, button, interactive_video overlay blocks.
+
+Rich-text fields continue to use the existing segment array. Inline formatting and block-level lists/alignment are stored as sanitized HTML in `html` segments; the editor/player allowlist preserves `ul`, `ol`, `li`, and only `center`, `right`, or `justify` text alignment. No new list/alignment segment type or migration is required, and the player re-sanitizes the HTML before rendering.
 7. **Translations are a parallel content layer.** The translations object at course level holds BCP-47 language codes as keys. Each key maps to a partial course structure with only the content fields that differ. The player merges the selected language over the default content at render time.
 
 ### 3.3 Course meta settings
@@ -787,7 +789,7 @@ Print CSS (@media print) built in Phase 1, used in Phase 5. Rules: navigation ch
 **Utility bar:**
 - Contact: opens an in-player email modal pre-populated with course name and configured recipient. Author sets email and optional subject prefix in course settings. Optional per course.
 - Resources: opens in-player PDF viewer modal showing course PDFs. Optional per course.
-- Custom items: author-defined label + action (OPEN_MODAL with content payload or JUMP_TO_PAGE). No external links.
+- Custom items: author-defined label + action (OPEN_MODAL with content payload or JUMP_TO_PAGE). Modal items retain the legacy required `target` string and may additionally carry `target_rich_text`, an optional rich-text segment array used when the author formats the message. The player prefers `target_rich_text` and falls back to the legacy string, so existing courses require no migration. No external links.
 - Mobile: utility items render in a persistent bottom bar. Max 4 visible; scrolls horizontally beyond 4.
 - If no utility items are configured, utility bar does not render at all.
 

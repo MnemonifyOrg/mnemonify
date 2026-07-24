@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import EditableRichField from './EditableRichField.jsx';
+import RichTextToolbar from '../RichTextToolbar.jsx';
 import { genOptionId } from '../../lib/idGen.js';
-import VariablePicker from '../VariablePicker.jsx';
 import { insertVariableAtSelection } from '../../lib/richText.js';
 import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
 import { getCorrectOptionIds } from '@mnemonify/schema/knowledge-check.js';
@@ -286,10 +286,6 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
     blurTimeoutRef.current = setTimeout(() => setToolbarPos(null), BLUR_HIDE_DELAY_MS);
   }
 
-  function format(command) {
-    document.execCommand(command);
-  }
-
   function insertVariable(name) {
     insertVariableAtSelection(activeFieldRef, selectionRef, name);
   }
@@ -308,27 +304,15 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       )}
       <KnowledgeCheckModeControls block={block} onChange={onChange} />
       {toolbarPos && (
-        <div
-          className="rich-text-toolbar knowledge-check-block-editor__toolbar"
-          style={{ top: toolbarPos.top, left: toolbarPos.left }}
-        >
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('bold')}>
-            <strong>B</strong>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('italic')}>
-            <em>I</em>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('underline')}>
-            <u>U</u>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
-            X<sup>2</sup>
-          </button>
-          <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
-            X<sub>2</sub>
-          </button>
-          <VariablePicker variables={variables} onInsert={insertVariable} />
-        </div>
+        <RichTextToolbar
+          className="knowledge-check-block-editor__toolbar"
+          fieldRef={activeFieldRef}
+          selectionRef={selectionRef}
+          variables={variables}
+          onInsert={insertVariable}
+          enableColor
+          style={{ top: toolbarPos.top, left: toolbarPos.left, position: 'absolute' }}
+        />
       )}
 
       <EditableRichField

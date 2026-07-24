@@ -5,6 +5,13 @@
 // existing generic "Unsupported content." fallback can't carry a
 // caller-specific message, and a placeholder is real enough content to
 // deserve its own tiny payload type rather than a hack on `iframe`.
+import RichText from '../../blocks/RichText.jsx';
+
 export default function MessagePayload({ payload }) {
-  return <p className="modal-payload__message">{payload.message}</p>;
+  const value = payload.richText || [{ t: 'text', v: String(payload.message || '') }];
+  return (
+    <div className="modal-payload__message">
+      <RichText value={value} />
+    </div>
+  );
 }

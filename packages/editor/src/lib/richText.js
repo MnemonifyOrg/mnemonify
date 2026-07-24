@@ -13,20 +13,13 @@
 // import), since neither package depends on the other and this file has
 // zero dependencies of its own (pure DOM API, no React).
 
-export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN']);
+export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN', 'UL', 'OL', 'LI']);
 const VARIABLE_TOKEN_PATTERN = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 const SEGMENT_MARKER_PREFIX = '\uE000MNEMONIFY_SEG_';
 const VARIABLE_MARKER_SUFFIX = '\uE001';
-// Curated text-color palette (item 8) -- deliberately NOT an open color
-// picker, a fixed set applied via document.execCommand('foreColor', ...).
-// Each non-null value is pre-verified against the light default background
-// (#FFFFFF); two (Emerald, Coral) are darkened from their raw --mn-* brand
-// token because the token itself falls short of 4.5:1 on white -- see
-// DECISIONS.md for the exact measured ratios, including why a single fixed
-// hex cannot also clear 4.5:1 against a dark-navy background (mathematically
-// impossible for these two background extremes at once; DECISIONS.md has
-// the proof) and why that's acceptable given headings/text never actually
-// render against a dark-navy background anywhere in this app today.
+// Presets for the Word-style text-color picker. Authors may also choose a
+// custom hex value; the sanitizer still normalizes every color and never
+// copies arbitrary style text or attributes through to stored content.
 export const TEXT_COLORS = [
   { name: 'Default', value: null },
   { name: 'Primary Blue', value: '#2563EB' },
@@ -34,21 +27,75 @@ export const TEXT_COLORS = [
   { name: 'Emerald', value: '#127D59' },
   { name: 'Coral', value: '#A82424' },
   { name: 'Deep Navy', value: '#0A1020' },
+  { name: 'Slate', value: '#344054' },
+  { name: 'Gray', value: '#667085' },
+  { name: 'Light Blue', value: '#175CD3' },
+  { name: 'Sky', value: '#026AA2' },
+  { name: 'Teal', value: '#0E7A8A' },
+  { name: 'Green', value: '#067647' },
+  { name: 'Lime', value: '#3F6212' },
+  { name: 'Amber', value: '#B54708' },
+  { name: 'Orange', value: '#C4320A' },
+  { name: 'Red', value: '#B42318' },
+  { name: 'Rose', value: '#C01048' },
+  { name: 'Pink', value: '#C11574' },
+  { name: 'Magenta', value: '#9E165F' },
+  { name: 'Purple', value: '#6941C6' },
+  { name: 'Indigo', value: '#3538CD' },
 ];
-const TEXT_COLOR_VALUES = new Set(TEXT_COLORS.map((c) => c.value?.toLowerCase()).filter(Boolean));
 
 // DOM-normalizes an inline color (the browser reports `node.style.color` as
 // `rgb(r, g, b)` even when the HTML source said `#rrggbb`) back to lowercase
-// hex so it can be checked against TEXT_COLOR_VALUES.
-function normalizeColorToHex(colorStr) {
+// hex before it is stored.
+export function normalizeColorToHex(colorStr) {
   if (!colorStr) return null;
   const trimmed = colorStr.trim();
-  const hexMatch = /^#([0-9a-f]{6})$/i.exec(trimmed);
-  if (hexMatch) return `#${hexMatch[1].toLowerCase()}`;
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
+  if (hexMatch) {
+    const value = hexMatch[1].length === 3
+      ? hexMatch[1].split('').map((character) => character + character).join('')
+      : hexMatch[1];
+    return `#${value.toLowerCase()}`;
+  }
   const rgbMatch = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/i.exec(trimmed);
   if (!rgbMatch) return null;
   const toHex = (n) => Number(n).toString(16).padStart(2, '0');
   return `#${toHex(rgbMatch[1])}${toHex(rgbMatch[2])}${toHex(rgbMatch[3])}`;
+}
+
+function hexToRgb(hex) {
+  const normalized = normalizeColorToHex(hex);
+  if (!normalized) return null;
+  return [1, 3, 5].map((index) => Number.parseInt(normalized.slice(index, index + 2), 16));
+}
+
+function relativeLuminance(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const channels = rgb.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+export function contrastRatio(foreground, background = '#FFFFFF') {
+  const foregroundLuminance = relativeLuminance(foreground);
+  const backgroundLuminance = relativeLuminance(background);
+  if (foregroundLuminance === null || backgroundLuminance === null) return null;
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function isLowContrast(foreground, background = '#FFFFFF') {
+  const ratio = contrastRatio(foreground, background);
+  return ratio !== null && ratio < 4.5;
+}
+
+function normalizeTextAlign(value) {
+  const normalized = String(value || '').toLowerCase().trim();
+  return ['center', 'right', 'justify'].includes(normalized) ? normalized : null;
 }
 // Narrower allowlist for table cells (ARCHITECTURE.md 3.7: "Cell content is
 // plain text only" -- sup/sub is the original deliberate, narrow exception;
@@ -72,19 +119,21 @@ function nodeToAst(node, allowedTags) {
   // (e.g. bolded text), execCommand('foreColor', ...) with styleWithCSS
   // attaches the style directly to that element (a <b style="color:...">)
   // rather than wrapping a new span around it -- checked and confirmed by
-  // hand, not assumed. So every element is checked for a valid palette
-  // color here, before the tag-specific handling below, and its children
-  // wrapped in a color node regardless of which tag actually carried the
-  // style. Validated against the fixed TEXT_COLOR_VALUES allowlist rather
-  // than copied through, so this doesn't reopen the "no attribute is ever
-  // copied" invariant to arbitrary style/injection payloads: an element
-  // with no color, or a color outside the curated palette (e.g. from a
-  // paste), contributes nothing extra here.
+  // hand, not assumed. So every element is checked for a valid color here,
+  // before the tag-specific handling below, and its children wrapped in a
+  // color node regardless of which tag actually carried the style. Values
+  // are normalized to hex rather than copied through, so this doesn't reopen
+  // the "no attribute is ever copied" invariant to arbitrary CSS payloads.
   if (allowedTags.has('SPAN')) {
     const hex = normalizeColorToHex(node.style?.color || '');
-    if (hex && TEXT_COLOR_VALUES.has(hex)) {
+    if (hex) {
       children = [{ type: 'span', color: hex, children }];
     }
+  }
+
+  const alignment = normalizeTextAlign(node.style?.textAlign);
+  if (alignment && (tag === 'DIV' || tag === 'P')) {
+    return [{ type: 'align', align: alignment, children }];
   }
 
   if (tag === 'BR') return allowedTags.has('BR') ? [{ type: 'br' }] : [];
@@ -191,6 +240,7 @@ function astToHtml(ast) {
       if (node.type === 'text') return escapeHtml(node.value);
       if (node.type === 'br') return '<br>';
       if (node.type === 'span') return `<span style="color:${node.color}">${astToHtml(node.children)}</span>`;
+      if (node.type === 'align') return `<div style="text-align:${node.align}">${astToHtml(node.children)}</div>`;
       return `<${node.type}>${astToHtml(node.children)}</${node.type}>`;
     })
     .join('');
@@ -217,6 +267,10 @@ export function richSegmentsToEditableHtml(value, allowedTags = RICH_TEXT_TAGS) 
     if (segment?.t === 'glossary_link') {
       const termId = escapeHtml(String(segment.term_id || ''));
       return `<span class="rich-glossary-chip" data-mnemonify-glossary-term="${termId}">${escapeHtml(String(segment.v || ''))}</span>`;
+    }
+    if (segment?.t === 'text') {
+      const escaped = escapeHtml(String(segment.v || ''));
+      return allowedTags.has('BR') ? escaped.replace(/\n/g, '<br>') : escaped;
     }
     return sanitizeRichHtml(segment?.v || '', allowedTags);
   }).join('');

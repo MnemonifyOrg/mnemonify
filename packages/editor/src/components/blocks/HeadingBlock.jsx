@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import EditableRichField from './EditableRichField.jsx';
-import TextColorPicker from './TextColorPicker.jsx';
-import VariablePicker from '../VariablePicker.jsx';
+import RichTextToolbar from '../RichTextToolbar.jsx';
 import { insertVariableAtSelection } from '../../lib/richText.js';
 
 // Item 8 asked for a color control "in the toolbar, alongside
@@ -14,32 +13,14 @@ export default function HeadingBlockEditor({ block, onChange, variables = [] }) 
   const ref = useRef(null);
   const selectionRef = useRef(null);
 
-  function format(command) {
-    document.execCommand(command);
-    ref.current?.focus();
-  }
-
   return (
     <div className="heading-block-editor-wrapper">
-      <div className="rich-text-toolbar">
-        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('bold')}>
-          <strong>B</strong>
-        </button>
-        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('italic')}>
-          <em>I</em>
-        </button>
-        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('underline')}>
-          <u>U</u>
-        </button>
-        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('superscript')}>
-          X<sup>2</sup>
-        </button>
-        <button type="button" className="btn-text" onMouseDown={(e) => e.preventDefault()} onClick={() => format('subscript')}>
-          X<sub>2</sub>
-        </button>
-        <TextColorPicker />
-        <VariablePicker variables={variables} onInsert={(name) => insertVariableAtSelection(ref, selectionRef, name)} />
-      </div>
+      <RichTextToolbar
+        fieldRef={ref}
+        selectionRef={selectionRef}
+        variables={variables}
+        onInsert={(name) => insertVariableAtSelection(ref, selectionRef, name)}
+      />
       <EditableRichField
         fieldRef={ref}
         selectionRef={selectionRef}

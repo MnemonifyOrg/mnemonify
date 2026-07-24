@@ -57,7 +57,7 @@ export default function UtilityBar({ utilityBar, resources, courseTitle, onOpenM
         if (item.action === 'jump_page') {
           onJumpToPage(item.target);
         } else {
-          onOpenModal({ type: 'message', message: item.target, ariaLabel: item.label });
+          onOpenModal({ type: 'message', message: item.target, richText: item.target_rich_text, ariaLabel: item.label });
         }
       },
     });

@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { genUtilityItemId } from '../lib/idGen.js';
 import SettingsSection from './SettingsSection.jsx';
+import EditableRichField from './blocks/EditableRichField.jsx';
+import RichTextToolbar from './RichTextToolbar.jsx';
+import { insertVariableAtSelection } from '../lib/richText.js';
 
 function formatFileSize(bytes) {
   if (bytes === null || bytes === undefined) return '';
@@ -157,6 +160,9 @@ function ResourcesSection({ resourcesEnabled, resources, onToggleEnabled, onUplo
 }
 
 function CustomItemRow({ item, pages, onChange, onRemove }) {
+  const messageRef = useRef(null);
+  const messageSelectionRef = useRef(null);
+
   function update(patch) {
     onChange({ ...item, ...patch });
   }
@@ -165,7 +171,9 @@ function CustomItemRow({ item, pages, onChange, onRemove }) {
     // A page_id means nothing as modal text and vice versa -- reset target
     // to a sensible default for the new action rather than carrying over a
     // value that would silently misbehave in the player.
-    onChange({ ...item, action, target: action === 'jump_page' ? pages[0]?.page_id || '' : '' });
+    const next = { ...item, action, target: action === 'jump_page' ? pages[0]?.page_id || '' : '' };
+    delete next.target_rich_text;
+    onChange(next);
   }
 
   return (
@@ -193,12 +201,22 @@ function CustomItemRow({ item, pages, onChange, onRemove }) {
           </select>
         )
       ) : (
-        <input
-          className="input"
-          placeholder="Message shown in the modal"
-          value={item.target}
-          onChange={(e) => update({ target: e.target.value })}
-        />
+        <div className="player-settings__custom-message">
+          <RichTextToolbar
+            fieldRef={messageRef}
+            selectionRef={messageSelectionRef}
+            variables={[]}
+            onInsert={(name) => insertVariableAtSelection(messageRef, messageSelectionRef, name)}
+          />
+          <EditableRichField
+            fieldRef={messageRef}
+            selectionRef={messageSelectionRef}
+            className="editable-field"
+            placeholder="Message shown in the modal"
+            value={item.target_rich_text || (item.target ? [{ t: 'text', v: item.target }] : '')}
+            onCommit={(value) => update({ target_rich_text: Array.isArray(value) ? value : [{ t: 'html', v: value }] })}
+          />
+        </div>
       )}
       <button type="button" className="btn-text" onClick={onRemove}>
         Remove

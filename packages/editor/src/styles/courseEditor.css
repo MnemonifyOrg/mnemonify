@@ -6,6 +6,7 @@
 
 .course-editor__top-bar {
   flex-shrink: 0;
+  margin-right: var(--editor-rail-width);
   height: 56px;
   padding: var(--space-3) var(--space-5);
   align-items: center;
@@ -228,16 +229,15 @@
   padding: var(--space-5);
 }
 
-/* P1-D shell: the rail and drawer are an overlay layer for the new editor
-   information architecture. The legacy inspector remains in the grid until
-   the follow-up settings-migration task moves its content into these drawers. */
+/* P1-D shell: the rail and drawer are an overlay layer for the editor's
+   information architecture. */
 .editor-icon-rail {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   z-index: 150;
-  width: 48px;
+  width: var(--editor-rail-width);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -280,7 +280,7 @@
 .editor-icon-drawer__backdrop,
 .editor-drawer__backdrop {
   position: fixed;
-  inset: 0 48px 0 0;
+  inset: 0 var(--editor-rail-width) 0 0;
   z-index: 140;
   border: 0;
   background: transparent;
@@ -289,12 +289,12 @@
 .editor-drawer {
   position: fixed;
   top: 0;
-  right: 48px;
+  right: var(--editor-rail-width);
   bottom: 0;
   z-index: 145;
   display: flex;
   flex-direction: column;
-  width: min(400px, calc(100vw - 48px));
+  width: min(400px, calc(100vw - var(--editor-rail-width)));
   min-width: 320px;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-subtle);
@@ -2760,6 +2760,13 @@
 .course-editor__publish-button {
   flex: 0 0 auto;
   border-radius: var(--radius-input);
+}
+
+/* The icon rail is intentionally above the canvas, but modal overlays must
+   cover it so dialogs never leave a live strip of editor chrome over their
+   right edge. */
+.course-editor .modal-overlay {
+  z-index: 200;
 }
 
 .course-editor__publish-notice {

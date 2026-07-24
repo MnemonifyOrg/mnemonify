@@ -60,10 +60,9 @@ export default function ObjectivesPanel({
   }
 
   return (
-    <div className="settings-panel__section objectives-panel">
+    <div className="settings-panel__section objectives-panel" aria-label="Objectives">
       {showCourseObjectives && (
         <>
-          <h3>Objectives</h3>
           <p className="settings-panel__hint">
             Create course-level learning objectives, then assign them to modules and questions.
           </p>

@@ -14,7 +14,6 @@ import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import EditorDrawerShell from '../components/EditorDrawerShell.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
-import { VersionHistoryButton } from '../components/FeatureFlaggedControls.jsx';
 import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
 import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
@@ -71,6 +70,35 @@ function RedoIcon() {
       <path d="M21 3v5h-5" />
     </svg>
   );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+function FocusIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5" />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+function TopBarDivider() {
+  return <span className="course-editor__top-bar-divider" aria-hidden="true" />;
 }
 
 export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
@@ -1148,9 +1176,10 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   return (
     <div className="course-editor">
       <header className="top-bar course-editor__top-bar">
-        <button className="btn-text" onClick={handleBack} aria-label="Back to course library">
+        <div className="course-editor__top-bar-left">
+          <button className="btn-text course-editor__back-button" onClick={handleBack} aria-label="Back to course library" title="Back to course library">
           ←
-        </button>
+          </button>
         {editingTitle ? (
           <input
             className="input course-editor__title-input"
@@ -1169,7 +1198,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             {json.meta?.title || 'Untitled Course'}
           </h1>
         )}
-
+        <TopBarDivider />
         <div className="course-editor__history-controls">
           <button
             className="btn-text"
@@ -1190,35 +1219,44 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             <RedoIcon />
           </button>
         </div>
+        <TopBarDivider />
+        </div>
 
+        <div className="course-editor__top-bar-tools">
         <button
           type="button"
-          className="btn"
+          className="btn course-editor__preview-button"
           data-tour="preview-toggle"
           onClick={() => {
             saveNow();
             setPreviewMode((current) => current || 'desktop');
           }}
         >
+          <EyeIcon />
           Preview
         </button>
 
         <button
           type="button"
-          className={focusMode ? 'btn btn-primary' : 'btn'}
+          className={focusMode ? 'btn-text course-editor__icon-button course-editor__icon-button--active' : 'btn-text course-editor__icon-button'}
           onClick={() => setFocusMode((v) => !v)}
           aria-pressed={focusMode}
-          title="Hide the page list to focus on the canvas"
+          aria-label="Focus mode"
+          title="Focus mode"
         >
-          {focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
+          <FocusIcon />
         </button>
 
         <MoreToolsMenu
           dataTour="more-tools"
+          iconOnly
+          ariaLabel="More tools"
+          icon={<MoreIcon />}
           items={[
             { label: 'Image Library', onClick: () => setShowMediaLibrary(true) },
             { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
             { label: 'Export Worksheet', onClick: handleExportWorksheet },
+            featureFlags.versionHistory && { label: 'Version History', onClick: openVersionHistory },
             course.is_template && {
               label: showExportSaving ? 'Saving before export...' : 'Export Word',
               onClick: handleExportWord,
@@ -1226,9 +1264,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             },
           ]}
         />
+        </div>
 
-        <VersionHistoryButton onClick={openVersionHistory} featureFlags={featureFlags} />
-
+        <div className="course-editor__top-bar-right">
         {findings.length > 0 && (
           <button
             type="button"
@@ -1248,13 +1286,14 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           </button>
         )}
 
-        <button className="btn btn-primary" onClick={handlePublish} disabled={publishing}>
-          {publishing ? 'Publishing...' : 'Publish'}
-        </button>
-
         <span className="course-editor__save-status" data-status={saveStatus} data-tour="save-status">
           {saveLabel}
         </span>
+        <TopBarDivider />
+        <button className="btn btn-primary course-editor__publish-button" onClick={handlePublish} disabled={publishing}>
+          {publishing ? 'Publishing...' : 'Publish'}
+        </button>
+        </div>
       </header>
 
       {publishNotice && (

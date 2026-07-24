@@ -91,7 +91,6 @@ export default function GlossaryPanel({
 
   return (
     <div className="settings-panel__section glossary-panel">
-      <h3>Glossary</h3>
       <p className="settings-panel__hint">Attach one shared glossary, add course-specific terms, and review suggested links before they appear in course text.</p>
 
       <label htmlFor="attached-glossary">Attached library glossary</label>

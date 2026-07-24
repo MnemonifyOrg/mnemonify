@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 // (confirmed by grep before building this), and the interaction is simple
 // enough not to need one: a button that reveals a list, closes on an
 // outside click or Escape, keyboard-operable via native button semantics.
-export default function MoreToolsMenu({ items, dataTour }) {
+export default function MoreToolsMenu({ items, dataTour, iconOnly = false, ariaLabel = 'More tools', icon = null }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -34,13 +34,15 @@ export default function MoreToolsMenu({ items, dataTour }) {
     <div className="more-tools-menu" ref={containerRef}>
       <button
         type="button"
-        className="btn"
+        className={iconOnly ? 'btn-text course-editor__icon-button' : 'btn'}
         data-tour={dataTour}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="true"
         aria-expanded={open}
+        aria-label={iconOnly ? ariaLabel : undefined}
+        title={iconOnly ? ariaLabel : undefined}
       >
-        More tools ▾
+        {iconOnly ? icon : 'More tools ▾'}
       </button>
       {open && (
         <ul className="more-tools-menu__list" role="menu">

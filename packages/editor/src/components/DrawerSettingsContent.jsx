@@ -17,6 +17,7 @@ import ObjectivesPanel from './ObjectivesPanel.jsx';
 import GlossaryPanel from './GlossaryPanel.jsx';
 import StyledSelect from './StyledSelect.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
+import SettingsSection from './SettingsSection.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -35,8 +36,7 @@ function setRichTextField(meta, key, text, onChangeMeta) {
 
 function CourseSettings({ meta, onChangeMeta }) {
   return (
-    <div className="settings-panel__section">
-      <h3>Course Settings</h3>
+    <SettingsSection title="Course settings">
 
       <label>Title</label>
       <input className="input" value={meta.title || ''} onChange={(e) => onChangeMeta({ ...meta, title: e.target.value })} />
@@ -114,7 +114,7 @@ function CourseSettings({ meta, onChangeMeta }) {
         />
         Show page numbers
       </label>
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -342,8 +342,7 @@ function BlockSettingsContent({
 
   return (
     <div className="settings-panel">
-      <div className="settings-panel__section">
-        <h3>{BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} Settings</h3>
+      <SettingsSection title={`${BLOCK_LABELS[selectedBlock.type] || selectedBlock.type} settings`}>
         {groups.basic.includes('content') && SettingsFields ? (
           <SettingsFields
             block={selectedBlock}
@@ -364,7 +363,7 @@ function BlockSettingsContent({
           <p className="settings-panel__empty">No additional settings for this block type.</p>
         )}
         <ScoredToggle block={selectedBlock} onChange={onChangeBlock} />
-      </div>
+      </SettingsSection>
 
       <AdvancedSection key={selectedBlock.block_id} blockId={selectedBlock.block_id}>
         {groups.advanced.includes('blockName') && (
@@ -514,7 +513,6 @@ export default function DrawerSettingsContent({
   if (drawer === 'module') {
     return (
       <div className="settings-panel__section">
-        <h3>Module Settings</h3>
         <p className="settings-panel__hint">Module objective assignments are managed in the Objectives drawer.</p>
         <ObjectivesPanel
           objectives={meta.objectives || []}

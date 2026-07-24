@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { genUtilityItemId } from '../lib/idGen.js';
+import SettingsSection from './SettingsSection.jsx';
 
 function formatFileSize(bytes) {
   if (bytes === null || bytes === undefined) return '';
@@ -22,8 +23,7 @@ function ContactSection({ contact, onChange }) {
   }
 
   return (
-    <div className="settings-panel__section">
-      <h4>Contact</h4>
+    <SettingsSection title="Contact">
       <label className="settings-panel__checkbox-row">
         <input type="checkbox" checked={enabled} onChange={(e) => update({ enabled: e.target.checked })} />
         Show a Contact button in the player
@@ -47,21 +47,20 @@ function ContactSection({ contact, onChange }) {
           />
         </>
       )}
-    </div>
+    </SettingsSection>
   );
 }
 
 function PdfSection({ settings, onChange }) {
   const value = { enabled: true, mode: 'both', resources_page: true, ...(settings || {}) };
-  return <div className="settings-panel__section">
-    <h4>PDF publishing</h4>
+  return <SettingsSection title="PDF publishing">
     <label className="settings-panel__checkbox-row"><input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} /> Generate PDF artifacts when publishing</label>
     {value.enabled && <>
       <label>PDF mode</label>
       <select className="input" value={value.mode} onChange={(e) => onChange({ ...value, mode: e.target.value })}><option value="combined">One combined PDF</option><option value="per_page">One PDF per page</option><option value="both">Combined and per-page PDFs</option></select>
       <label className="settings-panel__checkbox-row"><input type="checkbox" checked={value.resources_page} onChange={(e) => onChange({ ...value, resources_page: e.target.checked })} /> Show generated PDFs in Resources</label>
     </>}
-  </div>;
+  </SettingsSection>;
 }
 
 function ResourceRow({ resource, onUpdateLabel, onRemove }) {
@@ -117,8 +116,7 @@ function ResourcesSection({ resourcesEnabled, resources, onToggleEnabled, onUplo
   }
 
   return (
-    <div className="settings-panel__section">
-      <h4>Resources</h4>
+    <SettingsSection title="Resources">
       <label className="settings-panel__checkbox-row">
         <input type="checkbox" checked={!!resourcesEnabled} onChange={(e) => onToggleEnabled(e.target.checked)} />
         Show a Resources button in the player
@@ -154,7 +152,7 @@ function ResourcesSection({ resourcesEnabled, resources, onToggleEnabled, onUplo
           ))}
         </ul>
       )}
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -227,8 +225,7 @@ function CustomItemsSection({ custom, pages, onChange }) {
   }
 
   return (
-    <div className="settings-panel__section">
-      <h4>Custom items</h4>
+    <SettingsSection title="Custom items">
       {custom.length === 0 ? (
         <p className="settings-panel__empty">No custom utility items yet.</p>
       ) : (
@@ -247,7 +244,7 @@ function CustomItemsSection({ custom, pages, onChange }) {
       <button type="button" className="btn" onClick={addItem}>
         + Add custom item
       </button>
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -280,15 +277,16 @@ function PublishSettingsSection({ meta, pages, onChangeMeta }) {
     onChangeMeta({ ...meta, publish_settings: { ...settings, ...patch } });
   }
   return (
-    <div className="settings-panel__section">
-      <h4>LMS publish settings</h4>
+    <SettingsSection title="LMS publish settings">
       <label>Completion criteria</label>
+      <p className="settings-panel__helper">Choose what must happen before the course reports completion.</p>
       <select className="input" value={settings.completion_criteria} onChange={(e) => update({ completion_criteria: e.target.value })}>
         <option value="viewed_all_pages">Viewed all pages</option>
         <option value="passed_assessment">Passed the assessment</option>
         <option value="either">Either</option>
       </select>
       <label>Report status to LMS as</label>
+      <p className="settings-panel__helper">Choose whether the LMS receives completion, pass/fail, or both.</p>
       <select className="input" value={settings.report_status_as} onChange={(e) => update({ report_status_as: e.target.value })}>
         <option value="completion_only">Completion only</option>
         <option value="success_only">Success only</option>
@@ -301,16 +299,17 @@ function PublishSettingsSection({ meta, pages, onChangeMeta }) {
           <label className="settings-panel__checkbox-row">
             <input type="checkbox" checked={settings.success_enabled !== false} onChange={(e) => update({ success_enabled: e.target.checked })} />
             Enable success reporting
-          </label>
-          {successReporting && settings.success_enabled !== false && (
-            <>
-              <label>Passing score %</label>
-              <input type="number" className="input" min="0" max="100" value={settings.passing_score_pct} onChange={(e) => update({ passing_score_pct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
+            </label>
+            {successReporting && settings.success_enabled !== false && (
+              <>
+                <label>Passing score %</label>
+                <p className="settings-panel__helper">Learners must reach this percentage to pass.</p>
+                <input type="number" className="input" min="0" max="100" value={settings.passing_score_pct} onChange={(e) => update({ passing_score_pct: Math.max(0, Math.min(100, Number(e.target.value))) })} />
             </>
           )}
         </>
       )}
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -337,8 +336,7 @@ export default function PlayerSettingsPanel({
   }
 
   return (
-    <div>
-      <h3 className="settings-panel__player-heading">Player</h3>
+    <div className="player-settings-panel">
       <PublishSettingsSection meta={meta} pages={pages} onChangeMeta={onChangeMeta} />
       <ContactSection contact={utilityBar.contact} onChange={(contact) => updateUtilityBar({ contact })} />
       <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />

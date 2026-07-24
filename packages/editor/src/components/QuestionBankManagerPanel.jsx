@@ -99,7 +99,6 @@ export default function QuestionBankManagerPanel({ questionBanks, courseJson, as
 
   return (
     <div className="settings-panel__section question-bank-manager">
-      <h3>Question Banks</h3>
       <p className="settings-panel__hint">Reusable question collections. Open a bank in the full editor to search, manage, and author its questions.</p>
       <div className="question-bank-manager__toolbar">
         <select className="input" aria-label="Select question bank" value={selectedBank?.bank_id || ''} onChange={(event) => { setSelectedBankId(event.target.value); setEditorOpen(false); }}>

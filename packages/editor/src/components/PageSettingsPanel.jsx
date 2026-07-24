@@ -43,7 +43,6 @@ export default function PageSettingsPanel({ page, pages, variables, onChangePage
 
   return (
     <div className="settings-panel__section">
-      <h3>Page Settings</h3>
       <p className="settings-panel__hint">Applies to "{page.title}" only.</p>
 
       <h4>

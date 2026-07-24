@@ -109,7 +109,6 @@ export default function CourseHealthPanel({ findings, onNavigateToFinding, onOpe
 
   return (
     <div className="settings-panel__section course-health">
-      <h3>Course Health</h3>
       <p className="settings-panel__hint">
         Deterministic technical checks: schema validity, broken references, accessibility gaps, and unused content.
         This does not evaluate instructional quality.

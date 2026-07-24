@@ -1285,21 +1285,75 @@
 .kc-option-row .editable-field {
   flex: 1;
 }
+.kc-option-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+.kc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-input);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.kc-icon-button:hover,
+.kc-icon-button:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.kc-icon-button--active {
+  color: var(--accent);
+}
+.kc-icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+.kc-option-delete {
+  flex: 0 0 auto;
+}
+.kc-option-extra {
+  margin-left: calc(16px + var(--space-2));
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--accent-soft);
+}
 .kc-feedback-label {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+.kc-general-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin-top: var(--space-2);
 }
-.kc-option-feedback-toggle {
-  align-self: flex-start;
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+.kc-general-feedback__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 .kc-option-feedback-field {
   background: var(--color-bg-secondary);
   font-size: var(--text-sm);
-  margin-left: var(--space-6);
+}
+.kc-general-feedback__field {
+  background: var(--color-bg-secondary);
+  font-size: var(--text-sm);
+  margin-left: var(--space-2);
 }
 .kc-image-field {
   display: flex;

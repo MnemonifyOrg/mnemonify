@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import EditableRichField from './EditableRichField.jsx';
 import { genOptionId } from '../../lib/idGen.js';
@@ -7,10 +7,110 @@ import { insertVariableAtSelection } from '../../lib/richText.js';
 import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
 import { getCorrectOptionIds } from '@mnemonify/schema/knowledge-check.js';
 import { updateKnowledgeCheckCorrectOptions, updateKnowledgeCheckSelectionMode } from '../../lib/knowledgeCheck.js';
+import { hasOptionFeedbackContent, hasRichTextContent, toggleExpandedId } from '../../lib/knowledgeCheckEditor.js';
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
 const BLUR_HIDE_DELAY_MS = 150;
+
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9" r="1.5" />
+      <path d="m4.5 17 4.5-4 3 2.5 2.5-2 5 4.5" />
+    </svg>
+  );
+}
+
+function FeedbackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4h0A2.5 2.5 0 0 1 4 12.5v-7Z" />
+      <path d="M8 8h8M8 11h5" />
+    </svg>
+  );
+}
+
+function KcIconButton({ label, active, expanded, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className={active ? 'kc-icon-button kc-icon-button--active' : 'kc-icon-button'}
+      aria-label={label}
+      aria-pressed={active}
+      aria-expanded={expanded}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function KcGeneralFeedbackSection({
+  id,
+  label,
+  textValue,
+  imageId,
+  textExpanded,
+  imageExpanded,
+  assets,
+  selectionRef,
+  onToggleText,
+  onToggleImage,
+  onFocus,
+  onBlur,
+  onCommit,
+  onPick,
+  onRemove,
+}) {
+  return (
+    <section className="kc-general-feedback">
+      <div className="kc-general-feedback__row">
+        <span className="kc-feedback-label">{label}</span>
+        <div className="kc-option-actions">
+          <KcIconButton
+            label={`${label}: ${hasRichTextContent(textValue) ? 'edit' : 'add'} feedback`}
+            active={hasRichTextContent(textValue)}
+            expanded={textExpanded}
+            onClick={onToggleText}
+          >
+            <FeedbackIcon />
+          </KcIconButton>
+          <KcIconButton
+            label={`${label}: ${imageId ? 'change' : 'add'} image`}
+            active={Boolean(imageId)}
+            expanded={imageExpanded}
+            onClick={onToggleImage}
+          >
+            <ImageIcon />
+          </KcIconButton>
+        </div>
+      </div>
+      {textExpanded && (
+        <EditableRichField
+          className="editable-field kc-general-feedback__field"
+          value={textValue || ''}
+          selectionRef={selectionRef}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          onCommit={onCommit}
+          placeholder={`Shown when the learner answers ${id === 'correct' ? 'correctly' : 'incorrectly'}...`}
+        />
+      )}
+      {imageExpanded && (
+        <KcImageField
+          assetId={imageId}
+          assets={assets}
+          label="image"
+          onPick={onPick}
+          onRemove={onRemove}
+        />
+      )}
+    </section>
+  );
+}
 
 // Small "add/change/remove image" affordance shared by the question stem,
 // each option, and both feedback fields -- same interaction, four places.
@@ -38,15 +138,35 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
   const [toolbarPos, setToolbarPos] = useState(null);
-  // Power-user feature most authors won't touch on every question -- tracked
-  // as transient editor-only UI state, not persisted to the document, so a
-  // collapsed-and-empty feedback field adds no visual clutter by default.
-  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState(() => new Set());
+  // Expanded/collapsed state is transient editor-only UI state. Existing
+  // content is initialized open so a compact row never hides saved work.
+  const [expandedOptionImageIds, setExpandedOptionImageIds] = useState(() => new Set(options.filter((option) => option.image_id).map((option) => option.id)));
+  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState(() => new Set(options.filter((option) => hasOptionFeedbackContent(option.feedback)).map((option) => option.id)));
+  const [expandedGeneralFeedbackIds, setExpandedGeneralFeedbackIds] = useState(() => new Set([
+    ...(hasRichTextContent(block.content.correct_feedback) ? ['correct-text'] : []),
+    ...(block.content.correct_feedback_image_id ? ['correct-image'] : []),
+    ...(hasRichTextContent(block.content.incorrect_feedback) ? ['incorrect-text'] : []),
+    ...(block.content.incorrect_feedback_image_id ? ['incorrect-image'] : []),
+  ]));
   // Which image slot the media library picker is currently filling --
   // { kind: 'question' | 'option' | 'optionFeedback' | 'correct' | 'incorrect', optionId? }
   const [imagePickerTarget, setImagePickerTarget] = useState(null);
   const activeFieldRef = useRef(null);
   const selectionRef = useRef(null);
+
+  useEffect(() => {
+    setExpandedOptionImageIds(new Set(options.filter((option) => option.image_id).map((option) => option.id)));
+    setExpandedFeedbackIds(new Set(options.filter((option) => hasOptionFeedbackContent(option.feedback)).map((option) => option.id)));
+    setExpandedGeneralFeedbackIds(new Set([
+      ...(hasRichTextContent(block.content.correct_feedback) ? ['correct-text'] : []),
+      ...(block.content.correct_feedback_image_id ? ['correct-image'] : []),
+      ...(hasRichTextContent(block.content.incorrect_feedback) ? ['incorrect-text'] : []),
+      ...(block.content.incorrect_feedback_image_id ? ['incorrect-image'] : []),
+    ]));
+    // The block id changes when this editor switches to another question. Do
+    // not re-open a section merely because the author edited this same block.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.block_id]);
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -74,7 +194,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
     setContent({
       options: options.map((o) => {
         if (o.id !== id || !o.feedback) return o;
-        const { image_id, ...rest } = o.feedback;
+        const { image_id: _imageId, ...rest } = o.feedback;
         return { ...o, feedback: rest };
       }),
     });
@@ -94,12 +214,15 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
   }
 
   function toggleOptionFeedback(id) {
-    setExpandedFeedbackIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setExpandedFeedbackIds((prev) => toggleExpandedId(prev, id));
+  }
+
+  function toggleOptionImage(id) {
+    setExpandedOptionImageIds((prev) => toggleExpandedId(prev, id));
+  }
+
+  function toggleGeneralFeedback(id) {
+    setExpandedGeneralFeedbackIds((prev) => toggleExpandedId(prev, id));
   }
 
   function updateOptionFeedback(id, value) {
@@ -109,7 +232,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       options: options.map((o) => {
         if (o.id !== id) return o;
         if (!hasContent) {
-          const { feedback, ...rest } = o;
+          const { feedback: _feedback, ...rest } = o;
           return rest;
         }
         return { ...o, feedback: { rich_text: richText, image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
@@ -227,7 +350,9 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
       <ul className="knowledge-check-block-editor__options">
         {options.map((option) => {
-          const feedbackExpanded = expandedFeedbackIds.has(option.id) || !!option.feedback;
+          const imageExpanded = expandedOptionImageIds.has(option.id);
+          const feedbackExpanded = expandedFeedbackIds.has(option.id);
+          const feedbackActive = hasOptionFeedbackContent(option.feedback);
           return (
             <li key={option.id}>
               <div className="kc-option-row">
@@ -246,28 +371,43 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
                   onBlur={handleFieldBlur}
                   onCommit={(html) => updateOption(option.id, { text: html })}
                 />
+                <div className="kc-option-actions">
+                  <KcIconButton
+                    label={option.image_id ? 'Change option image' : 'Add option image'}
+                    active={Boolean(option.image_id)}
+                    expanded={imageExpanded}
+                    onClick={() => toggleOptionImage(option.id)}
+                  >
+                    <ImageIcon />
+                  </KcIconButton>
+                  <KcIconButton
+                    label={feedbackActive ? 'Edit option feedback' : 'Add option feedback'}
+                    active={feedbackActive}
+                    expanded={feedbackExpanded}
+                    onClick={() => toggleOptionFeedback(option.id)}
+                  >
+                    <FeedbackIcon />
+                  </KcIconButton>
+                </div>
                 {options.length > MIN_OPTIONS && (
-                  <button className="btn-text" onClick={() => deleteOption(option.id)}>
+                  <button type="button" className="btn-text kc-option-delete" onClick={() => deleteOption(option.id)} aria-label="Delete option">
                     ✕
                   </button>
                 )}
               </div>
-              <KcImageField
-                assetId={option.image_id}
-                assets={assets}
-                label="image"
-                onPick={() => setImagePickerTarget({ kind: 'option', optionId: option.id })}
-                onRemove={() => updateOption(option.id, { image_id: null })}
-              />
-              <button
-                type="button"
-                className="btn-text kc-option-feedback-toggle"
-                onClick={() => toggleOptionFeedback(option.id)}
-              >
-                {option.feedback ? 'Feedback for this option ✓' : 'Add feedback for this option'}
-              </button>
+              {imageExpanded && (
+                <div className="kc-option-extra kc-option-image-extra">
+                  <KcImageField
+                    assetId={option.image_id}
+                    assets={assets}
+                    label="image"
+                    onPick={() => setImagePickerTarget({ kind: 'option', optionId: option.id })}
+                    onRemove={() => updateOption(option.id, { image_id: null })}
+                  />
+                </div>
+              )}
               {feedbackExpanded && (
-                <>
+                <div className="kc-option-extra kc-option-feedback-extra">
                   <EditableRichField
                     className="editable-field kc-option-feedback-field"
                     placeholder="Shown instead of the general feedback when this option is selected..."
@@ -284,7 +424,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
                     onPick={() => setImagePickerTarget({ kind: 'optionFeedback', optionId: option.id })}
                     onRemove={() => removeOptionFeedbackImage(option.id)}
                   />
-                </>
+                </div>
               )}
             </li>
           );
@@ -296,36 +436,37 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
         </button>
       )}
 
-      <label className="kc-feedback-label">Correct feedback</label>
-      <EditableRichField
-        className="editable-field"
-        value={block.content.correct_feedback || ''}
+      <KcGeneralFeedbackSection
+        id="correct"
+        label="Correct feedback"
+        textValue={block.content.correct_feedback}
+        imageId={block.content.correct_feedback_image_id}
+        textExpanded={expandedGeneralFeedbackIds.has('correct-text')}
+        imageExpanded={expandedGeneralFeedbackIds.has('correct-image')}
+        assets={assets}
         selectionRef={selectionRef}
+        onToggleText={() => toggleGeneralFeedback('correct-text')}
+        onToggleImage={() => toggleGeneralFeedback('correct-image')}
         onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
         onBlur={handleFieldBlur}
         onCommit={(html) => setContent({ correct_feedback: html })}
-      />
-      <KcImageField
-        assetId={block.content.correct_feedback_image_id}
-        assets={assets}
-        label="image"
         onPick={() => setImagePickerTarget({ kind: 'correct' })}
         onRemove={() => setContent({ correct_feedback_image_id: null })}
       />
-
-      <label className="kc-feedback-label">Incorrect feedback</label>
-      <EditableRichField
-        className="editable-field"
-        value={block.content.incorrect_feedback || ''}
+      <KcGeneralFeedbackSection
+        id="incorrect"
+        label="Incorrect feedback"
+        textValue={block.content.incorrect_feedback}
+        imageId={block.content.incorrect_feedback_image_id}
+        textExpanded={expandedGeneralFeedbackIds.has('incorrect-text')}
+        imageExpanded={expandedGeneralFeedbackIds.has('incorrect-image')}
+        assets={assets}
         selectionRef={selectionRef}
+        onToggleText={() => toggleGeneralFeedback('incorrect-text')}
+        onToggleImage={() => toggleGeneralFeedback('incorrect-image')}
         onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
         onBlur={handleFieldBlur}
         onCommit={(html) => setContent({ incorrect_feedback: html })}
-      />
-      <KcImageField
-        assetId={block.content.incorrect_feedback_image_id}
-        assets={assets}
-        label="image"
         onPick={() => setImagePickerTarget({ kind: 'incorrect' })}
         onRemove={() => setContent({ incorrect_feedback_image_id: null })}
       />

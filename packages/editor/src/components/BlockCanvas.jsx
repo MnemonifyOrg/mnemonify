@@ -74,83 +74,101 @@ function BlockWrapper({
       style={style}
       data-block-id={block.block_id}
       className={selected ? 'block-wrapper block-wrapper--selected' : 'block-wrapper'}
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(block.block_id);
       }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        onSelect(block.block_id);
+      }}
     >
-      <div className="block-wrapper__toolbar">
-        <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
-          ⠿
-        </span>
-        {featureFlags.linkedQuestions && !block.linked_entity_id && (
-          <span
-            className="block-wrapper__bank-drag"
-            draggable
-            title="Drag this question to the Question Banks panel"
-            onDragStart={(event) => {
-              event.stopPropagation();
-              event.dataTransfer.effectAllowed = 'link';
-              event.dataTransfer.setData('application/x-mnemonify-block', JSON.stringify({ pageId: activePageId, blockId: block.block_id }));
-            }}
-          >
-            ⇢
-          </span>
-        )}
+      <div className="block-wrapper__chrome">
         <span className="block-wrapper__label">{blockLabel(block, pageBlocks)}</span>
-        <span className="block-wrapper__spacer" />
-        <button
-          className="btn-text"
-          title="Move to page"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMoveCopyMode('move');
-          }}
-        >
-          ⇥
-        </button>
-        <button
-          className="btn-text"
-          title="Copy to page"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMoveCopyMode('copy');
-          }}
-        >
-          ⎘
-        </button>
-        {featureFlags.linkedQuestions && !block.linked_entity_id && questionBanks?.length > 0 && (
+        <div className="block-wrapper__toolbar">
+          <span className="block-wrapper__handle" title="Drag to reorder" {...attributes} {...listeners}>
+            ⠿
+          </span>
+          {featureFlags.linkedQuestions && !block.linked_entity_id && (
+            <span
+              className="block-wrapper__bank-drag"
+              draggable
+              title="Drag this question to the Question Banks panel"
+              onDragStart={(event) => {
+                event.stopPropagation();
+                event.dataTransfer.effectAllowed = 'link';
+                event.dataTransfer.setData('application/x-mnemonify-block', JSON.stringify({ pageId: activePageId, blockId: block.block_id }));
+              }}
+            >
+              ⇢
+            </span>
+          )}
+          <span className="block-wrapper__spacer" />
           <button
             className="btn-text"
-            title="Add to bank"
+            title="Move to page"
             onClick={(e) => {
               e.stopPropagation();
-              setLinkBankOpen(true);
+              setMoveCopyMode('move');
             }}
           >
-            +↗
+            ⇥
           </button>
-        )}
-        <button
-          className="btn-text"
-          title="Duplicate"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDuplicate(block.block_id);
-          }}
-        >
-          ⧉
-        </button>
-        <button
-          className="btn-text block-wrapper__delete-btn"
-          title="Delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(block.block_id);
-          }}
-        >
-          ✕
-        </button>
+          <button
+            className="btn-text"
+            title="Copy to page"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMoveCopyMode('copy');
+            }}
+          >
+            ⎘
+          </button>
+          <button
+            className="btn-text"
+            title="Open settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(block.block_id);
+            }}
+          >
+            ⚙
+          </button>
+          {featureFlags.linkedQuestions && !block.linked_entity_id && questionBanks?.length > 0 && (
+            <button
+              className="btn-text"
+              title="Add to bank"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLinkBankOpen(true);
+              }}
+            >
+              +↗
+            </button>
+          )}
+          <button
+            className="btn-text"
+            title="Duplicate"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate(block.block_id);
+            }}
+          >
+            ⧉
+          </button>
+          <button
+            className="btn-text block-wrapper__delete-btn"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(block.block_id);
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
       <div className="block-wrapper__content">
         <Editor

@@ -560,14 +560,10 @@
   color: #fff;
 }
 
-/* Phase 4.6 Step 6: unselected blocks carry a much lighter border and a
-   barely-there shadow instead of the old full-strength 1px
-   `--color-border` outline -- the outline (not the reserved 2px
-   transparent border, which stays exactly as it was) is what actually
-   draws the visible line, and only its color/weight changes here so
-   selecting a block never shifts layout. color-mix lightens the existing
-   brand border color rather than introducing a second, unrelated gray. */
+/* Blocks keep their content layout stable while the authoring chrome floats
+   above the block only when it is useful: hover, focus-within, or selection. */
 .block-wrapper {
+  position: relative;
   background: var(--bg-surface);
   border: 2px solid transparent;
   border-radius: var(--radius-card);
@@ -576,65 +572,63 @@
   transition: outline-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .block-wrapper--selected {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-light);
-  /* No competing outline ring once the stronger border+shadow take over. */
+  border-color: var(--accent);
+  box-shadow: var(--shadow-card);
   outline: none;
 }
-.block-wrapper__toolbar {
+.block-wrapper__chrome {
+  position: absolute;
+  top: -2.1rem;
+  left: 0;
+  right: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+.block-wrapper:hover > .block-wrapper__chrome,
+.block-wrapper:focus-within > .block-wrapper__chrome,
+.block-wrapper--selected > .block-wrapper__chrome {
+  opacity: 1;
+  visibility: visible;
+}
+.block-wrapper__toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
   font-size: var(--text-sm);
+  pointer-events: auto;
 }
 .block-wrapper__handle {
   cursor: grab;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
+  pointer-events: auto;
 }
 .block-wrapper__bank-drag {
   cursor: grab;
-  color: var(--color-primary);
+  color: var(--accent);
   font-weight: 700;
   user-select: none;
-}
-/* Drag handle and the four action buttons (Move/Copy/Duplicate/Delete)
-   are hidden until hover or keyboard focus on an UNSELECTED block --
-   :focus-within (not just :hover) so tabbing to one of these buttons
-   reveals the whole group for keyboard users, not just pointer users.
-   The selected block always shows them, since it's the one currently
-   being edited and its actions are the ones an author is actively
-   reaching for. */
-.block-wrapper__handle,
-.block-wrapper__toolbar > button {
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-.block-wrapper:hover .block-wrapper__handle,
-.block-wrapper:hover .block-wrapper__toolbar > button,
-.block-wrapper:focus-within .block-wrapper__handle,
-.block-wrapper:focus-within .block-wrapper__toolbar > button,
-.block-wrapper--selected .block-wrapper__handle,
-.block-wrapper--selected .block-wrapper__toolbar > button {
-  opacity: 1;
+  pointer-events: auto;
 }
 .block-wrapper__label {
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   font-size: var(--text-xs);
   letter-spacing: 0.03em;
-}
-/* The selected block's label gets a stronger treatment than the
-   type-name-only styling above -- this is the "custom block labels
-   become genuinely useful" moment the task calls out: an author-set
-   label should read clearly, not just as a muted uppercase type tag. */
-.block-wrapper--selected .block-wrapper__label {
-  color: var(--color-text-primary);
-  font-size: var(--text-sm);
+  pointer-events: none;
 }
 .block-wrapper__spacer {
   flex: 1;

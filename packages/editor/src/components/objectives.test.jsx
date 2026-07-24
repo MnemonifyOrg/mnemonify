@@ -3,7 +3,6 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ObjectivesPanel from './ObjectivesPanel.jsx';
 import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
-import { readSelectedObjectiveIds } from '../lib/objectiveUi.js';
 import { KnowledgeCheckBlockSettings } from './blocks/KnowledgeCheckBlock.jsx';
 import { updateKnowledgeCheckCorrectOptions, updateKnowledgeCheckSelectionMode } from '../lib/knowledgeCheck.js';
 import { QuestionBankDrawBlockSettings } from './blocks/QuestionBankDrawBlock.jsx';
@@ -25,7 +24,7 @@ describe('objective authoring controls', () => {
     expect(html).toContain('Add objective');
   });
 
-  it('renders module assignment as a multi-select with the current objective selected', () => {
+  it('renders module assignment as a checkbox multi-select with a selected-count summary', () => {
     const html = renderToStaticMarkup(
       <ObjectiveMultiSelect
         objectives={objectives}
@@ -36,8 +35,8 @@ describe('objective authoring controls', () => {
       />
     );
     expect(html).toContain('aria-label="Assign objectives to Module One"');
-    expect(html).toContain('value="obj_one"');
-    expect(html).toContain('value="obj_two" selected');
+    expect(html).toContain('1 selected');
+    expect(html).toContain('selected');
   });
 
   it('renders question mapping in the knowledge-check settings', () => {
@@ -49,8 +48,8 @@ describe('objective authoring controls', () => {
       />
     );
     expect(html).toContain('aria-label="Question objectives"');
-    expect(html).toContain('value="obj_one" selected');
-    expect(html).toContain('value="obj_two"');
+    expect(html).toContain('1 selected');
+    expect(html).toContain('selected');
   });
 
   it('renders the multi-select toggle and feedback style only when enabled', () => {
@@ -91,11 +90,6 @@ describe('objective authoring controls', () => {
     expect(single.content.correct_option_id).toBe('opt_a');
     expect(single.content.correct_option_ids).toBeUndefined();
     expect(single.content.feedback_mode).toBeUndefined();
-  });
-
-  it('extracts all selected objective ids from a native multi-select event', () => {
-    const event = { target: { selectedOptions: [{ value: 'obj_one' }, { value: 'obj_two' }] } };
-    expect(readSelectedObjectiveIds(event)).toEqual(['obj_one', 'obj_two']);
   });
 
   it('prompts at the draw insertion point when objective matches are insufficient', () => {

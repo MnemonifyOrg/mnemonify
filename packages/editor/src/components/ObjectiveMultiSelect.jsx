@@ -1,5 +1,5 @@
 import { objectiveLabel } from '@mnemonify/schema/objectives.js';
-import { readSelectedObjectiveIds } from '../lib/objectiveUi.js';
+import MultiSelectCheckbox from './MultiSelectCheckbox.jsx';
 
 export default function ObjectiveMultiSelect({
   objectives = [],
@@ -10,23 +10,22 @@ export default function ObjectiveMultiSelect({
   hint = 'Optional. Select all objectives this content supports.',
 }) {
   const selected = new Set(value || []);
+  const options = objectives.map((objective) => ({
+    value: objective.objective_id,
+    label: objectiveLabel(objective),
+  }));
   return (
     <div className="objective-multi-select">
       <label>{label}</label>
-      <select
-        className="input objective-multi-select__input"
-        multiple
-        size={Math.min(Math.max(objectives.length, 2), 5)}
+      <MultiSelectCheckbox
+        className="objective-multi-select__input"
+        options={options}
         value={value || []}
-        aria-label={ariaLabel || label}
-        onChange={(event) => onChange(readSelectedObjectiveIds(event))}
-      >
-        {objectives.map((objective) => (
-          <option key={objective.objective_id} value={objective.objective_id}>
-            {objectiveLabel(objective)}
-          </option>
-        ))}
-      </select>
+        placeholder="None selected"
+        ariaLabel={ariaLabel || label}
+        disabled={objectives.length === 0}
+        onChange={onChange}
+      />
       {objectives.length === 0 ? (
         <p className="settings-panel__hint">Create a course objective first.</p>
       ) : (

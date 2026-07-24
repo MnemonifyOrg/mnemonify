@@ -15,6 +15,7 @@ import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import ObjectivesPanel from './ObjectivesPanel.jsx';
 import GlossaryPanel from './GlossaryPanel.jsx';
+import StyledSelect from './StyledSelect.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -51,37 +52,40 @@ function CourseSettings({ meta, onChangeMeta }) {
         Navigation mode
         <InfoTooltip text="Linear means learners must go through pages in order, one at a time. Free navigation lets them jump to any page from the menu whenever they want." />
       </label>
-      <select
-        className="input"
+      <StyledSelect
         value={resolveNavMode(meta)}
-        onChange={(e) => onChangeMeta({ ...meta, nav_mode: e.target.value })}
-      >
-        <option value="linear">Linear</option>
-        <option value="free">Free navigation</option>
-      </select>
+        onChange={(navMode) => onChangeMeta({ ...meta, nav_mode: navMode })}
+        options={[
+          { value: 'linear', label: 'Linear' },
+          { value: 'free', label: 'Free navigation' },
+        ]}
+        ariaLabel="Navigation mode"
+      />
 
       <label>Page display</label>
-      <select
-        className="input"
+      <StyledSelect
         value={meta.page_display || 'flat'}
-        onChange={(e) => onChangeMeta({ ...meta, page_display: e.target.value })}
-      >
-        <option value="flat">Flat list</option>
-        <option value="grouped">Grouped into modules</option>
-      </select>
+        onChange={(pageDisplay) => onChangeMeta({ ...meta, page_display: pageDisplay })}
+        options={[
+          { value: 'flat', label: 'Flat list' },
+          { value: 'grouped', label: 'Grouped into modules' },
+        ]}
+        ariaLabel="Page display"
+      />
 
       <label>
         Completion rule
         <InfoTooltip text="Decides when this course reports as complete to the LMS (via SCORM). 'Viewed all pages' finishes once every page has been opened; 'Passed final knowledge check' waits for a passing score on the last quiz." />
       </label>
-      <select
-        className="input"
+      <StyledSelect
         value={meta.completion_rule || 'viewed_all_pages'}
-        onChange={(e) => onChangeMeta({ ...meta, completion_rule: e.target.value })}
-      >
-        <option value="viewed_all_pages">Viewed all pages</option>
-        <option value="passed_final_quiz">Passed final knowledge check</option>
-      </select>
+        onChange={(completionRule) => onChangeMeta({ ...meta, completion_rule: completionRule })}
+        options={[
+          { value: 'viewed_all_pages', label: 'Viewed all pages' },
+          { value: 'passed_final_quiz', label: 'Passed final knowledge check' },
+        ]}
+        ariaLabel="Completion rule"
+      />
 
       <label>Header</label>
       <textarea

@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { genGroupId } from '../lib/idGen.js';
 import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
+import StyledSelect from './StyledSelect.jsx';
 
 const GROUP_DROP_PREFIX = 'group-drop:';
 const groupDropId = (groupId) => `${GROUP_DROP_PREFIX}${groupId}`;
@@ -58,20 +59,18 @@ function PageRow({ page, isActive, groups, currentGroupId, onSelect, onRename, o
       )}
       <div className="page-list__actions">
         {showGroupPicker && (
-          <select
+          <StyledSelect
             className="page-list__group-picker"
+            options={[
+              { value: '', label: 'No module' },
+              ...groups.map((g) => ({ value: g.group_id, label: g.title })),
+            ]}
             value={currentGroupId || ''}
-            onChange={(e) => onAssignGroup(page.page_id, e.target.value || null)}
+            onChange={(groupId) => onAssignGroup(page.page_id, groupId || null)}
             onClick={(e) => e.stopPropagation()}
             title="Move to module"
-          >
-            <option value="">No module</option>
-            {groups.map((g) => (
-              <option key={g.group_id} value={g.group_id}>
-                {g.title}
-              </option>
-            ))}
-          </select>
+            ariaLabel={`Move ${page.title} to module`}
+          />
         )}
         <button className="btn-text" title="Rename" onClick={() => setRenaming(true)}>
           ✎

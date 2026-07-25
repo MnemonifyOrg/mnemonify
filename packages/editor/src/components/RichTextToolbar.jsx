@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import VariablePicker from './VariablePicker.jsx';
 import TextColorPicker from './blocks/TextColorPicker.jsx';
+import LinkPicker from './LinkPicker.jsx';
 import { restoreRichTextSelection } from '../lib/richText.js';
 
 function ListIcon({ ordered = false }) {
@@ -28,6 +29,16 @@ function queryActive(command) {
   }
 }
 
+function selectedLinkHref(field, selection) {
+  if (!field || !selection?.anchorNode || !field.contains(selection.anchorNode)) return '';
+  let node = selection.anchorNode.nodeType === 1 ? selection.anchorNode : selection.anchorNode.parentElement;
+  while (node && node !== field) {
+    if (node.tagName === 'A') return node.getAttribute('href') || '';
+    node = node.parentElement;
+  }
+  return '';
+}
+
 export default function RichTextToolbar({
   fieldRef,
   selectionRef,
@@ -53,6 +64,7 @@ export default function RichTextToolbar({
       left: queryActive('justifyLeft') || (!center && !right),
       center,
       right,
+      linkHref: selectedLinkHref(field, selection),
     });
   }, [fieldRef]);
 
@@ -86,6 +98,26 @@ export default function RichTextToolbar({
     );
   }
 
+  function applyLink(href) {
+    const field = fieldRef?.current;
+    if (!field || typeof document === 'undefined') return;
+    field.focus();
+    restoreRichTextSelection(field, selectionRef);
+    document.execCommand('createLink', false, href);
+    field.blur();
+    refreshActiveState();
+  }
+
+  function removeLink() {
+    const field = fieldRef?.current;
+    if (!field || typeof document === 'undefined') return;
+    field.focus();
+    restoreRichTextSelection(field, selectionRef);
+    document.execCommand('unlink');
+    field.blur();
+    refreshActiveState();
+  }
+
   return (
     <div className={`rich-text-toolbar ${className}`.trim()} style={style} role="toolbar" aria-label="Text formatting">
       <button type="button" className="btn-text rich-text-toolbar__button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => format('bold')}><strong>B</strong></button>
@@ -101,6 +133,7 @@ export default function RichTextToolbar({
         {button('justifyCenter', 'Align center', <AlignIcon alignment="center" />, 'center')}
         {button('justifyRight', 'Align right', <AlignIcon alignment="right" />, 'right')}
       </span>}
+      <LinkPicker fieldRef={fieldRef} selectionRef={selectionRef} value={active.linkHref || ''} onApply={applyLink} onRemove={removeLink} />
       {onInsert && <VariablePicker variables={variables} fieldRef={fieldRef} selectionRef={selectionRef} onInsert={onInsert} />}
     </div>
   );

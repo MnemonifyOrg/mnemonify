@@ -12,6 +12,7 @@ export const BLOCK_ICON_PATHS = {
   tabs: ['M4 6h6v4H4z', 'M12 6h8v4h-8z', 'M4 14h16v4H4z'],
   'knowledge-check': ['M5 5h14v14H5z', 'M8 12l2 2 5-5'],
   reflection: ['M5 5h14v14H5z', 'M8 9h8', 'M8 13h5'],
+  button: ['M4 6h16v12H4z', 'M8 12h8', 'M13 9l3 3-3 3'],
   carousel: ['M4 6h16v12H4z', 'M7 15l3-3 2 2 2-2 3 3'],
   embed: ['M8 8l-4 4 4 4', 'M16 8l4 4-4 4', 'M14 5l-4 14'],
   video: ['M5 5h14v14H5z', 'M10 9l5 3-5 3z'],

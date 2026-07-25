@@ -51,6 +51,14 @@ export default function EditableRichField({
 
   function handleBlur(e) {
     captureRichTextSelection(e.currentTarget, selectionRef);
+    // The link popover temporarily focuses its URL field. Keep the original
+    // DOM and Range intact until the author applies/removes the link or
+    // closes the popover; otherwise the controlled-value resync can replace
+    // the nodes that the saved selection points to before execCommand runs.
+    if (e.relatedTarget?.closest?.('.rich-text-link-picker')) {
+      onBlur?.(e);
+      return;
+    }
     const nextValue = editableHtmlToRichValue(e.currentTarget.innerHTML, allowedTags);
     if (JSON.stringify(nextValue) !== JSON.stringify(value || '')) onCommit(nextValue);
     onBlur?.(e);
@@ -58,6 +66,10 @@ export default function EditableRichField({
 
   function rememberSelection(e) {
     captureRichTextSelection(e.currentTarget, selectionRef);
+  }
+
+  function preventLinkedNavigation(event) {
+    if (event.target?.closest?.('a')) event.preventDefault();
   }
 
   return (
@@ -75,6 +87,7 @@ export default function EditableRichField({
       onKeyUp={rememberSelection}
       onMouseUp={rememberSelection}
       onSelect={rememberSelection}
+      onClick={preventLinkedNavigation}
       {...rest}
     />
   );

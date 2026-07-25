@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPageStatus } from './navigation.js';
+import { getPageStatus, previousPage, shouldRenderBackButton } from './navigation.js';
 
 const pages = [{ page_id: 'pg-1' }, { page_id: 'pg-2' }, { page_id: 'pg-3' }];
 
@@ -23,5 +23,16 @@ describe('linear page navigation status', () => {
 
   it('does not lock pages in free navigation mode', () => {
     expect(getPageStatus({ pageId: 'pg-3', pages, navMode: 'free' })).toBe('not-visited');
+  });
+
+  it('derives the previous page from the same ordered page array used for forward navigation', () => {
+    expect(previousPage(pages, 'pg-1')).toBeNull();
+    expect(previousPage(pages, 'pg-3')).toEqual({ page_id: 'pg-2' });
+  });
+
+  it('renders the Back affordance only when enabled and a previous page exists', () => {
+    expect(shouldRenderBackButton({ enabled: false, pages, pageId: 'pg-2' })).toBe(false);
+    expect(shouldRenderBackButton({ enabled: true, pages, pageId: 'pg-1' })).toBe(false);
+    expect(shouldRenderBackButton({ enabled: true, pages, pageId: 'pg-2' })).toBe(true);
   });
 });

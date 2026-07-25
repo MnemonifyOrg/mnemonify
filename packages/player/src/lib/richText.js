@@ -13,7 +13,7 @@
 // import), since neither package depends on the other and this file has
 // zero dependencies of its own (pure DOM API, no React).
 
-export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN', 'UL', 'OL', 'LI']);
+export const RICH_TEXT_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'BR', 'SPAN', 'UL', 'OL', 'LI', 'A']);
 // DOM-normalizes an inline color (the browser reports `node.style.color` as
 // `rgb(r, g, b)` even when the HTML source said `#rrggbb`) back to lowercase
 // hex. Arbitrary valid hex values are safe to preserve; style attributes and
@@ -37,6 +37,18 @@ function normalizeColorToHex(colorStr) {
 function normalizeTextAlign(value) {
   const normalized = String(value || '').toLowerCase().trim();
   return ['center', 'right', 'justify'].includes(normalized) ? normalized : null;
+}
+
+export function normalizeExternalHref(value) {
+  const source = String(value || '').trim();
+  if (!source) return null;
+  try {
+    const url = new URL(source);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 // Narrower allowlist for table cells (ARCHITECTURE.md 3.7: "Cell content is
 // plain text only" -- sup/sub is the original deliberate, narrow exception;
@@ -78,6 +90,10 @@ function nodeToAst(node, allowedTags) {
   }
 
   if (tag === 'BR') return allowedTags.has('BR') ? [{ type: 'br' }] : [];
+  if (tag === 'A') {
+    const href = allowedTags.has('A') ? normalizeExternalHref(node.getAttribute('href')) : null;
+    return href ? [{ type: 'link', href, children }] : children;
+  }
   // A block-level line container (DIV/P) is what most browsers insert on
   // Enter inside a contentEditable region -- flattened to "a line break,
   // then this line's content" rather than preserved as a real nested
@@ -131,6 +147,7 @@ function astToHtml(ast) {
       if (node.type === 'br') return '<br>';
       if (node.type === 'span') return `<span style="color:${node.color}">${astToHtml(node.children)}</span>`;
       if (node.type === 'align') return `<div style="text-align:${node.align}">${astToHtml(node.children)}</div>`;
+      if (node.type === 'link') return `<a href="${escapeHtml(node.href)}">${astToHtml(node.children)}</a>`;
       return `<${node.type}>${astToHtml(node.children)}</${node.type}>`;
     })
     .join('');

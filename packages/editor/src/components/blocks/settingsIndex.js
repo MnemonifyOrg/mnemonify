@@ -9,6 +9,7 @@ import { AudioBlockSettings } from './AudioBlock.jsx';
 import { MatchingBlockSettings } from './MatchingBlock.jsx';
 import { HotspotBlockSettings } from './HotspotBlock.jsx';
 import { QuestionBankDrawBlockSettings } from './QuestionBankDrawBlock.jsx';
+import { ButtonBlockSettings } from './ButtonBlock.jsx';
 
 // block-type -> settings component (block settings drawer, shown when that
 // block is selected). Types without extra settings simply have no entry.
@@ -24,4 +25,5 @@ export const BLOCK_SETTINGS = {
   matching: MatchingBlockSettings,
   hotspot: HotspotBlockSettings,
   question_bank_draw: QuestionBankDrawBlockSettings,
+  button: ButtonBlockSettings,
 };

@@ -5,6 +5,7 @@ import {
   insertVariableAtSelection,
   isLowContrast,
   normalizeColorToHex,
+  normalizeExternalHref,
   richSegmentsToEditableHtml,
   RICH_TEXT_TAGS,
   splitVariableSyntax,
@@ -102,5 +103,12 @@ describe('rich-text color and block formatting support', () => {
     // by the editor/player browser bundle; this node test verifies the
     // allowlist contract without inventing a second parser for the test.
     expect(richSegmentsToEditableHtml([{ t: 'glossary_link', term_id: 'term_one', v: 'One' }])).toContain('term_one');
+  });
+
+  it('accepts only external HTTP(S) links in the rich-text allowlist', () => {
+    expect(normalizeExternalHref('https://example.com/docs')).toBe('https://example.com/docs');
+    expect(normalizeExternalHref('javascript:alert(1)')).toBeNull();
+    expect(normalizeExternalHref('/internal/page')).toBeNull();
+    expect(RICH_TEXT_TAGS.has('A')).toBe(true);
   });
 });

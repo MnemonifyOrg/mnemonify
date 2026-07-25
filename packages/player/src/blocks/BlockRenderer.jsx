@@ -17,6 +17,7 @@ import MatchingBlock from './MatchingBlock.jsx';
 import OrderingBlock from './OrderingBlock.jsx';
 import HotspotBlock from './HotspotBlock.jsx';
 import QuestionBankDrawBlock from './QuestionBankDrawBlock.jsx';
+import ButtonBlock from './ButtonBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
@@ -45,6 +46,7 @@ const REGISTRY = {
   ordering: OrderingBlock,
   hotspot: HotspotBlock,
   question_bank_draw: QuestionBankDrawBlock,
+  button: ButtonBlock,
 };
 
 // Dev-time completeness check (Phase 4.5b) -- same purpose as the
@@ -58,7 +60,7 @@ if (import.meta.env?.DEV) {
   }
 }
 
-export default function BlockRenderer({ block, assets, onTrigger, onTimeReached, isPreview, onOpenModal, blockVisibility, variables, interactionStates, printMode = false, worksheetMode = false }) {
+export default function BlockRenderer({ block, assets, onTrigger, onTimeReached, isPreview, onOpenModal, onNavigate, blockVisibility, variables, interactionStates, printMode = false, worksheetMode = false }) {
   // block.faculty_notes is intentionally never passed to any block
   // component below, in any context (SCORM, standalone, preview, review).
   // It is editor/instructor-only content (ARCHITECTURE.md 3.8) -- the
@@ -100,6 +102,7 @@ export default function BlockRenderer({ block, assets, onTrigger, onTimeReached,
       onTimeReached={onTimeReached}
       isPreview={isPreview}
       onOpenModal={onOpenModal}
+      onNavigate={onNavigate}
       blockVisibility={blockVisibility}
       variables={variables}
       interactionStates={interactionStates}

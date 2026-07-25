@@ -74,6 +74,10 @@
         "page_numbering": {
           "type": "boolean"
         },
+        "back_button_enabled": {
+          "type": "boolean",
+          "default": false
+        },
         "objectives": {
           "type": "array",
           "items": { "$ref": "#/definitions/objective" }

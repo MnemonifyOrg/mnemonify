@@ -7,6 +7,7 @@ import TabsBlockEditor from './TabsBlock.jsx';
 import KnowledgeCheckBlockEditor from './KnowledgeCheckBlock.jsx';
 import CarouselBlockEditor from './CarouselBlock.jsx';
 import ReflectionBlockEditor from './ReflectionBlock.jsx';
+import ButtonBlockEditor from './ButtonBlock.jsx';
 import TwoColumnBlockEditor from './TwoColumnBlock.jsx';
 import TableBlockEditor from './TableBlock.jsx';
 import EmbedBlockEditor from './EmbedBlock.jsx';
@@ -36,6 +37,7 @@ export const BLOCK_EDITORS = {
   'knowledge-check': KnowledgeCheckBlockEditor,
   carousel: CarouselBlockEditor,
   reflection: ReflectionBlockEditor,
+  button: ButtonBlockEditor,
   two_column: TwoColumnBlockEditor,
   table: TableBlockEditor,
   embed: EmbedBlockEditor,

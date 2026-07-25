@@ -61,6 +61,8 @@ function defaultContent(type) {
       // storage_mode is "local" and only "local" -- see ARCHITECTURE.md 3.8
       // and REQUIREMENTS.md P1-46. Do not add a way to change it here.
       return { prompt: { rich_text: [{ t: 'text', v: '' }] }, storage_mode: 'local' };
+    case 'button':
+      return { text: 'Button', target_page_id: '' };
     case 'table':
       return { has_header_row: true, has_header_col: false, caption: '', rows: [['', ''], ['', '']] };
     case 'embed':

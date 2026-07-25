@@ -150,6 +150,15 @@ export const BLOCK_REGISTRY = {
     includeInPdfDefault: true,
     hasSettings: false,
   },
+  button: {
+    type: 'button',
+    displayName: 'Button',
+    category: 'Interactive',
+    validEvents: [],
+    canContainBlocks: false,
+    includeInPdfDefault: false,
+    hasSettings: true,
+  },
   carousel: {
     type: 'carousel',
     displayName: 'Image Carousel',

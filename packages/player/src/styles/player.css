@@ -127,6 +127,34 @@ input:focus-visible {
 .block-text__asset-link:hover {
   color: var(--color-primary-hover);
 }
+.block-text a,
+.block-heading a,
+.block-list a,
+.block-button a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.block-button {
+  display: flex;
+  justify-content: flex-start;
+}
+.player-button-block {
+  padding: var(--space-3) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-input);
+  background: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.player-button-block:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+.player-button-block:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .glossary-link__wrapper {
   position: relative;
   display: inline;

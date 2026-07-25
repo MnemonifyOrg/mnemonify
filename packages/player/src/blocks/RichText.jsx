@@ -22,7 +22,7 @@ export function interpolateText(value, variables = {}) {
   return parts;
 }
 
-function renderNodes(nodes, variables) {
+export function renderNodes(nodes, variables) {
   return nodes.map((node, i) => {
     if (node.type === 'text') return renderInlineText(node.value, variables, `node-${i}`);
     if (node.type === 'br') return <br key={i} />;
@@ -35,6 +35,9 @@ function renderNodes(nodes, variables) {
     }
     if (node.type === 'align') {
       return <span key={i} style={{ display: 'block', textAlign: node.align }}>{renderNodes(node.children, variables)}</span>;
+    }
+    if (node.type === 'link') {
+      return <a key={i} href={node.href} target="_blank" rel="noopener noreferrer">{renderNodes(node.children, variables)}</a>;
     }
     const Tag = TAG_MAP[node.type] || 'span';
     return <Tag key={i}>{renderNodes(node.children, variables)}</Tag>;

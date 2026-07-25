@@ -6,6 +6,7 @@ import TopBar from './chrome/TopBar.jsx';
 import ProgressBar from './chrome/ProgressBar.jsx';
 import NavDrawer from './chrome/NavDrawer.jsx';
 import ContinueButton from './chrome/ContinueButton.jsx';
+import BackButton from './chrome/BackButton.jsx';
 import UtilityBar from './chrome/UtilityBar.jsx';
 import { runTriggers, evaluateCondition } from './engine/triggerEngine.js';
 import { configureAnalytics, track } from './engine/analytics.js';
@@ -13,7 +14,7 @@ import * as mediaManager from './engine/mediaManager.js';
 import scorm2004 from './lms/scorm2004.js';
 import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVariables, isScoredInteraction, restoreInteractionStates, recordInteractionState, prepareQuestionBankDraws, collectKnowledgeChecks } from './engine/scoring.js';
 import RichText from './blocks/RichText.jsx';
-import { getPageStatus as getNavigationPageStatus } from './engine/navigation.js';
+import { getPageStatus as getNavigationPageStatus, previousPage, shouldRenderBackButton } from './engine/navigation.js';
 import { resetPageScroll } from './engine/scroll.js';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
@@ -645,6 +646,17 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
     }
   }
 
+  function handleBack() {
+    const targetPage = previousPage(course.pages, currentPageId);
+    if (!targetPage) return;
+    const currentPage = course.pages.find((candidate) => candidate.page_id === currentPageId);
+    trackPageExit(currentPageId);
+    const result = runTriggers(runtimeVariables(), currentPage?.triggers, 'onPageExit');
+    setVariables(stripSystemVariables(result.variables));
+    applyEffects(result.effects);
+    goToPage(targetPage.page_id);
+  }
+
   function handleToggleDrawer() {
     setNavDrawerOpen((open) => !open);
   }
@@ -720,6 +732,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
                 onTimeReached={handleTimelineReached}
                 isPreview={isPreview}
                 onOpenModal={handleOpenModal}
+                onNavigate={handleJumpToPage}
                 blockVisibility={blockVisibility}
                 variables={playerVariables}
                 interactionStates={interactionStates}
@@ -728,6 +741,9 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
                 worksheetMode={isWorksheet}
               />
             ))}
+            {shouldRenderBackButton({ enabled: course.meta.back_button_enabled, pages: course.pages, pageId: currentPageId }) && (
+              <BackButton onClick={handleBack} />
+            )}
             <ContinueButton
               label={isLastPage ? 'Finish' : 'Continue'}
               disabled={continueDisabled}

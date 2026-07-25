@@ -16,6 +16,7 @@ describe('shared rich-text toolbar', () => {
     expect(html).toContain('aria-label="Align left"');
     expect(html).toContain('aria-label="Align center"');
     expect(html).toContain('aria-label="Align right"');
+    expect(html).toContain('aria-label="Insert link"');
     expect(html).toContain('Insert Variable');
     expect(html).toContain('aria-haspopup="listbox"');
   });

@@ -114,6 +114,16 @@ function CourseSettings({ meta, onChangeMeta }) {
         />
         Show page numbers
       </label>
+
+      <label className="settings-panel__checkbox-row">
+        <input
+          type="checkbox"
+          checked={!!meta.back_button_enabled}
+          onChange={(e) => onChangeMeta({ ...meta, back_button_enabled: e.target.checked })}
+        />
+        Show Back button
+      </label>
+      <p className="settings-panel__hint">Adds a Back button on every page after the first page.</p>
     </SettingsSection>
   );
 }

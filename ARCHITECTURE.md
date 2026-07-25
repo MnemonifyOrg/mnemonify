@@ -101,6 +101,7 @@ Rich-text fields continue to use the existing segment array. Inline formatting a
   "schema_version": 1,
   "theme": { "accent": "#0f766e", "font_pair": "default" },
   "nav_mode": "linear",
+  "back_button_enabled": false,
   "page_groups": [
     {
       "group_id": "grp_01",
@@ -738,6 +739,38 @@ affected usage and removes only that relationship. Delete-everywhere removes
 the entity and all usages atomically after confirmation. This is deliberately
 whole-entity linking: there is no field-level relationship or independent
 scoring copy.
+
+### 3.19 Back button, generic button block, and external rich-text links (v1)
+
+Course navigation may opt into an automatically rendered Back button with the
+optional `meta.back_button_enabled` boolean (default `false`). The player
+derives the previous page from the authoritative `pages[]` order; it renders
+nothing on the first page and backward navigation remains available in linear
+mode. No page-level override is added because the existing page-settings model
+has no course-default override pattern for this setting.
+
+The generic Button block is registered as `button` and uses the existing
+internal page-id reference shape used by utility and trigger navigation:
+
+~~~json
+{
+  "type": "button",
+  "content": { "text": "Go to Case 1", "target_page_id": "pg_case_1" }
+}
+~~~
+
+Its only v1 action is internal page navigation. The editor reuses the shared
+page list and page-id value, while the player invokes the same direct page
+navigation path used by author-configured page jumps. It is excluded from PDF
+content by the registry default.
+
+Rich-text links remain in the existing `html` segment format; no new segment
+type or schema migration is required. The sanitizer allows only `http` and
+`https` anchor destinations and removes all other protocols/attributes. The
+player renders accepted external anchors with `target="_blank"` and
+`rel="noopener noreferrer"`, which is the deliberate v1 exception to the
+general in-player containment rule because this feature explicitly requires
+learners to open external links in a new tab.
 
 ## 4. Trigger and Variable Engine (player core)
 

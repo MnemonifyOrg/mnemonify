@@ -19,6 +19,8 @@ export default function EmbedBlock({ block }) {
         src={url}
         title={label || 'Embedded content'}
         sandbox={safeSandbox}
+        tabIndex={-1}
+        loading="lazy"
       />
       {/* Hidden on screen, shown only in print/PDF (player.css) -- an
           iframe can't render in a static PDF, so print output falls back

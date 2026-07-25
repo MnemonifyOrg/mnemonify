@@ -16,6 +16,7 @@ import { createScoreState, recordInteractionScore, scoreVariables, stripSystemVa
 import RichText from './blocks/RichText.jsx';
 import { getPageStatus as getNavigationPageStatus, previousPage, shouldRenderBackButton } from './engine/navigation.js';
 import { resetPageScroll } from './engine/scroll.js';
+import { installEmbedFocusGuard } from './engine/embedFocusGuard.js';
 import { resolveNavMode } from '@mnemonify/schema/navigation.js';
 import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js';
 import { effectiveGlossaryTerms } from '@mnemonify/schema/glossary.js';
@@ -302,7 +303,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   }, []);
 
   useEffect(() => {
-    if (!course) return;
+    if (!course || !currentPageId) return undefined;
     window.__MNEMONIFY_BOOTED__ = true;
     document.title = course.title || course.meta?.title || 'Mnemonify Course';
     // Per-course customizable interactive color (meta.theme.accent, see
@@ -333,75 +334,14 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   }, []);
 
   useEffect(() => {
-    if (!course) return;
-    // Embed blocks (e.g. a DigitalScope WSI iframe) can trigger the
-    // browser's default iframe-focus auto-scroll behavior -- some browsers
-    // resolve an iframe gaining focus by scrolling it into view, jumping
-    // the page down to wherever the embed sits even though nothing the
-    // course itself asked for that. window.scrollTo here targets this
-    // document's own scroll position (this player may itself be running
-    // inside the editor's preview iframe, in which case `window` is that
-    // iframe's own window, not the outer editor page -- exactly the
-    // container that needs resetting).
-    //
-    // Rather than guess at a timeout long enough to cover every viewer's
-    // load time, this needs to detect the actual signal: the iframe
-    // becoming the parent document's focused element, whenever that
-    // happens. `document.activeElement` is polled (not a `focusin`
-    // listener -- confirmed by hand that browsers deliberately suppress
-    // that event across a cross-origin boundary, so it would silently
-    // never fire for a real cross-origin WSI embed).
-    //
-    // This must NOT fight a learner who deliberately clicks into the embed
-    // to use it, or who has started scrolling/interacting with the page at
-    // all -- see DECISIONS.md for the full reasoning.
-    resetPageScroll();
-
-    let userHasInteracted = false;
-    function markInteracted() {
-      userHasInteracted = true;
-    }
-    window.addEventListener('wheel', markInteracted, { passive: true });
-    window.addEventListener('touchstart', markInteracted, { passive: true });
-    window.addEventListener('keydown', markInteracted);
-
-    const iframes = Array.from(document.querySelectorAll('.block-embed__iframe'));
-    const clickedIframes = new WeakSet();
-
-    function handlePointerDown(e) {
-      const iframe = e.target?.closest?.('.block-embed__iframe');
-      if (iframe) {
-        clickedIframes.add(iframe);
-        userHasInteracted = true;
-      }
-    }
-
-    function resetScroll() {
-      if (!userHasInteracted) window.scrollTo(0, 0);
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    iframes.forEach((iframe) => iframe.addEventListener('load', resetScroll));
-
-    let lastActive = document.activeElement;
-    const pollId = window.setInterval(() => {
-      const active = document.activeElement;
-      if (active === lastActive) return;
-      lastActive = active;
-      if (iframes.includes(active) && !clickedIframes.has(active)) {
-        resetScroll();
-      }
-    }, 200);
-
-    return () => {
-      window.clearInterval(pollId);
-      window.removeEventListener('wheel', markInteracted);
-      window.removeEventListener('touchstart', markInteracted);
-      window.removeEventListener('keydown', markInteracted);
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      iframes.forEach((iframe) => iframe.removeEventListener('load', resetScroll));
-    };
-  }, [course]);
+    if (!course || !currentPageId) return undefined;
+    // DigitalScope and other cross-origin viewers may focus their iframe
+    // asynchronously after load. The helper watches activeElement, restores
+    // the position captured for this page, and stops correcting after any
+    // deliberate learner interaction. It is recreated per page so embeds
+    // introduced by navigation are monitored too.
+    return installEmbedFocusGuard({ documentRef: document, scrollTarget: window });
+  }, [course, currentPageId]);
 
   useEffect(() => {
     if (!currentPageId) return;

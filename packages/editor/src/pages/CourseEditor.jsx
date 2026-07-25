@@ -33,6 +33,7 @@ import {
 import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transfer.js';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import { toggleRailDrawer } from '../lib/editorDrawer.js';
+import { installEmbedFocusGuard } from '../lib/embedFocusGuard.js';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -284,6 +285,12 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   useEffect(() => {
     courseRef.current = course;
   }, [course]);
+
+  useEffect(() => {
+    if (!course || !activePageId || previewMode) return undefined;
+    const scrollPanel = document.querySelector('.course-editor__center-panel');
+    return installEmbedFocusGuard({ documentRef: document, scrollTarget: scrollPanel });
+  }, [course, activePageId, previewMode]);
 
   useEffect(() => {
     if (!publishNotice) return;

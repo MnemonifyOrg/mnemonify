@@ -79,6 +79,8 @@ export default function EmbedBlockEditor({ block, onChange }) {
           src={url}
           title={label || 'Embed preview'}
           sandbox={safeEmbedSandbox(sandbox, DEFAULT_EMBED_SANDBOX)}
+          tabIndex={-1}
+          loading="lazy"
         />
       )}
     </div>

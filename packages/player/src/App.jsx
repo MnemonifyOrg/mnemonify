@@ -20,6 +20,7 @@ import { materializeLinkedEntities } from '@mnemonify/schema/linked-entities.js'
 import { effectiveGlossaryTerms } from '@mnemonify/schema/glossary.js';
 import { GlossaryContext } from './blocks/RichText.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
+import { shouldRenderPageTitle } from './engine/pageTitle.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -709,7 +710,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
                 <RichTextPreview field={course.meta.header} variables={playerVariables} />
               </div>
             )}
-            <h1 className="player__page-title">{page.title}</h1>
+            {shouldRenderPageTitle(page) && <h1 className="player__page-title">{page.title}</h1>}
             {page.blocks.map((block) => (
               <BlockRenderer
                 key={block.block_id}

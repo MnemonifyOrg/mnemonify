@@ -17,6 +17,7 @@ describe('shared rich-text toolbar', () => {
     expect(html).toContain('aria-label="Align center"');
     expect(html).toContain('aria-label="Align right"');
     expect(html).toContain('Insert Variable');
+    expect(html).toContain('aria-haspopup="listbox"');
   });
 
   it('can hide list and alignment controls for restricted table-cell fields', () => {

@@ -27,7 +27,14 @@ describe('editor rich-text variable editing', () => {
 
   it('restores the captured selection before inserting a variable chip', () => {
     const commonAncestor = {};
-    const capturedRange = { commonAncestorContainer: commonAncestor, cloneRange: vi.fn(() => capturedRange) };
+    const capturedRange = {
+      commonAncestorContainer: commonAncestor,
+      cloneRange: vi.fn(() => capturedRange),
+      deleteContents: vi.fn(),
+      insertNode: vi.fn(),
+      setStartAfter: vi.fn(),
+      collapse: vi.fn(),
+    };
     const selection = {
       rangeCount: 1,
       getRangeAt: vi.fn(() => capturedRange),
@@ -36,8 +43,13 @@ describe('editor rich-text variable editing', () => {
     };
     const field = { contains: vi.fn(() => true), focus: vi.fn() };
     const documentStub = {
-      execCommand: vi.fn(() => true),
       createRange: vi.fn(),
+      createElement: vi.fn(() => ({
+        className: '',
+        setAttribute: vi.fn(),
+        textContent: '',
+        contentEditable: '',
+      })),
     };
     vi.stubGlobal('window', { getSelection: () => selection });
     vi.stubGlobal('document', documentStub);
@@ -48,11 +60,14 @@ describe('editor rich-text variable editing', () => {
 
     expect(selection.removeAllRanges).toHaveBeenCalled();
     expect(selection.addRange).toHaveBeenCalledWith(capturedRange);
-    expect(documentStub.execCommand).toHaveBeenCalledWith(
-      'insertHTML',
-      false,
-      '<span class="rich-variable-chip" data-mnemonify-variable="ScoreRaw">ScoreRaw</span>'
-    );
+    expect(capturedRange.deleteContents).toHaveBeenCalled();
+    expect(capturedRange.insertNode).toHaveBeenCalledWith(expect.objectContaining({
+      className: 'rich-variable-chip',
+      textContent: 'ScoreRaw',
+      contentEditable: 'false',
+    }));
+    expect(capturedRange.setStartAfter).toHaveBeenCalled();
+    expect(capturedRange.collapse).toHaveBeenCalledWith(true);
   });
 
   it('serializes accepted glossary links as visibly distinct bound chips', () => {

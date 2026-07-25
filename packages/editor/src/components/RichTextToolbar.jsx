@@ -101,7 +101,7 @@ export default function RichTextToolbar({
         {button('justifyCenter', 'Align center', <AlignIcon alignment="center" />, 'center')}
         {button('justifyRight', 'Align right', <AlignIcon alignment="right" />, 'right')}
       </span>}
-      {onInsert && <VariablePicker variables={variables} onInsert={onInsert} />}
+      {onInsert && <VariablePicker variables={variables} fieldRef={fieldRef} selectionRef={selectionRef} onInsert={onInsert} />}
     </div>
   );
 }

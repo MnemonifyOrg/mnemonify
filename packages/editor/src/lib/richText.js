@@ -230,8 +230,23 @@ export function insertVariableAtSelection(fieldRef, selectionRef, name) {
     selection?.removeAllRanges();
     selection?.addRange(range);
   }
-  const safeName = escapeHtml(String(name || ''));
-  return document.execCommand('insertHTML', false, `<span class="rich-variable-chip" data-mnemonify-variable="${safeName}">${safeName}</span>`);
+  const selection = window.getSelection?.();
+  if (!selection?.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  const variableName = String(name || '');
+  const chip = document.createElement('span');
+  chip.className = 'rich-variable-chip';
+  chip.setAttribute('data-mnemonify-variable', variableName);
+  chip.contentEditable = 'false';
+  chip.textContent = variableName;
+  range.deleteContents();
+  range.insertNode(chip);
+  range.setStartAfter(chip);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  captureRichTextSelection(field, selectionRef);
+  return true;
 }
 
 function astToHtml(ast) {

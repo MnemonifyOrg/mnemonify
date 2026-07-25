@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BLOCK_EDITORS } from './blocks/index.js';
+import { KnowledgeCheckModeControls } from './blocks/KnowledgeCheckBlock.jsx';
+import ObjectiveMultiSelect from './ObjectiveMultiSelect.jsx';
 import {
   bulkAssignObjective,
   bulkAssignTag,
@@ -61,6 +63,7 @@ export default function QuestionBankEditorModal({
   const selectedCount = selectedQuestionIds.length;
   const allVisibleSelected = visibleQuestions.length > 0 && visibleQuestions.every((question) => selectedQuestionIds.includes(question.question_id));
   const ActiveEditor = activeQuestion ? (BLOCK_EDITORS[activeQuestion.type || questionType(activeQuestion)] || BLOCK_EDITORS['knowledge-check']) : null;
+  const activeQuestionType = activeQuestion ? (activeQuestion.type || questionType(activeQuestion)) : null;
 
   function updateQuestions(nextQuestions, options = { forceSnapshot: false }) {
     onChangeBank({ questions: nextQuestions }, options);
@@ -113,9 +116,10 @@ export default function QuestionBankEditorModal({
     if (!nextQuestions.some((question) => question.question_id === activeQuestionId)) setActiveQuestionId(nextQuestions[0]?.question_id || null);
   }
 
-  function updateQuestion(questionId, content, objectiveIds) {
+  function updateQuestion(questionId, content, objectiveIds, scored) {
     const current = questions.find((question) => question.question_id === questionId);
-    const updated = { ...current, content, objective_ids: objectiveIds, scored: content.scored !== false };
+    const nextScored = scored === undefined ? current.scored !== false : scored;
+    const updated = { ...current, content, objective_ids: objectiveIds, scored: nextScored };
     if (current?.linked_entity_id) {
       onRequestLinkedQuestionEdit?.({
         entityId: current.linked_entity_id,
@@ -192,7 +196,7 @@ export default function QuestionBankEditorModal({
               </label>
               <span className="question-bank-editor-modal__count">{questions.length} total</span>
             </div>
-            <button type="button" className="btn question-bank-editor-modal__add" onClick={() => { const questionId = onAddQuestion?.(); if (questionId) setActiveQuestionId(questionId); }}>+ Add question</button>
+            <button type="button" className="btn btn-primary question-bank-editor-modal__add" onClick={() => { const questionId = onAddQuestion?.(); if (questionId) setActiveQuestionId(questionId); }}>+ Add question</button>
 
             <ul className="question-bank-editor-modal__list">
               {visibleQuestions.map((question) => (
@@ -246,15 +250,65 @@ export default function QuestionBankEditorModal({
                     <button type="button" className="btn-text settings-panel__danger-action" disabled={questions.length <= 1} onClick={() => removeQuestion(activeQuestion.question_id)}>Remove</button>
                   </div>
                 </div>
+                <section className="question-bank-editor-modal__editor-section question-bank-editor-modal__question-settings" aria-labelledby="question-bank-question-heading">
+                  <div className="question-bank-editor-modal__section-heading">
+                    <h4 id="question-bank-question-heading">Question</h4>
+                    <p>Set the question type, scoring, and objective mapping.</p>
+                  </div>
+                  <div className="question-bank-editor-modal__question-settings-grid">
+                    <div className="question-bank-editor-modal__field-summary">
+                      <span className="question-bank-editor-modal__field-label">Question type</span>
+                      <strong>{questionType(activeQuestion)}</strong>
+                    </div>
+                    {activeQuestionType === 'knowledge-check' && (
+                      <div className="question-bank-editor-modal__mode-field">
+                        <span className="question-bank-editor-modal__field-label">Question mode</span>
+                        <KnowledgeCheckModeControls
+                          block={{ ...activeQuestion, content: activeQuestion.content || {} }}
+                          onChange={(updated) => updateQuestion(activeQuestion.question_id, updated.content, updated.objective_ids || activeQuestion.objective_ids || [])}
+                        />
+                      </div>
+                    )}
+                    <label className="question-bank-editor-modal__scored-field">
+                      <span className="question-bank-editor-modal__field-label">Scoring</span>
+                      <span className="settings-panel__checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={activeQuestion.content?.scored !== false && activeQuestion.scored !== false}
+                          onChange={(event) => updateQuestion(
+                            activeQuestion.question_id,
+                            activeQuestion.content || {},
+                            activeQuestion.objective_ids || [],
+                            event.target.checked,
+                          )}
+                        />
+                        Contributes to score
+                      </span>
+                    </label>
+                    <ObjectiveMultiSelect
+                      objectives={objectives}
+                      value={activeQuestion.objective_ids || []}
+                      onChange={(objectiveIds) => updateQuestion(activeQuestion.question_id, activeQuestion.content || {}, objectiveIds)}
+                      label="Objectives"
+                      ariaLabel="Question objectives"
+                    />
+                  </div>
+                </section>
                 <ActiveEditor
                   block={{ ...activeQuestion, block_id: `blk_${activeQuestion.question_id}`, type: activeQuestion.type || questionType(activeQuestion), content: activeQuestion.content, objective_ids: activeQuestion.objective_ids || [], triggers: activeQuestion.triggers || [] }}
                   assets={assets}
                   courseId={courseId}
-                  onChange={(updated) => updateQuestion(activeQuestion.question_id, updated.content, updated.objective_ids || [])}
+                  onChange={(updated) => updateQuestion(
+                    activeQuestion.question_id,
+                    updated.content,
+                    updated.objective_ids || [],
+                    updated.content?.scored === undefined ? activeQuestion.scored !== false : updated.content.scored !== false,
+                  )}
                   onAddCourseAssets={onAddCourseAssets}
                   onUpdateCourseAsset={onUpdateCourseAsset}
                   variables={variables}
                   objectives={objectives}
+                  questionBankLayout
                 />
               </>
             ) : (

@@ -131,7 +131,7 @@ function KcImageField({ assetId, assets, label, onPick, onRemove }) {
   );
 }
 
-export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [] }) {
+export default function KnowledgeCheckBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets, onUpdateCourseAsset, variables = [], objectives = [], questionBankLayout = false }) {
   const { question = '', options = [] } = block.content;
   const multiSelect = block.content.multi_select === true;
   const correctOptionIds = new Set(getCorrectOptionIds(block.content));
@@ -292,7 +292,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
 
   return (
     <div className="knowledge-check-block-editor" ref={containerRef} style={{ position: 'relative' }}>
-      {objectives.length > 0 && (
+      {!questionBankLayout && objectives.length > 0 && (
         <ObjectiveMultiSelect
           objectives={objectives}
           value={block.objective_ids || []}
@@ -302,7 +302,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
           hint="Optional. Map this question to one or more course objectives."
         />
       )}
-      <KnowledgeCheckModeControls block={block} onChange={onChange} />
+      {!questionBankLayout && <KnowledgeCheckModeControls block={block} onChange={onChange} />}
       {toolbarPos && (
         <RichTextToolbar
           className="knowledge-check-block-editor__toolbar"
@@ -315,25 +315,40 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
         />
       )}
 
-      <EditableRichField
-        className="editable-field knowledge-check-block-editor__question"
-        placeholder="Click to add your question..."
-        value={question}
-        selectionRef={selectionRef}
-        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
-        onBlur={handleFieldBlur}
-        onCommit={(html) => setContent({ question: html })}
-      />
-      <KcImageField
-        assetId={block.content.question_image_id}
-        assets={assets}
-        label="question image"
-        onPick={() => setImagePickerTarget({ kind: 'question' })}
-        onRemove={() => setContent({ question_image_id: null })}
-      />
+      <section className={questionBankLayout ? 'kc-editor-section kc-editor-section--stem' : undefined} aria-labelledby={questionBankLayout ? 'kc-question-stem-heading' : undefined}>
+        {questionBankLayout && (
+          <div className="kc-editor-section__heading">
+            <h4 id="kc-question-stem-heading">Question stem</h4>
+            <p>Write the prompt learners will answer.</p>
+          </div>
+        )}
+        <EditableRichField
+          className="editable-field knowledge-check-block-editor__question"
+          placeholder="Click to add your question..."
+          value={question}
+          selectionRef={selectionRef}
+          onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
+          onBlur={handleFieldBlur}
+          onCommit={(html) => setContent({ question: html })}
+        />
+        <KcImageField
+          assetId={block.content.question_image_id}
+          assets={assets}
+          label="question image"
+          onPick={() => setImagePickerTarget({ kind: 'question' })}
+          onRemove={() => setContent({ question_image_id: null })}
+        />
+      </section>
 
-      <ul className="knowledge-check-block-editor__options">
-        {options.map((option) => {
+      <section className={questionBankLayout ? 'kc-editor-section kc-editor-section--options' : undefined} aria-labelledby={questionBankLayout ? 'kc-answer-options-heading' : undefined}>
+        {questionBankLayout && (
+          <div className="kc-editor-section__heading">
+            <h4 id="kc-answer-options-heading">Answer options</h4>
+            <p>Mark the correct answer and add optional media or feedback to each option.</p>
+          </div>
+        )}
+        <ul className="knowledge-check-block-editor__options">
+          {options.map((option) => {
           const imageExpanded = expandedOptionImageIds.has(option.id);
           const feedbackExpanded = expandedFeedbackIds.has(option.id);
           const feedbackActive = hasOptionFeedbackContent(option.feedback);
@@ -412,48 +427,57 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
               )}
             </li>
           );
-        })}
-      </ul>
-      {options.length < MAX_OPTIONS && (
-        <button className="btn" onClick={addOption}>
-          + Add option
-        </button>
-      )}
+          })}
+        </ul>
+        {options.length < MAX_OPTIONS && (
+          <button className="btn" onClick={addOption}>
+            + Add option
+          </button>
+        )}
+      </section>
 
-      <KcGeneralFeedbackSection
-        id="correct"
-        label="Correct feedback"
-        textValue={block.content.correct_feedback}
-        imageId={block.content.correct_feedback_image_id}
-        textExpanded={expandedGeneralFeedbackIds.has('correct-text')}
-        imageExpanded={expandedGeneralFeedbackIds.has('correct-image')}
-        assets={assets}
-        selectionRef={selectionRef}
-        onToggleText={() => toggleGeneralFeedback('correct-text')}
-        onToggleImage={() => toggleGeneralFeedback('correct-image')}
-        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
-        onBlur={handleFieldBlur}
-        onCommit={(html) => setContent({ correct_feedback: html })}
-        onPick={() => setImagePickerTarget({ kind: 'correct' })}
-        onRemove={() => setContent({ correct_feedback_image_id: null })}
-      />
-      <KcGeneralFeedbackSection
-        id="incorrect"
-        label="Incorrect feedback"
-        textValue={block.content.incorrect_feedback}
-        imageId={block.content.incorrect_feedback_image_id}
-        textExpanded={expandedGeneralFeedbackIds.has('incorrect-text')}
-        imageExpanded={expandedGeneralFeedbackIds.has('incorrect-image')}
-        assets={assets}
-        selectionRef={selectionRef}
-        onToggleText={() => toggleGeneralFeedback('incorrect-text')}
-        onToggleImage={() => toggleGeneralFeedback('incorrect-image')}
-        onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
-        onBlur={handleFieldBlur}
-        onCommit={(html) => setContent({ incorrect_feedback: html })}
-        onPick={() => setImagePickerTarget({ kind: 'incorrect' })}
-        onRemove={() => setContent({ incorrect_feedback_image_id: null })}
-      />
+      <section className={questionBankLayout ? 'kc-editor-section kc-editor-section--feedback' : undefined} aria-labelledby={questionBankLayout ? 'kc-feedback-heading' : undefined}>
+        {questionBankLayout && (
+          <div className="kc-editor-section__heading">
+            <h4 id="kc-feedback-heading">Feedback</h4>
+            <p>Optional feedback shown after the learner submits an answer.</p>
+          </div>
+        )}
+        <KcGeneralFeedbackSection
+          id="correct"
+          label="Correct feedback"
+          textValue={block.content.correct_feedback}
+          imageId={block.content.correct_feedback_image_id}
+          textExpanded={expandedGeneralFeedbackIds.has('correct-text')}
+          imageExpanded={expandedGeneralFeedbackIds.has('correct-image')}
+          assets={assets}
+          selectionRef={selectionRef}
+          onToggleText={() => toggleGeneralFeedback('correct-text')}
+          onToggleImage={() => toggleGeneralFeedback('correct-image')}
+          onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
+          onBlur={handleFieldBlur}
+          onCommit={(html) => setContent({ correct_feedback: html })}
+          onPick={() => setImagePickerTarget({ kind: 'correct' })}
+          onRemove={() => setContent({ correct_feedback_image_id: null })}
+        />
+        <KcGeneralFeedbackSection
+          id="incorrect"
+          label="Incorrect feedback"
+          textValue={block.content.incorrect_feedback}
+          imageId={block.content.incorrect_feedback_image_id}
+          textExpanded={expandedGeneralFeedbackIds.has('incorrect-text')}
+          imageExpanded={expandedGeneralFeedbackIds.has('incorrect-image')}
+          assets={assets}
+          selectionRef={selectionRef}
+          onToggleText={() => toggleGeneralFeedback('incorrect-text')}
+          onToggleImage={() => toggleGeneralFeedback('incorrect-image')}
+          onFocus={(e) => { activeFieldRef.current = e.currentTarget; handleFieldFocus(e); }}
+          onBlur={handleFieldBlur}
+          onCommit={(html) => setContent({ incorrect_feedback: html })}
+          onPick={() => setImagePickerTarget({ kind: 'incorrect' })}
+          onRemove={() => setContent({ incorrect_feedback_image_id: null })}
+        />
+      </section>
 
       {imagePickerTarget && (
         <MediaLibraryPanel

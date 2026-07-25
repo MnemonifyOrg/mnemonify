@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import QuestionBankEditorModal from './QuestionBankEditorModal.jsx';
@@ -7,12 +7,34 @@ import BankExportModal from './BankExportModal.jsx';
 import BankImportReviewModal from './BankImportReviewModal.jsx';
 import { buildNativeQuestionBankExport } from '@mnemonify/schema/question-bank-transfer.js';
 
+vi.mock('./blocks/EditableRichField.jsx', () => ({
+  default: function MockEditableRichField({ value, className, placeholder }) {
+    const text = Array.isArray(value) ? value.map((segment) => segment?.v || '').join('') : value;
+    return React.createElement('div', { className, 'data-placeholder': placeholder }, text);
+  },
+}));
+
 globalThis.React = React;
 
 const bank = {
   bank_id: 'bnk_one',
   name: 'Case review bank',
   questions: [],
+};
+const questionBank = {
+  ...bank,
+  questions: [{
+    question_id: 'bq_one',
+    scored: true,
+    objective_ids: [],
+    content: {
+      question: 'Which answer is correct?',
+      options: [
+        { id: 'opt_one', text: 'Answer one', correct: true },
+        { id: 'opt_two', text: 'Answer two', correct: false },
+      ],
+    },
+  }],
 };
 
 const courseJson = {
@@ -57,6 +79,27 @@ describe('question bank editor redesign', () => {
     expect(html).toContain('Export bank');
     expect(html).toContain('Import bank');
     expect(html).not.toContain('question-bank-editor-modal__body');
+  });
+
+  it('gives the selected question a labeled, spaced editing hierarchy', () => {
+    const html = renderToStaticMarkup(
+      <QuestionBankEditorModal
+        bank={questionBank}
+        objectives={[{ objective_id: 'obj_one', label: 'Apply knowledge' }]}
+        variables={[]}
+        assets={[]}
+        onChangeBank={() => {}}
+        onClose={() => {}}
+      />
+    );
+    expect(html).toContain('btn-primary question-bank-editor-modal__add');
+    expect(html).toContain('>Question</h4>');
+    expect(html).toContain('Question stem');
+    expect(html).toContain('Answer options');
+    expect(html).toContain('>Feedback</h4>');
+    expect(html).toContain('Contributes to score');
+    expect(html).toContain('Select all that apply');
+    expect(html).toContain('Add option');
   });
 
   it('offers native and GIFT export choices', () => {

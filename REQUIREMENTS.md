@@ -524,3 +524,36 @@ Left nav shows only structure:
 - All previously-accessible settings (Course, Player, Variables, Question Banks, Objectives incl. module-level, Page, Block) remain reachable and functional through the new drawers — this is a relocation of UI, not a removal of functionality
 - Existing drag-and-drop reorder (pages and modules) works unchanged
 - All automated tests pass; manual verification of drawer switching and objective mapping (course + module) performed by Sebastin before considering this done
+
+ Back Button Setting, Button Block, and Rich-Text Hyperlinks (v1 scope)
+ 
+Add this section to REQUIREMENTS.md before requesting a build prompt.
+ 
+## 1. Back button (page/course setting, not an author-placed block)
+ 
+- A toggle setting, available at both course level (default for all pages) and per-page override (matching the existing pattern for other page-level overrides of course defaults, if one exists — otherwise course-level only for this pass).
+- When enabled, the player automatically renders a Back button, taking the learner to the previous page in course sequence (same ordering used by forward navigation).
+- Respects navigation mode: if linear navigation is enforced, Back should still be allowed (going backward doesn't break linear-forward enforcement) unless the course explicitly disables backward navigation elsewhere — if such a setting already exists, Back should respect it; if not, Back is always allowed when the toggle is on.
+- No effect when disabled (default state) or on the first page of a course (no previous page to go to — button should not render, or should render disabled, author's/Codex's call on which reads better, note which was chosen).
+- Setting lives in the Course drawer (and page-level settings if per-page override is included).
+## 2. Generic Button block
+ 
+- New block type in the block registry, insertable via Add Block like any other block.
+- Author-configurable button text (plain text, editable inline like other block text fields).
+- Single action type: "Navigate to page" — reuses the existing internal page-linking mechanism already used elsewhere in the editor (same page picker UI/data structure, not a new one).
+- Block settings (in its Block Settings drawer): button text field, target page picker.
+- Styled using existing design tokens (--accent for the button, --radius-input, consistent with other buttons in the player).
+- No other action types in this pass (no set-variable, no show/hide, no external URL) — those may come later if requested.
+## 3. Hyperlinks in rich text
+ 
+- Add a "Link" button to the rich-text toolbar (alongside Bold/Italic/Underline/etc.).
+- Clicking with text selected opens a small popover/input to enter a URL (external URLs only for this pass — no internal page-link picker).
+- Applying wraps the selection in a link; the link renders as clickable, visually distinguished (standard link styling — accent color, underline) in both editor and player.
+- Clicking existing linked text while editing should let the author edit or remove the URL (not just re-apply formatting).
+- Links must open in a new tab in the published player (target="_blank" or equivalent), since learners shouldn't lose their course progress by navigating away.
+- Persist through save/reload and SCORM publish like other rich-text formatting (lists, alignment, colors) added in commit 1e27f013 — same storage-format considerations apply; flag if the current format can't represent links without a schema change.
+## Out of scope for this pass
+ 
+- Trigger/variable engine actions for the Button block
+- Internal page links in rich text (external URLs only)
+- Lightbox/image-carousel in-text references (logged as a V2 roadmap item, not part of this spec)

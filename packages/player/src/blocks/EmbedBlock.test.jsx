@@ -12,4 +12,21 @@ describe('player DigitalScope-compatible embeds', () => {
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('loading="lazy"');
   });
+
+  it('uses a PDF object renderer for the confirmed CAP PDF URL', () => {
+    const html = renderToStaticMarkup(
+      <EmbedBlock
+        block={{
+          content: {
+            url: 'https://documents-cloud.cap.org/appdocs/learning/VBP/2026/A/2026_VBP-A_Cases_1-5_Resources.pdf',
+            label: 'Case resources',
+          },
+        }}
+      />,
+    );
+    expect(html).toContain('class="block-embed__pdf"');
+    expect(html).toContain('data="https://documents-cloud.cap.org/appdocs/learning/VBP/2026/A/2026_VBP-A_Cases_1-5_Resources.pdf"');
+    expect(html).toContain('type="application/pdf"');
+    expect(html).not.toContain('class="block-embed__iframe"');
+  });
 });

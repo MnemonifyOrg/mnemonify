@@ -12,4 +12,17 @@ describe('editor DigitalScope-compatible embed preview', () => {
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('loading="lazy"');
   });
+
+  it('uses a PDF object renderer for PDF URLs instead of the sandboxed HTML iframe', () => {
+    const html = renderToStaticMarkup(
+      <EmbedBlockEditor
+        block={{ content: { url: 'https://documents-cloud.cap.org/appdocs/learning/VBP/2026/A/resources.pdf?download=0#page=1' } }}
+        onChange={() => {}}
+      />,
+    );
+    expect(html).toContain('class="embed-block-editor__pdf"');
+    expect(html).toContain('data="https://documents-cloud.cap.org/appdocs/learning/VBP/2026/A/resources.pdf?download=0#page=1"');
+    expect(html).toContain('type="application/pdf"');
+    expect(html).not.toContain('class="embed-block-editor__preview"');
+  });
 });

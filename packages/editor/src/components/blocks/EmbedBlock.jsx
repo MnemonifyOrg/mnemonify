@@ -1,6 +1,7 @@
 import { DEFAULT_EMBED_SANDBOX } from '../../lib/blockDefaults.js';
 import { toEmbeddableUrl } from '../../lib/embedUrl.js';
 import { safeEmbedSandbox } from '../../lib/embedSandbox.js';
+import { isPdfUrl } from '../../lib/isPdfUrl.js';
 
 // Domains known to work well embedded (DigitalScope for pathology WSI
 // viewers, plus the common video hosts). Not an enforced restriction --
@@ -21,6 +22,7 @@ function isAllowedDomain(url) {
 export default function EmbedBlockEditor({ block, onChange }) {
   const { url = '', label = '', sandbox } = block.content;
   const showWarning = url.trim() && !isAllowedDomain(url);
+  const isPdf = isPdfUrl(url.trim());
 
   function setContent(patch) {
     onChange({ ...block, content: { ...block.content, ...patch } });
@@ -69,7 +71,21 @@ export default function EmbedBlockEditor({ block, onChange }) {
         </p>
       )}
 
-      {url.trim() && (
+      {url.trim() && isPdf && (
+        <object
+          className="embed-block-editor__pdf"
+          data={url}
+          type="application/pdf"
+          title={label || 'PDF preview'}
+          tabIndex={-1}
+        >
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Open PDF in a new tab
+          </a>
+        </object>
+      )}
+
+      {url.trim() && !isPdf && (
         // Same sandbox rules as the player -- an author previewing here
         // sees exactly the containment the learner will get. safeEmbedSandbox
         // strips allow-popups-to-escape-sandbox the same way the player's

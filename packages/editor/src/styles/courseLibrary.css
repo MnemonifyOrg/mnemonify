@@ -70,6 +70,29 @@
   color: var(--color-text-secondary);
 }
 
+.course-library__search {
+  width: min(100%, 520px);
+}
+.course-library__search-input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.course-library__search-input::placeholder {
+  color: var(--text-tertiary);
+}
+.course-library__search-input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.course-library__search-empty {
+  padding-top: var(--space-5);
+}
+
 .course-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

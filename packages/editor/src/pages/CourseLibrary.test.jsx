@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CourseCard } from './CourseLibrary.jsx';
+import { CourseCard, CourseResults, filterCoursesByTitle } from './CourseLibrary.jsx';
 import { getCourseAccent, getCourseCoverImage, getCourseInitial } from '../lib/courseCard.js';
 
 globalThis.React = React;
@@ -48,5 +48,38 @@ describe('dashboard course cards', () => {
     expect(getCourseAccent({ accent: 'not-a-color' })).toBe('#0E7A8A');
     expect(getCourseInitial('  mnemonify')).toBe('M');
     expect(getCourseInitial('')).toBe('?');
+  });
+});
+
+describe('dashboard course search', () => {
+  const courses = [
+    { ...baseCourse, id: 'anatomy', title: 'Clinical Anatomy' },
+    { ...baseCourse, id: 'pharmacology', title: 'Pharmacology Basics' },
+  ];
+
+  it('filters titles with a case-insensitive substring match', () => {
+    expect(filterCoursesByTitle(courses, 'ANATOMY')).toEqual([courses[0]]);
+
+    const html = renderToStaticMarkup(
+      <CourseResults courses={courses} query="anatomy" {...cardProps} />,
+    );
+    expect(html).toContain('Clinical Anatomy');
+    expect(html).not.toContain('Pharmacology Basics');
+  });
+
+  it('shows an empty state when no course title matches', () => {
+    const html = renderToStaticMarkup(
+      <CourseResults courses={courses} query="radiology" {...cardProps} />,
+    );
+    expect(html).toContain('No courses match your search.');
+    expect(html).not.toContain('course-grid');
+  });
+
+  it('restores every course when the search is cleared', () => {
+    const html = renderToStaticMarkup(
+      <CourseResults courses={courses} query="" {...cardProps} />,
+    );
+    expect(html).toContain('Clinical Anatomy');
+    expect(html).toContain('Pharmacology Basics');
   });
 });

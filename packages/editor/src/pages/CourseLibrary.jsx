@@ -86,6 +86,38 @@ export function CourseCard({ course, onOpen, onDuplicate, onDelete }) {
   );
 }
 
+export function filterCoursesByTitle(courses, query) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return courses;
+  return courses.filter((course) => (course.title || 'Untitled Course').toLowerCase().includes(normalizedQuery));
+}
+
+export function CourseResults({ courses, query, onOpen, onDuplicate, onDelete }) {
+  const visibleCourses = filterCoursesByTitle(courses, query);
+
+  if (visibleCourses.length === 0) {
+    return (
+      <div className="empty-state course-library__search-empty" role="status">
+        <p>No courses match your search.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="course-grid">
+      {visibleCourses.map((course) => (
+        <CourseCard
+          key={course.id}
+          course={course}
+          onOpen={onOpen}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+}
+
 function NewCourseModal({ templates, onClose, onCreated }) {
   const [tab, setTab] = useState('blank');
   const [title, setTitle] = useState('');
@@ -172,6 +204,7 @@ export default function CourseLibrary() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   async function refresh() {
     const [c, t, u] = await Promise.all([api.listCourses(), api.listTemplates(), api.getMe()]);
@@ -252,6 +285,21 @@ export default function CourseLibrary() {
           </div>
         )}
 
+        {courses.length > 0 && (
+          <div className="course-library__search">
+            <label className="sr-only" htmlFor="course-library-search">Search courses</label>
+            <input
+              id="course-library-search"
+              className="course-library__search-input"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search courses…"
+              autoComplete="off"
+            />
+          </div>
+        )}
+
         {courses.length === 0 ? (
           <div className="empty-state">
             <p>No courses yet. Let&rsquo;s change that.</p>
@@ -260,17 +308,13 @@ export default function CourseLibrary() {
             </button>
           </div>
         ) : (
-          <div className="course-grid">
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                onOpen={(id) => navigate(`/courses/${id}/edit`)}
-                onDuplicate={handleDuplicate}
-                onDelete={setDeleteTarget}
-              />
-            ))}
-          </div>
+          <CourseResults
+            courses={courses}
+            query={searchQuery}
+            onOpen={(id) => navigate(`/courses/${id}/edit`)}
+            onDuplicate={handleDuplicate}
+            onDelete={setDeleteTarget}
+          />
         )}
       </main>
 

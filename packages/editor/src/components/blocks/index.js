@@ -18,7 +18,7 @@ import MatchingBlockEditor from './MatchingBlock.jsx';
 import OrderingBlockEditor from './OrderingBlock.jsx';
 import HotspotBlockEditor from './HotspotBlock.jsx';
 import QuestionBankDrawBlockEditor from './QuestionBankDrawBlock.jsx';
-import { BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
+import { BLOCK_REGISTRY, BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
 
 // block-type -> editor component. Component references can't live in the
 // shared, framework-free packages/schema/block-registry.js (that would
@@ -27,28 +27,32 @@ import { BLOCK_TYPES } from '@mnemonify/schema/block-registry.js';
 // keyed by the exact same type strings block-registry.js defines. Any
 // type not listed here falls back to a generic read-only preview in
 // BlockCanvas.
-export const BLOCK_EDITORS = {
-  text: TextBlockEditor,
-  heading: HeadingBlockEditor,
-  image: ImageBlockEditor,
-  list: ListBlockEditor,
-  accordion: AccordionBlockEditor,
-  tabs: TabsBlockEditor,
-  'knowledge-check': KnowledgeCheckBlockEditor,
-  carousel: CarouselBlockEditor,
-  reflection: ReflectionBlockEditor,
-  button: ButtonBlockEditor,
-  two_column: TwoColumnBlockEditor,
-  table: TableBlockEditor,
-  embed: EmbedBlockEditor,
-  video: VideoBlockEditor,
-  audio: AudioBlockEditor,
-  flashcards: FlashcardsBlockEditor,
-  matching: MatchingBlockEditor,
-  ordering: OrderingBlockEditor,
-  hotspot: HotspotBlockEditor,
-  question_bank_draw: QuestionBankDrawBlockEditor,
+const EDITOR_COMPONENTS = {
+  TextBlockEditor,
+  HeadingBlockEditor,
+  ImageBlockEditor,
+  ListBlockEditor,
+  AccordionBlockEditor,
+  TabsBlockEditor,
+  KnowledgeCheckBlockEditor,
+  CarouselBlockEditor,
+  ReflectionBlockEditor,
+  ButtonBlockEditor,
+  TwoColumnBlockEditor,
+  TableBlockEditor,
+  EmbedBlockEditor,
+  VideoBlockEditor,
+  AudioBlockEditor,
+  FlashcardsBlockEditor,
+  MatchingBlockEditor,
+  OrderingBlockEditor,
+  HotspotBlockEditor,
+  QuestionBankDrawBlockEditor,
 };
+
+export const BLOCK_EDITORS = Object.fromEntries(
+  BLOCK_TYPES.map((type) => [type, EDITOR_COMPONENTS[BLOCK_REGISTRY[type].editorComponent]])
+);
 
 // Dev-time completeness check (Phase 4.5b): the exact bug class this
 // registry exists to prevent is a block type present in the registry (so

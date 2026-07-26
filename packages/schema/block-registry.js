@@ -9,17 +9,10 @@
 // server's dependency graph. It lives in packages/schema next to the JSON
 // schema it describes, not in either app package.
 //
-// What's deliberately NOT here: editorComponent/playerComponent
-// references. Those are inherently environment-specific (an editor
-// component only exists in packages/editor, a player component only in
-// packages/player) and can't live in this shared, framework-free package
-// without either (a) pulling React into the Node server's dependency
-// graph for no reason, or (b) creating a circular import (editor/player
-// importing schema, schema importing editor/player component files).
-// packages/editor/src/components/blocks/index.js and
-// packages/player/src/blocks/BlockRenderer.jsx each build their own thin,
-// environment-local type -> component map instead, keyed by the exact
-// same type strings this registry defines -- see DECISIONS.md.
+// Component references are environment-neutral keys rather than imported
+// React components. The editor and player resolve those keys to their local
+// component implementations, avoiding a schema -> React dependency while
+// still keeping the component contract in this one registry.
 //
 // Every consuming surface (Add Block picker, editor/player renderers,
 // trigger event dropdown, include_in_pdf defaults) reads from this file
@@ -28,6 +21,42 @@
 // five separate places by hand.
 
 export const BLOCK_CATEGORIES = ['Content', 'Layout', 'Interactive', 'Media'];
+
+const COMMON_TRIGGER_ACTIONS = ['SET_VAR', 'ADJUST_VAR', 'SHOW_BLOCK', 'HIDE_BLOCK', 'JUMP_TO_PAGE'];
+const MEDIA_TRIGGER_ACTIONS = [...COMMON_TRIGGER_ACTIONS, 'OPEN_MODAL'];
+const VIDEO_TRIGGER_ACTIONS = [...MEDIA_TRIGGER_ACTIONS, 'JUMP_TO_TIMESTAMP'];
+export const DEFAULT_EMBED_SANDBOX = 'allow-scripts allow-same-origin allow-presentation allow-popups';
+
+function generatedId(ids, key, field) {
+  const value = ids?.[key]?.();
+  return value ? { [field]: value } : {};
+}
+
+// The icon paths are data, not editor code. Keeping them here means the
+// picker and any future registry consumer can render the same icon metadata
+// without maintaining a second per-type icon table.
+const ICONS = {
+  text: ['M5 5h14', 'M12 5v14', 'M8 19h8'],
+  heading: ['M5 5v14', 'M19 5v14', 'M5 12h14'],
+  image: ['M4 5h16v14H4z', 'M7 9h.01', 'M5 17l4-4 3 3 2-2 5 5'],
+  list: ['M8 6h12', 'M8 12h12', 'M8 18h12', 'M4 6h.01', 'M4 12h.01', 'M4 18h.01'],
+  table: ['M4 5h16v14H4z', 'M4 10h16', 'M10 5v14', 'M16 5v14'],
+  two_column: ['M4 5h16v14H4z', 'M12 5v14'],
+  accordion: ['M5 7h14', 'M5 12h14', 'M5 17h14'],
+  tabs: ['M4 6h6v4H4z', 'M12 6h8v4h-8z', 'M4 14h16v4H4z'],
+  'knowledge-check': ['M5 5h14v14H5z', 'M8 12l2 2 5-5'],
+  reflection: ['M5 5h14v14H5z', 'M8 9h8', 'M8 13h5'],
+  button: ['M4 6h16v12H4z', 'M8 12h8', 'M13 9l3 3-3 3'],
+  carousel: ['M4 6h16v12H4z', 'M7 15l3-3 2 2 2-2 3 3'],
+  embed: ['M8 8l-4 4 4 4', 'M16 8l4 4-4 4', 'M14 5l-4 14'],
+  video: ['M5 5h14v14H5z', 'M10 9l5 3-5 3z'],
+  audio: ['M5 10h4l5-4v12l-5-4H5z', 'M17 9c2 1 2 5 0 6'],
+  flashcards: ['M5 7h12v12H5z', 'M8 4h11v12'],
+  matching: ['M5 6h6v4H5z', 'M13 14h6v4h-6z', 'M11 8h2v8'],
+  ordering: ['M5 6h14', 'M5 12h14', 'M5 18h14', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'],
+  hotspot: ['M4 5h16v14H4z', 'M12 9v6', 'M9 12h6'],
+  question_bank_draw: ['M5 5h14v14H5z', 'M8 8h8', 'M8 12h8', 'M8 16h5'],
+};
 
 // Phase 4.6 Step 1: which settings-panel sections belong in the always-
 // visible "Basic" group vs. the collapsed-by-default "Advanced" disclosure,
@@ -60,7 +89,12 @@ export const BLOCK_REGISTRY = {
     type: 'text',
     displayName: 'Text',
     category: 'Content',
+    editorComponent: 'TextBlockEditor',
+    playerRenderer: 'TextBlock',
+    iconPaths: ICONS.text,
+    createContent: () => ({ rich_text: [{ t: 'text', v: '' }] }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: false,
@@ -69,7 +103,12 @@ export const BLOCK_REGISTRY = {
     type: 'heading',
     displayName: 'Heading',
     category: 'Content',
+    editorComponent: 'HeadingBlockEditor',
+    playerRenderer: 'HeadingBlock',
+    iconPaths: ICONS.heading,
+    createContent: () => ({ text: '', level: 2 }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: true,
@@ -78,7 +117,12 @@ export const BLOCK_REGISTRY = {
     type: 'image',
     displayName: 'Image',
     category: 'Content',
+    editorComponent: 'ImageBlockEditor',
+    playerRenderer: 'ImageBlock',
+    iconPaths: ICONS.image,
+    createContent: () => ({ asset_id: null, width_preset: 'medium', alignment: 'center' }),
     validEvents: ['onClick'],
+    supportedActions: MEDIA_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: true,
@@ -87,7 +131,12 @@ export const BLOCK_REGISTRY = {
     type: 'list',
     displayName: 'List',
     category: 'Content',
+    editorComponent: 'ListBlockEditor',
+    playerRenderer: 'ListBlock',
+    iconPaths: ICONS.list,
+    createContent: () => ({ style: 'bulleted', items: [''] }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: true,
@@ -96,7 +145,12 @@ export const BLOCK_REGISTRY = {
     type: 'table',
     displayName: 'Table',
     category: 'Content',
+    editorComponent: 'TableBlockEditor',
+    playerRenderer: 'TableBlock',
+    iconPaths: ICONS.table,
+    createContent: () => ({ has_header_row: true, has_header_col: false, caption: '', rows: [['', ''], ['', '']] }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: true,
@@ -105,7 +159,12 @@ export const BLOCK_REGISTRY = {
     type: 'two_column',
     displayName: 'Two Column',
     category: 'Layout',
+    editorComponent: 'TwoColumnBlockEditor',
+    playerRenderer: 'TwoColumnBlock',
+    iconPaths: ICONS.two_column,
+    createContent: () => ({}),
     validEvents: [],
+    supportedActions: [],
     // Allowed inner types for left/right slots (ARCHITECTURE.md 3.6).
     // Deliberately a different, wider set than accordion/tabs' -- embed
     // is allowed here (the WSI-next-to-clinical-text pattern) but not
@@ -118,7 +177,12 @@ export const BLOCK_REGISTRY = {
     type: 'accordion',
     displayName: 'Accordion',
     category: 'Interactive',
+    editorComponent: 'AccordionBlockEditor',
+    playerRenderer: 'AccordionBlock',
+    iconPaths: ICONS.accordion,
+    createContent: ({ ids } = {}) => ({ items: [{ ...generatedId(ids, 'item', 'item_id'), title: '', body_blocks: [] }] }),
     validEvents: ['onOpen', 'onClose'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: ['text', 'heading', 'image'],
     includeInPdfDefault: true,
     hasSettings: false,
@@ -127,7 +191,17 @@ export const BLOCK_REGISTRY = {
     type: 'tabs',
     displayName: 'Tabs',
     category: 'Interactive',
+    editorComponent: 'TabsBlockEditor',
+    playerRenderer: 'TabsBlock',
+    iconPaths: ICONS.tabs,
+    createContent: ({ ids } = {}) => ({
+      items: [
+        { ...generatedId(ids, 'item', 'item_id'), label: 'Tab 1', body_blocks: [] },
+        { ...generatedId(ids, 'item', 'item_id'), label: 'Tab 2', body_blocks: [] },
+      ],
+    }),
     validEvents: ['onOpen', 'onClose'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: ['text', 'heading', 'image'],
     includeInPdfDefault: true,
     hasSettings: false,
@@ -136,7 +210,19 @@ export const BLOCK_REGISTRY = {
     type: 'knowledge-check',
     displayName: 'Knowledge Check',
     category: 'Interactive',
+    editorComponent: 'KnowledgeCheckBlockEditor',
+    playerRenderer: 'KnowledgeCheckBlock',
+    iconPaths: ICONS['knowledge-check'],
+    createContent: ({ ids } = {}) => ({
+      scored: true,
+      question: '',
+      options: [
+        { ...generatedId(ids, 'option', 'id'), text: '', correct: true },
+        { ...generatedId(ids, 'option', 'id'), text: '', correct: false },
+      ],
+    }),
     validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -145,7 +231,12 @@ export const BLOCK_REGISTRY = {
     type: 'reflection',
     displayName: 'Reflection',
     category: 'Interactive',
+    editorComponent: 'ReflectionBlockEditor',
+    playerRenderer: 'ReflectionBlock',
+    iconPaths: ICONS.reflection,
+    createContent: () => ({ prompt: { rich_text: [{ t: 'text', v: '' }] }, storage_mode: 'local' }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: false,
@@ -154,7 +245,12 @@ export const BLOCK_REGISTRY = {
     type: 'button',
     displayName: 'Button',
     category: 'Interactive',
+    editorComponent: 'ButtonBlockEditor',
+    playerRenderer: 'ButtonBlock',
+    iconPaths: ICONS.button,
+    createContent: () => ({ text: 'Button', target_page_id: '' }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -163,7 +259,12 @@ export const BLOCK_REGISTRY = {
     type: 'carousel',
     displayName: 'Image Carousel',
     category: 'Media',
+    editorComponent: 'CarouselBlockEditor',
+    playerRenderer: 'CarouselBlock',
+    iconPaths: ICONS.carousel,
+    createContent: () => ({ asset_ids: [] }),
     validEvents: ['onClick'],
+    supportedActions: MEDIA_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: false,
@@ -172,7 +273,12 @@ export const BLOCK_REGISTRY = {
     type: 'embed',
     displayName: 'Embed',
     category: 'Media',
+    editorComponent: 'EmbedBlockEditor',
+    playerRenderer: 'EmbedBlock',
+    iconPaths: ICONS.embed,
+    createContent: () => ({ url: '', label: '', sandbox: DEFAULT_EMBED_SANDBOX }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: false,
@@ -181,7 +287,12 @@ export const BLOCK_REGISTRY = {
     type: 'video',
     displayName: 'Video',
     category: 'Media',
+    editorComponent: 'VideoBlockEditor',
+    playerRenderer: 'VideoBlock',
+    iconPaths: ICONS.video,
+    createContent: () => ({ asset_id: null, autoplay: false, loop: false }),
     validEvents: ['onComplete', 'onTimeReached'],
+    supportedActions: VIDEO_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -190,7 +301,12 @@ export const BLOCK_REGISTRY = {
     type: 'audio',
     displayName: 'Audio',
     category: 'Media',
+    editorComponent: 'AudioBlockEditor',
+    playerRenderer: 'AudioBlock',
+    iconPaths: ICONS.audio,
+    createContent: () => ({ asset_id: null, autoplay: false, loop: false }),
     validEvents: ['onComplete'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -199,7 +315,18 @@ export const BLOCK_REGISTRY = {
     type: 'flashcards',
     displayName: 'Flashcards',
     category: 'Interactive',
+    editorComponent: 'FlashcardsBlockEditor',
+    playerRenderer: 'FlashcardsBlock',
+    iconPaths: ICONS.flashcards,
+    createContent: ({ ids } = {}) => ({
+      cards: [{
+        ...generatedId(ids, 'card', 'card_id'),
+        front: { rich_text: [{ t: 'text', v: '' }], image_id: null },
+        back: { rich_text: [{ t: 'text', v: '' }], image_id: null },
+      }],
+    }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: true,
     hasSettings: false,
@@ -208,7 +335,20 @@ export const BLOCK_REGISTRY = {
     type: 'matching',
     displayName: 'Matching',
     category: 'Interactive',
+    editorComponent: 'MatchingBlockEditor',
+    playerRenderer: 'MatchingBlock',
+    iconPaths: ICONS.matching,
+    createContent: ({ ids } = {}) => ({
+      scored: true,
+      prompts: [{ ...generatedId(ids, 'matchingPrompt', 'prompt_id'), text: '', correct_option_id: '' }],
+      options: [
+        { ...generatedId(ids, 'matchingOption', 'option_id'), text: '' },
+        { ...generatedId(ids, 'matchingOption', 'option_id'), text: '' },
+      ],
+      allow_retry: true,
+    }),
     validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -217,7 +357,18 @@ export const BLOCK_REGISTRY = {
     type: 'ordering',
     displayName: 'Ordering',
     category: 'Interactive',
+    editorComponent: 'OrderingBlockEditor',
+    playerRenderer: 'OrderingBlock',
+    iconPaths: ICONS.ordering,
+    createContent: ({ ids } = {}) => ({
+      scored: true,
+      items: [
+        { ...generatedId(ids, 'orderingItem', 'item_id'), text: '', correct_position: 0 },
+        { ...generatedId(ids, 'orderingItem', 'item_id'), text: '', correct_position: 1 },
+      ],
+    }),
     validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: false,
@@ -226,7 +377,12 @@ export const BLOCK_REGISTRY = {
     type: 'hotspot',
     displayName: 'Image Hotspot',
     category: 'Interactive',
+    editorComponent: 'HotspotBlockEditor',
+    playerRenderer: 'HotspotBlock',
+    iconPaths: ICONS.hotspot,
+    createContent: () => ({ image_asset_id: null, mode: 'exploratory', scored: true, regions: [] }),
     validEvents: ['onCorrect', 'onIncorrect', 'onComplete'],
+    supportedActions: COMMON_TRIGGER_ACTIONS,
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -235,7 +391,12 @@ export const BLOCK_REGISTRY = {
     type: 'question_bank_draw',
     displayName: 'Question Bank',
     category: 'Interactive',
+    editorComponent: 'QuestionBankDrawBlockEditor',
+    playerRenderer: 'QuestionBankDrawBlock',
+    iconPaths: ICONS.question_bank_draw,
+    createContent: () => ({ bank_id: '', draw_count: 1 }),
     validEvents: [],
+    supportedActions: [],
     canContainBlocks: false,
     includeInPdfDefault: false,
     hasSettings: true,
@@ -257,6 +418,10 @@ export const BLOCK_TYPES = Object.keys(BLOCK_REGISTRY);
 
 export function getBlockDefinition(type) {
   return BLOCK_REGISTRY[type];
+}
+
+export function createDefaultBlockContent(type, ids) {
+  return getBlockDefinition(type)?.createContent?.({ ids }) || {};
 }
 
 // Grouped for the Add Block picker: { Content: [...], Layout: [...], ... },

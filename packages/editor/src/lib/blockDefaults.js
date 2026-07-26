@@ -1,5 +1,5 @@
 import { genBlockId, genCourseId, genPageId, genOptionId, genItemId, genCardId, genMatchingPromptId, genMatchingOptionId, genOrderingItemId } from './idGen.js';
-import { BLOCK_TYPES, BLOCK_REGISTRY, getBlockDefinition } from '@mnemonify/schema/block-registry.js';
+import { BLOCK_TYPES, BLOCK_REGISTRY, DEFAULT_EMBED_SANDBOX, createDefaultBlockContent, getBlockDefinition } from '@mnemonify/schema/block-registry.js';
 
 // Default content shapes per block type, matching the Phase 1 content
 // model documented in DECISIONS.md (2026-07-11 entry). Used both by the
@@ -13,84 +13,22 @@ import { BLOCK_TYPES, BLOCK_REGISTRY, getBlockDefinition } from '@mnemonify/sche
 export { BLOCK_TYPES };
 export const BLOCK_LABELS = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BLOCK_REGISTRY[type].displayName]));
 
-// Slot types allowed inside a two-column block (ARCHITECTURE.md 3.6) --
-// see DECISIONS.md for why this list is deliberately short.
-export const TWO_COLUMN_SLOT_TYPES = ['text', 'heading', 'image', 'embed'];
+// Slot types and the embed sandbox are registry metadata now, so adding a
+// block type cannot silently create a second container/defaults list here.
+export const TWO_COLUMN_SLOT_TYPES = getBlockDefinition('two_column').canContainBlocks;
+export { DEFAULT_EMBED_SANDBOX };
 
-// allow-presentation is required for YouTube/Vimeo's own fullscreen and
-// picture-in-picture/casting controls inside the embedded player;
-// allow-popups-to-escape-sandbox stays permanently excluded (see
-// EmbedBlock.jsx in both this package and packages/player, which strip
-// it defensively even if it were ever present) -- that token is the one
-// that would let embedded content navigate/control the parent window.
-export const DEFAULT_EMBED_SANDBOX = 'allow-scripts allow-same-origin allow-presentation allow-popups';
-
-function defaultContent(type) {
-  switch (type) {
-    case 'text':
-      return { rich_text: [{ t: 'text', v: '' }] };
-    case 'heading':
-      return { text: '', level: 2 };
-    case 'image':
-      // width_preset/alignment: percentage-based sizing, not pixels or
-      // freeform resize -- see DECISIONS.md for why.
-      return { asset_id: null, width_preset: 'medium', alignment: 'center' };
-    case 'list':
-      return { style: 'bulleted', items: [''] };
-    case 'accordion':
-      return { items: [{ item_id: genItemId(), title: '', body_blocks: [] }] };
-    case 'tabs':
-      return {
-        items: [
-          { item_id: genItemId(), label: 'Tab 1', body_blocks: [] },
-          { item_id: genItemId(), label: 'Tab 2', body_blocks: [] },
-        ],
-      };
-    case 'knowledge-check':
-      return {
-        scored: true,
-        question: '',
-        options: [
-          { id: genOptionId(), text: '', correct: true },
-          { id: genOptionId(), text: '', correct: false },
-        ],
-      };
-    case 'carousel':
-      return { asset_ids: [] };
-    case 'reflection':
-      // storage_mode is "local" and only "local" -- see ARCHITECTURE.md 3.8
-      // and REQUIREMENTS.md P1-46. Do not add a way to change it here.
-      return { prompt: { rich_text: [{ t: 'text', v: '' }] }, storage_mode: 'local' };
-    case 'button':
-      return { text: 'Button', target_page_id: '' };
-    case 'table':
-      return { has_header_row: true, has_header_col: false, caption: '', rows: [['', ''], ['', '']] };
-    case 'embed':
-      return { url: '', label: '', sandbox: DEFAULT_EMBED_SANDBOX };
-    case 'video':
-    case 'audio':
-      // Media content stays small; captions/transcripts are asset-linked in
-      // the server-side captions table and timeline triggers live on video.
-      return { asset_id: null, autoplay: false, loop: false };
-    case 'flashcards':
-      return { cards: [{ card_id: genCardId(), front: { rich_text: [{ t: 'text', v: '' }], image_id: null }, back: { rich_text: [{ t: 'text', v: '' }], image_id: null } }] };
-    case 'matching':
-      return { scored: true, prompts: [{ prompt_id: genMatchingPromptId(), text: '', correct_option_id: '' }], options: [{ option_id: genMatchingOptionId(), text: '' }, { option_id: genMatchingOptionId(), text: '' }], allow_retry: true };
-    case 'ordering':
-      return { scored: true, items: [{ item_id: genOrderingItemId(), text: '', correct_position: 0 }, { item_id: genOrderingItemId(), text: '', correct_position: 1 }] };
-    case 'hotspot':
-      return { image_asset_id: null, mode: 'exploratory', scored: true, regions: [] };
-    case 'question_bank_draw':
-      return { bank_id: '', draw_count: 1 };
-    case 'two_column':
-      return {};
-    default:
-      return {};
-  }
-}
+const ID_FACTORIES = {
+  item: genItemId,
+  option: genOptionId,
+  card: genCardId,
+  matchingPrompt: genMatchingPromptId,
+  matchingOption: genMatchingOptionId,
+  orderingItem: genOrderingItemId,
+};
 
 export function createBlock(type) {
-  const block = { block_id: genBlockId(), type, content: defaultContent(type), triggers: [] };
+  const block = { block_id: genBlockId(), type, content: createDefaultBlockContent(type, ID_FACTORIES), triggers: [] };
   // include_in_pdf default (Phase 4.5b): previously only ever set for
   // `reflection` -- every other type silently got no explicit value at
   // all, despite ARCHITECTURE.md 11.3 documenting a full defaults table
@@ -118,7 +56,7 @@ export function createInnerBlock(type, parentBlockId, side) {
   return {
     block_id: `${parentBlockId}_${side}`,
     type,
-    content: defaultContent(type),
+    content: createDefaultBlockContent(type, ID_FACTORIES),
     triggers: [],
     ...(definition ? { include_in_pdf: definition.includeInPdfDefault } : {}),
   };

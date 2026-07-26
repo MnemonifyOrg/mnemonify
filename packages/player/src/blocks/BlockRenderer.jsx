@@ -21,33 +21,34 @@ import ButtonBlock from './ButtonBlock.jsx';
 import { evaluateCondition } from '../engine/triggerEngine.js';
 import { BLOCK_TYPES, BLOCK_REGISTRY } from '@mnemonify/schema/block-registry.js';
 
-// block-type -> player component. Component references can't live in the
-// shared, framework-free packages/schema/block-registry.js (see that
-// file's own comment), so this stays the environment-local half of the
-// registry, keyed by the exact same type strings block-registry.js
-// defines.
-const REGISTRY = {
-  heading: HeadingBlock,
-  text: TextBlock,
-  image: ImageBlock,
-  list: ListBlock,
-  accordion: AccordionBlock,
-  tabs: TabsBlock,
-  'knowledge-check': KnowledgeCheckBlock,
-  reflection: ReflectionBlock,
-  two_column: TwoColumnBlock,
-  table: TableBlock,
-  embed: EmbedBlock,
-  carousel: CarouselBlock,
-  video: VideoBlock,
-  audio: AudioBlock,
-  flashcards: FlashcardsBlock,
-  matching: MatchingBlock,
-  ordering: OrderingBlock,
-  hotspot: HotspotBlock,
-  question_bank_draw: QuestionBankDrawBlock,
-  button: ButtonBlock,
+// The shared registry owns the renderer key; this local map only resolves
+// that key to the player package's actual React implementation.
+const PLAYER_COMPONENTS = {
+  HeadingBlock,
+  TextBlock,
+  ImageBlock,
+  ListBlock,
+  AccordionBlock,
+  TabsBlock,
+  KnowledgeCheckBlock,
+  ReflectionBlock,
+  TwoColumnBlock,
+  TableBlock,
+  EmbedBlock,
+  CarouselBlock,
+  VideoBlock,
+  AudioBlock,
+  FlashcardsBlock,
+  MatchingBlock,
+  OrderingBlock,
+  HotspotBlock,
+  QuestionBankDrawBlock,
+  ButtonBlock,
 };
+
+const REGISTRY = Object.fromEntries(
+  BLOCK_TYPES.map((type) => [type, PLAYER_COMPONENTS[BLOCK_REGISTRY[type].playerRenderer]])
+);
 
 // Dev-time completeness check (Phase 4.5b) -- same purpose as the
 // matching check in packages/editor/src/components/blocks/index.js: catch

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBlockTypesByCategory } from '@mnemonify/schema/block-registry.js';
-import { BLOCK_ICON_PATHS, filterBlockDefinitions, firstMatchingBlockType } from '../lib/blockPicker.js';
+import { filterBlockDefinitions, firstMatchingBlockType } from '../lib/blockPicker.js';
 
-function BlockTypeIcon({ type }) {
-  const paths = BLOCK_ICON_PATHS[type] || ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z'];
+function BlockTypeIcon({ definition }) {
+  const paths = definition.iconPaths || ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z'];
   return (
     <svg className="block-picker-grid__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths.map((path, index) => <path key={`${type}-${index}`} d={path} />)}
+      {paths.map((path, index) => <path key={`${definition.type}-${index}`} d={path} />)}
     </svg>
   );
 }
@@ -58,7 +58,7 @@ export default function BlockPickerModal({ onPick, onClose }) {
             <div className="block-picker-grid">
               {defs.map((def) => (
                 <button type="button" key={def.type} className="block-picker-grid__item card" onClick={() => onPick(def.type)}>
-                  <BlockTypeIcon type={def.type} />
+                  <BlockTypeIcon definition={def} />
                   <span>{def.displayName}</span>
                 </button>
               ))}

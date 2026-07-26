@@ -3062,6 +3062,35 @@
   color: var(--color-success);
   font-weight: 600;
 }
+.course-health__summary {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary, var(--color-text-secondary));
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.course-health__category {
+  margin: 0 0 var(--space-5);
+}
+.course-health__category-title {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary, var(--color-text-secondary));
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.course-health__severity {
+  margin: 0 0 var(--space-3);
+}
+.course-health__severity-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+.course-health__severity-title--error {
+  color: var(--danger, var(--color-error, #EF4444));
+}
+.course-health__severity-title--warning {
+  color: var(--warning, var(--color-warning));
+}
 .course-health__group {
   margin-bottom: var(--space-4);
 }

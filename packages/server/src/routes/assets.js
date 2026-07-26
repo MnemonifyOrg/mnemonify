@@ -189,7 +189,10 @@ router.get('/assets/:courseId', asyncHandler(async (req, res) => {
       WHERE a.course_id = $1 AND a.organisation_id = $2 ORDER BY a.created_at ASC`,
     [req.params.courseId, DEV_ORG_ID]
   );
-  res.json(result.rows);
+  res.json(result.rows.map((asset) => ({
+    ...asset,
+    file_exists: fs.existsSync(path.join(UPLOADS_DIR, asset.file_path)),
+  })));
 }));
 
 router.patch('/assets/:assetId', asyncHandler(async (req, res) => {

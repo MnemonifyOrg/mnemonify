@@ -11,17 +11,26 @@
 // panel), the same "framework-agnostic, lives in packages/schema" pattern
 // block-registry.js and dependency-index.js established in Phase 4.5b.
 
-import { buildDependencyIndex } from '../dependency-index.js';
+import { buildDependencyIndex, getBrokenReferences } from '../dependency-index.js';
 import { RULES } from './rules.js';
 
-export function analyzeCourse(courseJson) {
+export function analyzeCourse(courseJson, options = {}) {
   if (!courseJson) return [];
-  const depIndex = buildDependencyIndex(courseJson);
+  const depIndex = options.dependencyIndex || buildDependencyIndex(courseJson);
+  const context = {
+    ...options,
+    dependencyIndex: depIndex,
+    brokenReferences: options.brokenReferences || getBrokenReferences(courseJson, depIndex),
+  };
   const findings = [];
   for (const rule of RULES) {
-    findings.push(...rule(courseJson, depIndex));
+    findings.push(...rule(courseJson, context));
   }
   return findings;
+}
+
+export function getBlockingFindings(findings = []) {
+  return findings.filter((finding) => finding.severity === 'error');
 }
 
 export { RULES } from './rules.js';

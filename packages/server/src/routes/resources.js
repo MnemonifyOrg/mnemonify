@@ -106,7 +106,11 @@ router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
      ORDER BY r.created_at ASC`,
     [req.params.courseId, DEV_ORG_ID]
   );
-  res.json(result.rows.map((row) => ({ ...row, size_bytes: Number(row.size_bytes) })));
+  res.json(result.rows.map((row) => ({
+    ...row,
+    size_bytes: Number(row.size_bytes),
+    file_exists: fs.existsSync(path.join(UPLOADS_DIR, row.file_path)),
+  })));
 }));
 
 const singleUpload = multer({

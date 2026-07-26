@@ -27,7 +27,7 @@ import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
 import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
 import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
-import { analyzeCourse } from '@mnemonify/schema/analyzer/index.js';
+import { analyzeCourse, getBlockingFindings } from '@mnemonify/schema/analyzer/index.js';
 import {
   deleteEntityEverywhere,
   detachUsageWithUpdate,
@@ -145,6 +145,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [courseVersions, setCourseVersions] = useState([]);
   const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
   const [versionHistoryError, setVersionHistoryError] = useState(null);
+  const [assetMetadataById, setAssetMetadataById] = useState(null);
+  const [uploadedAssetIds, setUploadedAssetIds] = useState(null);
+  const [uploadedResourceIds, setUploadedResourceIds] = useState(null);
 
   const blockSettingsHintTimerRef = useRef(null);
 
@@ -264,11 +267,16 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }, [course?.course_json?.meta?.glossary_id, featureFlags.glossary]);
 
   useEffect(() => {
+    setAssetMetadataById(null);
+    setUploadedAssetIds(null);
+    setUploadedResourceIds(null);
     api.getCourse(id).then((c) => {
       setCourse(c);
       setActivePageId(c.course_json.pages?.[0]?.page_id || null);
       api.listAssets(id).then((dbAssets) => {
         const metadataById = new Map(dbAssets.map((asset) => [asset.asset_id, asset]));
+        setAssetMetadataById(metadataById);
+        setUploadedAssetIds(dbAssets.filter((asset) => asset.file_exists !== false).map((asset) => asset.asset_id));
         setCourse((current) => {
           if (!current) return current;
           return {
@@ -289,6 +297,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           };
         });
       }).catch((error) => console.warn('[course-editor] could not load media metadata:', error));
+      api.listCourseResources(id).then((resources) => {
+        setUploadedResourceIds(resources.filter((resource) => resource.file_exists !== false).map((resource) => resource.resource_id));
+      }).catch((error) => console.warn('[course-editor] could not load resource metadata:', error));
     });
   }, [id]);
 
@@ -447,9 +458,17 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // finished its own re-render yet, and this is the one place "was it
   // actually safe to publish" must be authoritative, not just displayed.
   async function handlePublish() {
-    await saveNow();
-    const freshFindings = analyzeCourse(materializeLinkedEntities(courseRef.current.course_json));
-    const errorFindings = freshFindings.filter((f) => f.severity === 'error');
+    const saved = await saveNow();
+    if (!saved) {
+      setPublishNotice({ type: 'error', message: 'Cannot publish: the latest changes could not be saved. Please try again.' });
+      return;
+    }
+    const freshFindings = analyzeCourse(materializeLinkedEntities(courseRef.current.course_json), {
+      assetMetadataById,
+      uploadedAssetIds,
+      uploadedResourceIds,
+    });
+    const errorFindings = getBlockingFindings(freshFindings);
     if (errorFindings.length > 0) {
       clearContextualSelection();
       setActiveRailItem(null);
@@ -763,8 +782,31 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       setActiveRailItem('variables');
       return;
     }
+    if (finding.entityType === 'question_bank') {
+      clearContextualSelection();
+      setActiveRailItem('question-banks');
+      return;
+    }
     if (finding.entityType === 'asset') {
+      clearContextualSelection();
       setShowMediaLibrary(true);
+      return;
+    }
+    if (finding.entityType === 'resource') {
+      clearContextualSelection();
+      setActiveRailItem('player');
+      return;
+    }
+    if (finding.entityType === 'module') {
+      setSelectedBlockId(null);
+      setActiveRailItem(null);
+      setActivePageId((courseRef.current?.course_json?.pages || []).find((page) => page.page_id === finding.location?.page_id)?.page_id || activePageId);
+      setContextualDrawer({ kind: 'module', id: finding.entityId });
+      return;
+    }
+    if (finding.entityType === 'course') {
+      clearContextualSelection();
+      setActiveRailItem('course');
       return;
     }
     if (finding.location?.page_id) {
@@ -782,16 +824,22 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           .querySelector(`[data-block-id="${finding.location.block_id}"]`)
           ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 0);
+    } else if (finding.location?.page_id) {
+      setSelectedBlockId(null);
+      setActiveRailItem(null);
+      setContextualDrawer({ kind: 'page', id: finding.location.page_id });
     } else {
       clearContextualSelection();
     }
   }
 
   function handleAddCourseAsset(assetEntry) {
+    setUploadedAssetIds((current) => current ? [...new Set([...current, assetEntry.asset_id])] : current);
     updateCourseJson((json) => ({ ...json, assets: [...(json.assets || []), assetEntry] }));
   }
 
   function handleAddCourseAssets(assetEntries) {
+    setUploadedAssetIds((current) => current ? [...new Set([...current, ...assetEntries.map((asset) => asset.asset_id)])] : current);
     updateCourseJson((json) => ({ ...json, assets: [...(json.assets || []), ...assetEntries] }));
   }
 
@@ -822,6 +870,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       size_bytes: dbResource.size_bytes,
       uploaded_at: dbResource.created_at,
     };
+    setUploadedResourceIds((current) => current ? [...new Set([...current, resourceEntry.resource_id])] : current);
     updateCourseJson(
       (json) => ({
         ...json,
@@ -1245,7 +1294,10 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // enough that "always accurate" costs nothing noticeable, and it's what
   // lets the top-bar issue badge stay correct without its own separate
   // trigger. See DECISIONS.md.
-  const findings = useMemo(() => analyzeCourse(materializeLinkedEntities(course?.course_json)), [course?.course_json]);
+  const findings = useMemo(
+    () => analyzeCourse(materializeLinkedEntities(course?.course_json), { assetMetadataById, uploadedAssetIds, uploadedResourceIds }),
+    [course?.course_json, assetMetadataById, uploadedAssetIds, uploadedResourceIds]
+  );
 
   if (!course) return null;
 
@@ -1255,6 +1307,11 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
 
   const saveLabel = { saved: 'Saved ✓', saving: 'Saving...', unsaved: 'Unsaved changes' }[saveStatus];
   const errorFindingCount = findings.filter((f) => f.severity === 'error').length;
+  const warningFindingCount = findings.filter((f) => f.severity === 'warning').length;
+  const healthBadgeLabel = [
+    errorFindingCount ? `${errorFindingCount} error${errorFindingCount === 1 ? '' : 's'}` : '',
+    warningFindingCount ? `${warningFindingCount} warning${warningFindingCount === 1 ? '' : 's'}` : '',
+  ].filter(Boolean).join(', ');
 
   return (
     <div className="course-editor">
@@ -1365,7 +1422,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             }}
             title="Open Course Health"
           >
-            {errorFindingCount > 0 ? `⚠ ${errorFindingCount} error${errorFindingCount === 1 ? '' : 's'}` : `${findings.length} warning${findings.length === 1 ? '' : 's'}`}
+            ⚠ {healthBadgeLabel}
           </button>
         )}
 

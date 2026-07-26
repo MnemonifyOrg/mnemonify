@@ -17,6 +17,7 @@ export const api = {
   publishGlossaryTerm: (glossaryId, payload) => client.post(`/api/glossaries/${glossaryId}/terms`, payload).then((r) => r.data),
   generatePublishArtifacts: (id) => client.post(`/api/courses/${id}/publish-artifacts`).then((r) => r.data),
   exportWorksheet: (id) => client.post(`/api/courses/${id}/worksheet-export`).then((r) => r.data),
+  listCourseResources: (id) => client.get(`/api/courses/${id}/resources`).then((r) => r.data),
   deleteCourse: (id) => client.delete(`/api/courses/${id}`),
   duplicateCourse: (id) => client.post(`/api/courses/${id}/duplicate`).then((r) => r.data),
   saveAsTemplate: (id, payload) => client.post(`/api/courses/${id}/save-as-template`, payload).then((r) => r.data),

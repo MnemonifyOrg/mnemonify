@@ -1,39 +1,25 @@
-// Phase 4.5c: the ~15 deterministic technical rules that make up the
-// minimal Course Analyzer (COURSE-ANALYZER.md section 16 "Phase 1:
-// foundation" -- finding model, schema/reference errors, basic
-// accessibility checks, basic asset checks). Deliberately NOT built here:
-// rule versioning/packs, analyzer profiles, confidence/evidence fields,
-// suppression, snapshots, or any of the pedagogical/learning-alignment
-// rule categories (sections 6.3 "trigger and logic" beyond broken
-// references, 6.5-6.8) -- see DECISIONS.md for the explicit deferral.
+// Phase 4.5c: the scoped, deterministic Course Analyzer rule set.
 //
-// Every rule has the signature (course, depIndex) => Finding[], where
-// depIndex is `buildDependencyIndex(course)`, built ONCE by the engine
-// (analyzer/index.js) and passed to every rule -- rules never rebuild it
-// themselves, and never re-walk triggers/conditions/asset-refs to answer
-// "what references this" questions the dependency index (Phase 4.5b)
-// already answers. Rules that need "does anything reference X" use a
-// reverse lookup against depIndex; rules that need "does X exist" build a
-// small local Set/inventory (a different, simpler concern than reference
-// tracking, and not something the dependency index exposes).
-//
-// Finding shape (COURSE-ANALYZER.md section 3, simplified per this
-// phase's Step 1 -- see DECISIONS.md for the full list of what's cut):
-//   { ruleId, severity: 'error'|'warning', message, entityType, entityId,
-//     location: { page_id?, block_id? } }
+// Every rule has the signature (courseJson, context) => Finding[]. The
+// context contains the dependency index built once by analyzer/index.js and
+// optional file metadata supplied by the editor. Rules never write to the
+// course document, query the network, or infer author intent.
 
 import { validateCourse } from '../index.js';
-import { labelForBlock } from '../dependency-index.js';
+import { getDependents, labelForBlock } from '../dependency-index.js';
 
-// Walks every block on every page, including nested ones (two_column
-// left/right, accordion/tabs item body_blocks) -- the same recursion
-// shape already duplicated three times in this codebase for three
-// different purposes (CourseEditor.jsx's id-remap functions, migration
-// 0001, dependency-index.js's own walkBlock/buildDependencyIndex). This
-// is a fourth, deliberately separate instance for a fourth distinct
-// purpose (per-block rule predicates, not id-remapping or edge-building)
-// -- see DECISIONS.md for why unifying the four into one generic walker
-// was judged not worth the risk/complexity for this phase.
+export const FINDING_CATEGORIES = Object.freeze({
+  reference: 'reference',
+  accessibility: 'accessibility',
+  asset: 'asset',
+});
+
+export const MEDIA_SIZE_WARNING_BYTES = 50 * 1024 * 1024;
+
+function finding(ruleId, severity, category, message, entityType, entityId, location = {}) {
+  return { ruleId, severity, category, message, entityType, entityId, location };
+}
+
 function collectAllBlocks(course) {
   const result = [];
   function walk(block, page) {
@@ -42,515 +28,403 @@ function collectAllBlocks(course) {
     if (block.left) walk(block.left, page);
     if (block.right) walk(block.right, page);
     for (const item of block.content?.items || []) {
-      if (item && typeof item === 'object' && item.body_blocks) {
-        for (const child of item.body_blocks) walk(child, page);
-      }
+      for (const child of item?.body_blocks || []) walk(child, page);
     }
   }
-  for (const page of course.pages || []) {
+  for (const page of course?.pages || []) {
     for (const block of page.blocks || []) walk(block, page);
   }
   return result;
 }
 
-function collectBlockIds(course) {
-  return new Set(collectAllBlocks(course).map(({ block }) => block.block_id));
-}
-
-function labelFor(block, page) {
-  return labelForBlock(block, page.blocks);
-}
-
 function blockLocation(page, block) {
-  return { page_id: page.page_id, block_id: block.block_id };
+  return { page_id: page?.page_id, block_id: block?.block_id };
 }
 
-// Reverse lookup: every variable name whose depIndex entry contains an
-// edge of the given referenceType owned by ownerId (a block_id or
-// page_id, depending on referenceType). Reuses the index the same way a
-// "used by" inspector would, rather than re-parsing a condition tree --
-// see the visibility/continue-gate reachability rules below.
-function variablesReadVia(depIndex, referenceType, ownerId) {
-  const names = [];
-  for (const [varName, edges] of Object.entries(depIndex)) {
-    if (edges.some((e) => e.referenceType === referenceType && e.id === ownerId)) {
-      names.push(varName);
-    }
+function blockLabel(block, page) {
+  return labelForBlock(block, page?.blocks || []);
+}
+
+function plainText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(plainText).join('');
+  if (!value || typeof value !== 'object') return '';
+  if (Array.isArray(value.rich_text)) return plainText(value.rich_text);
+  if (typeof value.v === 'string') return value.v;
+  if (typeof value.text === 'string' || Array.isArray(value.text)) return plainText(value.text);
+  return '';
+}
+
+function assetMetadata(context, asset) {
+  const metadata = context.assetMetadataById;
+  if (!metadata) return asset;
+  if (metadata instanceof Map) return { ...asset, ...(metadata.get(asset.asset_id) || {}) };
+  return { ...asset, ...(metadata[asset.asset_id] || {}) };
+}
+
+function explicitFileStatus(entry) {
+  if (entry?.file_exists === false || entry?.uploaded === false) return false;
+  if (entry?.file_exists === true || entry?.uploaded === true) return true;
+  return null;
+}
+
+function fileIsPresent(entry, context, kind) {
+  const explicit = explicitFileStatus(entry);
+  if (explicit !== null) return explicit;
+
+  const resolver = kind === 'asset' ? context.assetFileExists : context.resourceFileExists;
+  if (typeof resolver === 'function') return !!resolver(entry);
+
+  const ids = kind === 'asset' ? context.uploadedAssetIds : context.uploadedResourceIds;
+  if (ids) {
+    const key = kind === 'asset' ? entry.asset_id : entry.resource_id;
+    return ids instanceof Set ? ids.has(key) : Array.isArray(ids) ? ids.includes(key) : !!ids[key];
   }
-  return names;
+
+  const paths = kind === 'asset' ? context.uploadedAssetPaths : context.uploadedResourcePaths;
+  if (paths && entry.file_path) {
+    return paths instanceof Set ? paths.has(entry.file_path) : Array.isArray(paths) ? paths.includes(entry.file_path) : !!paths[entry.file_path];
+  }
+
+  // A shared analyzer cannot resolve a local upload directory by itself.
+  // When no server-provided file inventory is available, absence of evidence
+  // is not evidence of a missing file; explicit false metadata remains
+  // supported for imports and server-side callers.
+  return true;
 }
 
-function isVariableEverWritten(varName, depIndex) {
-  return (depIndex[varName] || []).some((e) => e.referenceType === 'trigger_writes_variable');
+function firstAssetLocation(assetId, depIndex) {
+  const edge = (depIndex[assetId] || []).find((candidate) => candidate.pageId || candidate.entityType === 'block');
+  return edge?.pageId ? { page_id: edge.pageId, ...(edge.id ? { block_id: edge.id } : {}) } : {};
 }
 
-// ---------------------------------------------------------------------
-// 1. SCHEMA VALIDITY / STRUCTURAL
-// ---------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// Reference rules
+// -------------------------------------------------------------------------
 
-// Reuses the exact same ajv validator migration/loading already calls
-// (packages/schema/index.js) -- does not reimplement schema checking.
 export function ruleSchemaValidity(course) {
   const { valid, errors } = validateCourse(course);
   if (valid) return [];
-  return errors.map((message) => ({
-    ruleId: 'schema.invalid',
-    severity: 'error',
-    message: `This course fails schema validation: ${message}`,
-    entityType: 'course',
-    entityId: course.meta?.course_id || 'course',
-    location: {},
-  }));
+  return errors.map((message) => finding(
+    'schema.invalid',
+    'error',
+    FINDING_CATEGORIES.reference,
+    `This course fails schema validation: ${message}`,
+    'course',
+    course?.meta?.course_id || 'course',
+  ));
 }
 
-// ---------------------------------------------------------------------
-// 2-7. BROKEN REFERENCES -- one shared pass over depIndex, grouped by
-// referenceType, checking each referenced id against the real entity
-// collection it's supposed to name. A key present in depIndex but absent
-// from that collection is, by definition, a broken reference: something
-// still points at an id that no longer exists.
-// ---------------------------------------------------------------------
+function brokenReferenceRuleId(edge) {
+  if (edge.referenceType === 'trigger_reads_variable' || edge.referenceType === 'trigger_writes_variable' || edge.referenceType === 'continue_gate_reads_variable') {
+    return 'broken_ref.variable_missing';
+  }
+  if (edge.referenceType === 'visibility_condition_reads_variable') return 'broken_ref.visibility_variable_missing';
+  if (edge.referenceType === 'trigger_targets_block') return 'broken_ref.block_target_missing';
+  if (edge.referenceType === 'trigger_navigates_to_page' || edge.referenceType === 'utility_item_navigates_to_page') return 'broken_ref.page_target_missing';
+  if (edge.referenceType === 'block_uses_asset') return 'broken_ref.asset_missing';
+  return 'reference.broken_reference';
+}
 
-// Rule 2 (+ continue_gate, the third variable-reading source
-// dependency-index.js tracks): a trigger action/condition, or a page's
-// continue_gate, references a variable name not in course.variables.
-export function ruleBrokenVariableReferences(course, depIndex) {
-  const validNames = new Set((course.variables || []).map((v) => v.name));
-  const relevantTypes = new Set(['trigger_reads_variable', 'trigger_writes_variable', 'continue_gate_reads_variable']);
+export function ruleBrokenReferences(course, context) {
+  return context.brokenReferences.map((edge) => finding(
+    brokenReferenceRuleId(edge),
+    'error',
+    FINDING_CATEGORIES.reference,
+    `${edge.label || edge.id || 'This content'} references a ${edge.targetType || 'resource'} that does not exist (${edge.targetId}).`,
+    edge.entityType || 'course',
+    edge.id || edge.targetId,
+    edge.pageId ? { page_id: edge.pageId, ...(edge.entityType === 'block' ? { block_id: edge.id } : {}) } : {},
+  ));
+}
+
+export function ruleOrphanedQuestionBank(course, context) {
+  return (course?.question_banks || [])
+    .filter((bank) => !getDependents(bank.bank_id, course, context.dependencyIndex).some((edge) => edge.referenceType === 'block_uses_question_bank'))
+    .map((bank) => finding(
+      'reference.orphaned_question_bank',
+      'warning',
+      FINDING_CATEGORIES.reference,
+      `Question bank "${bank.name || bank.bank_id}" is not used by any Question Bank block.`,
+      'question_bank',
+      bank.bank_id,
+    ));
+}
+
+function stableIdEntries(course) {
+  const entries = [];
+  const add = (id, entityType, entityId, location = {}) => {
+    if (id) entries.push({ id, entityType, entityId: entityId || id, location });
+  };
+
+  add(course?.meta?.course_id, 'course', course?.meta?.course_id);
+  for (const variable of course?.variables || []) add(variable.variable_id, 'variable', variable.variable_id);
+  for (const asset of course?.assets || []) add(asset.asset_id, 'asset', asset.asset_id);
+  for (const resource of course?.meta?.resources || []) add(resource.resource_id, 'resource', resource.resource_id);
+  for (const objective of course?.objectives || course?.meta?.objectives || []) add(objective.objective_id, 'objective', objective.objective_id);
+  for (const entity of course?.linked_entities || []) add(entity.entity_id, 'linked_entity', entity.entity_id);
+  for (const bank of course?.question_banks || []) {
+    add(bank.bank_id, 'question_bank', bank.bank_id);
+    for (const question of bank.questions || []) {
+      add(question.question_id, 'question', question.question_id);
+      addQuestionContentIds(question.content, question.question_id, add, {});
+    }
+  }
+  for (const group of course?.meta?.page_groups || []) add(group.group_id, 'module', group.group_id);
+  for (const item of course?.meta?.utility_bar?.custom || []) add(item.id, 'utility_item', item.id);
+
+  for (const page of course?.pages || []) {
+    add(page.page_id, 'page', page.page_id, { page_id: page.page_id });
+    for (const trigger of page.triggers || []) add(trigger.trigger_id, 'trigger', trigger.trigger_id, { page_id: page.page_id });
+    for (const block of page.blocks || []) collectBlockIds(block, page, add);
+  }
+  return entries;
+}
+
+function addQuestionContentIds(content, questionId, add, location) {
+  for (const option of content?.options || []) {
+    add(option.id, 'answer_option', option.id, location);
+    add(option.feedback?.feedback_id, 'option_feedback', option.feedback?.feedback_id, location);
+  }
+}
+
+function collectBlockIds(block, page, add) {
+  const location = { page_id: page.page_id, block_id: block.block_id };
+  add(block.block_id, 'block', block.block_id, location);
+  for (const trigger of block.triggers || []) add(trigger.trigger_id, 'trigger', trigger.trigger_id, location);
+  for (const trigger of block.timeline_triggers || []) add(trigger.trigger_id, 'trigger', trigger.trigger_id, location);
+  for (const item of block.content?.items || []) {
+    add(item.item_id, 'nested_item', item.item_id, location);
+    for (const child of item.body_blocks || []) collectBlockIds(child, page, add);
+  }
+  for (const card of block.content?.cards || []) add(card.card_id, 'flashcard', card.card_id, location);
+  for (const prompt of block.content?.prompts || []) add(prompt.prompt_id, 'matching_prompt', prompt.prompt_id, location);
+  for (const option of block.content?.options || []) add(option.option_id, 'matching_option', option.option_id, location);
+  for (const item of block.content?.items || []) add(item.item_id, 'ordering_item', item.item_id, location);
+  for (const region of block.content?.regions || []) add(region.region_id, 'hotspot_region', region.region_id, location);
+  addQuestionContentIds(block.content, block.block_id, add, location);
+  if (block.left) collectBlockIds(block.left, page, add);
+  if (block.right) collectBlockIds(block.right, page, add);
+}
+
+export function ruleDuplicateStableIds(course) {
+  const seen = new Map();
   const findings = [];
-  for (const [varName, edges] of Object.entries(depIndex)) {
-    if (validNames.has(varName)) continue;
-    for (const edge of edges) {
-      if (!relevantTypes.has(edge.referenceType)) continue;
-      findings.push({
-        ruleId: 'broken_ref.variable_missing',
-        severity: 'error',
-        message: `${edge.label} references a variable ("${varName}") that no longer exists.`,
-        entityType: edge.entityType,
-        entityId: edge.id,
-        location: edge.entityType === 'block' ? { page_id: edge.pageId, block_id: edge.id } : { page_id: edge.pageId },
-      });
+  for (const entry of stableIdEntries(course)) {
+    const previous = seen.get(entry.id);
+    if (previous) {
+      findings.push(finding(
+        'reference.duplicate_stable_id',
+        'error',
+        FINDING_CATEGORIES.reference,
+        `Stable ID "${entry.id}" is used by both ${previous.entityType} and ${entry.entityType}.`,
+        entry.entityType,
+        entry.entityId,
+        entry.location,
+      ));
+    } else {
+      seen.set(entry.id, entry);
     }
   }
   return findings;
 }
 
-// Rule 5: a block's own visibility_condition (P1-55) references a
-// variable that no longer exists. Kept as its own rule (not folded into
-// rule 2 above) because the task's own rule list separates it, and
-// because it is authored in a different UI surface than a trigger.
-export function ruleBrokenVisibilityVariableReferences(course, depIndex) {
-  const validNames = new Set((course.variables || []).map((v) => v.name));
+// -------------------------------------------------------------------------
+// Accessibility rules
+// -------------------------------------------------------------------------
+
+export function ruleImageAltMissing(course) {
+  return (course?.assets || [])
+    .filter((asset) => asset.kind === 'image' && !asset.alt?.trim())
+    .map((asset) => finding(
+      'a11y.image_alt_missing',
+      'warning',
+      FINDING_CATEGORIES.accessibility,
+      `Image "${asset.filename || asset.asset_id}" is missing alt text.`,
+      'asset',
+      asset.asset_id,
+    ));
+}
+
+export function ruleVideoCaptionsMissing(course) {
+  return (course?.assets || [])
+    .filter((asset) => asset.kind === 'video' && asset.caption_status !== 'ready')
+    .map((asset) => finding(
+      'a11y.video_captions_missing',
+      'warning',
+      FINDING_CATEGORIES.accessibility,
+      `Video "${asset.filename || asset.asset_id}" does not have captions ready.`,
+      'asset',
+      asset.asset_id,
+    ));
+}
+
+export function ruleVideoTranscriptMissing(course) {
+  return (course?.assets || [])
+    .filter((asset) => asset.kind === 'video' && asset.transcript_status !== 'ready')
+    .map((asset) => finding(
+      'accessibility.video_transcript_missing',
+      'warning',
+      FINDING_CATEGORIES.accessibility,
+      `Video "${asset.filename || asset.asset_id}" does not have a transcript ready.`,
+      'asset',
+      asset.asset_id,
+    ));
+}
+
+export function ruleEmbedLabelMissing(course) {
+  return collectAllBlocks(course)
+    .filter(({ block }) => block.type === 'embed' && !(block.content?.label || block.label || '').trim())
+    .map(({ block, page }) => finding(
+      'accessibility.embed_label_missing',
+      'warning',
+      FINDING_CATEGORIES.accessibility,
+      `${blockLabel(block, page)} has no descriptive label for learners.`,
+      'block',
+      block.block_id,
+      blockLocation(page, block),
+    ));
+}
+
+export function ruleHeadingTextMissing(course) {
+  return collectAllBlocks(course)
+    .filter(({ block }) => block.type === 'heading' && !plainText(block.content?.text).trim())
+    .map(({ block, page }) => finding(
+      'accessibility.heading_text_missing',
+      'warning',
+      FINDING_CATEGORIES.accessibility,
+      `${blockLabel(block, page)} is empty.`,
+      'block',
+      block.block_id,
+      blockLocation(page, block),
+    ));
+}
+
+// -------------------------------------------------------------------------
+// Asset and structural completeness rules
+// -------------------------------------------------------------------------
+
+export function ruleAssetFileMissing(course, context) {
+  return (course?.assets || [])
+    .filter((asset) => !fileIsPresent(assetMetadata(context, asset), context, 'asset'))
+    .map((asset) => finding(
+      'asset.uploaded_file_missing',
+      'error',
+      FINDING_CATEGORIES.asset,
+      `Asset "${asset.filename || asset.asset_id}" has no corresponding uploaded file.`,
+      'asset',
+      asset.asset_id,
+      firstAssetLocation(asset.asset_id, context.dependencyIndex),
+    ));
+}
+
+export function ruleResourceFileMissing(course, context) {
+  return (course?.meta?.resources || [])
+    .filter((resource) => !fileIsPresent(resource, context, 'resource'))
+    .map((resource) => finding(
+      'asset.resource_file_missing',
+      'error',
+      FINDING_CATEGORIES.asset,
+      `Resource "${resource.label || resource.filename || resource.resource_id}" cannot be found at its uploaded file path.`,
+      'resource',
+      resource.resource_id,
+    ));
+}
+
+export function ruleDuplicateAssetFilenames(course) {
+  const byFilename = new Map();
+  for (const asset of course?.assets || []) {
+    const filename = asset.filename?.trim().toLowerCase();
+    if (!filename) continue;
+    if (!byFilename.has(filename)) byFilename.set(filename, []);
+    byFilename.get(filename).push(asset);
+  }
   const findings = [];
-  for (const [varName, edges] of Object.entries(depIndex)) {
-    if (validNames.has(varName)) continue;
-    for (const edge of edges) {
-      if (edge.referenceType !== 'visibility_condition_reads_variable') continue;
-      findings.push({
-        ruleId: 'broken_ref.visibility_variable_missing',
-        severity: 'error',
-        message: `${edge.label}'s visibility condition references a variable ("${varName}") that no longer exists.`,
-        entityType: 'block',
-        entityId: edge.id,
-        location: { page_id: edge.pageId, block_id: edge.id },
-      });
+  for (const assets of byFilename.values()) {
+    if (assets.length < 2) continue;
+    for (const asset of assets) {
+      findings.push(finding(
+        'asset.duplicate_filename',
+        'warning',
+        FINDING_CATEGORIES.asset,
+        `Asset filename "${asset.filename}" is used more than once and may be ambiguous.`,
+        'asset',
+        asset.asset_id,
+      ));
     }
   }
   return findings;
 }
 
-// Rule 3: a trigger's SHOW_BLOCK/HIDE_BLOCK/ENABLE_BLOCK/DISABLE_BLOCK
-// target doesn't exist on the page (or anywhere). dependency-index.js
-// collapses all four action types into one referenceType
-// ('trigger_targets_block') since they share the same brokenness risk.
-export function ruleBrokenBlockTargetReferences(course, depIndex) {
-  const validBlockIds = collectBlockIds(course);
-  const findings = [];
-  for (const [targetId, edges] of Object.entries(depIndex)) {
-    if (validBlockIds.has(targetId)) continue;
-    for (const edge of edges) {
-      if (edge.referenceType !== 'trigger_targets_block') continue;
-      findings.push({
-        ruleId: 'broken_ref.block_target_missing',
-        severity: 'error',
-        message: `${edge.label}'s trigger targets a block that no longer exists.`,
-        entityType: 'block',
-        entityId: edge.id,
-        location: { page_id: edge.pageId, block_id: edge.id },
-      });
-    }
-  }
-  return findings;
+export function ruleLargeMediaAsset(course, context) {
+  return (course?.assets || [])
+    .map((asset) => assetMetadata(context, asset))
+    .filter((asset) => ['image', 'video'].includes(asset.kind) && Number(asset.size_bytes ?? asset.file_size ?? asset.size) > MEDIA_SIZE_WARNING_BYTES)
+    .map((asset) => finding(
+      'asset.file_size_large',
+      'warning',
+      FINDING_CATEGORIES.asset,
+      `Asset "${asset.filename || asset.asset_id}" is larger than ${Math.round(MEDIA_SIZE_WARNING_BYTES / (1024 * 1024))} MB and may load slowly.`,
+      'asset',
+      asset.asset_id,
+    ));
 }
 
-// Rule 4: a trigger's (or a utility-bar custom item's) JUMP_TO_PAGE
-// target doesn't exist in the course.
-export function ruleBrokenPageTargetReferences(course, depIndex) {
-  const validPageIds = new Set((course.pages || []).map((p) => p.page_id));
-  const findings = [];
-  for (const [targetId, edges] of Object.entries(depIndex)) {
-    if (validPageIds.has(targetId)) continue;
-    for (const edge of edges) {
-      if (edge.referenceType !== 'trigger_navigates_to_page' && edge.referenceType !== 'utility_item_navigates_to_page') continue;
-      findings.push({
-        ruleId: 'broken_ref.page_target_missing',
-        severity: 'error',
-        message: `${edge.label} jumps to a page that no longer exists.`,
-        entityType: edge.entityType,
-        entityId: edge.id,
-        location: edge.entityType === 'block' ? { page_id: edge.pageId, block_id: edge.id } : {},
-      });
-    }
-  }
-  return findings;
-}
-
-// Rule 6: a knowledge-check/image/video/audio/carousel block (or a
-// rich-text inline asset link) references an asset_id not in
-// course.assets.
-export function ruleBrokenAssetReferences(course, depIndex) {
-  const validAssetIds = new Set((course.assets || []).map((a) => a.asset_id));
-  const findings = [];
-  for (const [assetId, edges] of Object.entries(depIndex)) {
-    if (validAssetIds.has(assetId)) continue;
-    for (const edge of edges) {
-      if (edge.referenceType !== 'block_uses_asset') continue;
-      findings.push({
-        ruleId: 'broken_ref.asset_missing',
-        severity: 'error',
-        message: `${edge.label} references an image or media file that no longer exists.`,
-        entityType: 'block',
-        entityId: edge.id,
-        location: { page_id: edge.pageId, block_id: edge.id },
-      });
-    }
-  }
-  return findings;
-}
-
-// Rule 7: a page_group (meta.page_groups) references a page_id that
-// doesn't exist. Not tracked by dependency-index.js at all (page_groups
-// are a nav-drawer-only construct with no trigger/condition involvement),
-// so this is a small standalone check rather than a depIndex reverse
-// lookup -- there is no existing reference-tracking logic to reuse here.
-export function rulePageGroupMissingPage(course) {
-  const validPageIds = new Set((course.pages || []).map((p) => p.page_id));
-  const findings = [];
-  for (const group of course.meta?.page_groups || []) {
-    for (const pageId of group.page_ids || []) {
-      if (validPageIds.has(pageId)) continue;
-      findings.push({
-        ruleId: 'broken_ref.page_group_missing',
-        severity: 'error',
-        message: `Page group "${group.title}" references a page that no longer exists.`,
-        entityType: 'page_group',
-        entityId: group.group_id,
-        location: {},
-      });
-    }
-  }
-  return findings;
-}
-
-// ---------------------------------------------------------------------
-// 8-11. ACCESSIBILITY (P1-11's pre-publish checklist requirements,
-// formalized here -- see DECISIONS.md for confirmation there was no
-// competing ad hoc checklist to consolidate).
-// ---------------------------------------------------------------------
-
-// Rule 8: an image block's asset has no alt text.
-export function ruleImageMissingAlt(course) {
-  const assetsById = new Map((course.assets || []).map((a) => [a.asset_id, a]));
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'image' || !block.content?.asset_id) continue;
-    const asset = assetsById.get(block.content.asset_id);
-    if (asset && !asset.alt?.trim()) {
-      findings.push({
-        ruleId: 'a11y.image_alt_missing',
-        severity: 'warning',
-        message: `${labelFor(block, page)} has no alt text.`,
-        entityType: 'block',
-        entityId: block.block_id,
-        location: blockLocation(page, block),
-      });
-    }
-  }
-  return findings;
-}
-
-// Hotspot regions are image content too: the base image needs the same alt
-// text treatment as a standalone image block. Region labels are revealed by
-// the controls themselves and do not replace the image's accessible name.
-export function ruleHotspotImageMissingAlt(course) {
-  const assetsById = new Map((course.assets || []).map((a) => [a.asset_id, a]));
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'hotspot' || !block.content?.image_asset_id) continue;
-    const asset = assetsById.get(block.content.image_asset_id);
-    if (asset && !asset.alt?.trim()) {
-      findings.push({
-        ruleId: 'a11y.hotspot_image_alt_missing',
-        severity: 'warning',
-        message: `${labelFor(block, page)} has a hotspot image with no alt text.`,
-        entityType: 'block',
-        entityId: block.block_id,
-        location: blockLocation(page, block),
-      });
-    }
-  }
-  return findings;
-}
-
-// Rule 9: a carousel block contains an image with no alt text.
-export function ruleCarouselImageMissingAlt(course) {
-  const assetsById = new Map((course.assets || []).map((a) => [a.asset_id, a]));
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'carousel') continue;
-    const hasMissingAlt = (block.content?.asset_ids || []).some((id) => {
-      const asset = assetsById.get(id);
-      return asset && !asset.alt?.trim();
+export function ruleQuestionBankDrawCount(course) {
+  const banks = new Map((course?.question_banks || []).map((bank) => [bank.bank_id, bank]));
+  return collectAllBlocks(course)
+    .filter(({ block }) => block.type === 'question_bank_draw' && banks.has(block.content?.bank_id))
+    .flatMap(({ block, page }) => {
+      const available = banks.get(block.content.bank_id).questions || [];
+      if (Number(block.content?.draw_count) <= available.length) return [];
+      return [finding(
+        'asset.question_bank_draw_count_exceeded',
+        'error',
+        FINDING_CATEGORIES.asset,
+        `${blockLabel(block, page)} requests ${block.content.draw_count} questions, but its bank only contains ${available.length}.`,
+        'block',
+        block.block_id,
+        blockLocation(page, block),
+      )];
     });
-    if (hasMissingAlt) {
-      findings.push({
-        ruleId: 'a11y.carousel_image_alt_missing',
-        severity: 'warning',
-        message: `${labelFor(block, page)} has at least one image with no alt text.`,
-        entityType: 'block',
-        entityId: block.block_id,
-        location: blockLocation(page, block),
-      });
-    }
-  }
-  return findings;
 }
 
-// Rule 10: uploaded videos need ready captions. Caption status is
-// denormalized onto the course asset by the editor from the server-side
-// captions table so this pure analyzer can remain synchronous and free of
-// database calls.
-export function ruleVideoMissingCaptions(course) {
-  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'video' || !block.content?.asset_id) continue;
-    const asset = assetsById.get(block.content.asset_id);
-    if (asset && asset.caption_status === 'ready') continue;
-    if (!asset) continue; // broken asset is reported by the reference rule.
-    findings.push({
-      ruleId: 'a11y.video_captions_missing',
-      severity: 'warning',
-      message: `${labelFor(block, page)} has no generated or uploaded captions ready for review.`,
-      entityType: 'block',
-      entityId: block.block_id,
-      location: blockLocation(page, block),
-    });
-  }
-  return findings;
+export function ruleEmptyPages(course) {
+  return (course?.pages || [])
+    .filter((page) => (page.blocks || []).length === 0)
+    .map((page) => finding(
+      'asset.page_empty',
+      'warning',
+      FINDING_CATEGORIES.asset,
+      `Page "${page.title}" has no blocks.`,
+      'page',
+      page.page_id,
+      { page_id: page.page_id },
+    ));
 }
 
-export function ruleVideoCaptionsUnreviewed(course) {
-  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
+export function ruleEmptyCourseOrModule(course) {
   const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'video' || !block.content?.asset_id) continue;
-    const asset = assetsById.get(block.content.asset_id);
-    if (!asset || asset.caption_status !== 'ready' || asset.caption_review_status === 'reviewed') continue;
-    findings.push({
-      ruleId: 'a11y.video_captions_unreviewed',
-      severity: 'warning',
-      message: `${labelFor(block, page)} has captions that have not been marked reviewed.`,
-      entityType: 'block',
-      entityId: block.block_id,
-      location: blockLocation(page, block),
-    });
+  if (!(course?.pages || []).length) {
+    findings.push(finding(
+      'asset.course_empty',
+      'warning',
+      FINDING_CATEGORIES.asset,
+      'This course has no pages.',
+      'course',
+      course?.meta?.course_id || 'course',
+    ));
   }
-  return findings;
-}
-
-export function ruleAudioMissingTranscript(course) {
-  const assetsById = new Map((course.assets || []).map((asset) => [asset.asset_id, asset]));
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'audio' || !block.content?.asset_id) continue;
-    const asset = assetsById.get(block.content.asset_id);
-    if (asset && asset.transcript_status === 'ready') continue;
-    if (!asset) continue;
-    findings.push({
-      ruleId: 'a11y.audio_transcript_missing',
-      severity: 'warning',
-      message: `${labelFor(block, page)} has no transcript ready for learners.`,
-      entityType: 'block',
-      entityId: block.block_id,
-      location: blockLocation(page, block),
-    });
-  }
-  return findings;
-}
-
-// Rule 11: a table has more than one row of actual data and no caption.
-// "More than one row" excludes the header row when has_header_row is
-// set, matching the plain-English reading of "a table with more than one
-// row of data" rather than counting the header as data.
-export function ruleTableMissingCaption(course) {
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.type !== 'table') continue;
-    const rows = block.content?.rows || [];
-    const dataRowCount = block.content?.has_header_row ? rows.length - 1 : rows.length;
-    const hasCaption = !!block.content?.caption?.trim();
-    if (!hasCaption && dataRowCount > 1) {
-      findings.push({
-        ruleId: 'a11y.table_caption_missing',
-        severity: 'warning',
-        message: `${labelFor(block, page)} has multiple rows of data but no caption for screen reader users.`,
-        entityType: 'block',
-        entityId: block.block_id,
-        location: blockLocation(page, block),
-      });
-    }
-  }
-  return findings;
-}
-
-// ---------------------------------------------------------------------
-// 12-14. UNUSED / DEAD ENTITIES (via depIndex reverse lookup -- "does
-// anything reference this?").
-// ---------------------------------------------------------------------
-
-// Rule 12: a variable defined but never referenced by any trigger or
-// visibility_condition (or continue_gate, the third reader depIndex
-// tracks).
-export function ruleUnusedVariable(course, depIndex) {
-  const usedTypes = new Set([
-    'trigger_reads_variable',
-    'trigger_writes_variable',
-    'visibility_condition_reads_variable',
-    'continue_gate_reads_variable',
-  ]);
-  const findings = [];
-  for (const variable of course.variables || []) {
-    const edges = depIndex[variable.name] || [];
-    const used = edges.some((e) => usedTypes.has(e.referenceType));
-    if (!used) {
-      findings.push({
-        ruleId: 'unused.variable',
-        severity: 'warning',
-        message: `Variable "${variable.name}" is defined but never used in any trigger or visibility condition.`,
-        entityType: 'variable',
-        entityId: variable.name,
-        location: {},
-      });
-    }
-  }
-  return findings;
-}
-
-// Rule 13: an uploaded asset not referenced by any block.
-export function ruleUnusedAsset(course, depIndex) {
-  const findings = [];
-  for (const asset of course.assets || []) {
-    const edges = depIndex[asset.asset_id] || [];
-    const used = edges.some((e) => e.referenceType === 'block_uses_asset');
-    if (!used) {
-      findings.push({
-        ruleId: 'unused.asset',
-        severity: 'warning',
-        message: `This ${asset.kind} is uploaded but not used anywhere in the course.`,
-        entityType: 'asset',
-        entityId: asset.asset_id,
-        location: {},
-      });
-    }
-  }
-  return findings;
-}
-
-// Rule 14: a block hidden until shown by a trigger, or gated by its own
-// visibility_condition, that nothing in the course can ever actually
-// reveal.
-//
-// Two different "reachable" tests, matched to how each mechanism is
-// shown, using ONLY depIndex reverse lookups (no re-walking triggers or
-// conditions, per this phase's own "don't duplicate reference-tracking
-// logic" instruction):
-//  - `visibility.initial: 'hidden'` (the trigger-only toggle) is shown by
-//    a SHOW_BLOCK/ENABLE_BLOCK trigger action targeting this block_id.
-//    dependency-index.js collapses SHOW/HIDE/ENABLE/DISABLE into one
-//    referenceType, so this is deliberately a coarser check: "does ANY
-//    trigger target this block at all" -- if not, it is certainly
-//    unreachable; if something targets it, it MIGHT still only ever be
-//    hidden further (a HIDE_BLOCK/DISABLE_BLOCK), which this simplified
-//    v1 check will not catch. Documented as a known simplification in
-//    DECISIONS.md rather than re-implementing action-type-aware walking.
-//  - `visibility_condition` is shown when its variable(s) become true,
-//    which happens only via a SET_VAR/ADJUST_VAR trigger action writing
-//    that variable somewhere in the course -- reusing the exact same
-//    "is this variable ever written" check as rule 15 below.
-export function ruleUnreachableBlock(course, depIndex) {
-  const findings = [];
-  for (const { block, page } of collectAllBlocks(course)) {
-    if (block.visibility_condition) {
-      const varsRead = variablesReadVia(depIndex, 'visibility_condition_reads_variable', block.block_id);
-      const anyWritten = varsRead.some((v) => isVariableEverWritten(v, depIndex));
-      if (varsRead.length > 0 && !anyWritten) {
-        findings.push({
-          ruleId: 'unused.unreachable_block',
-          severity: 'warning',
-          message: `${labelFor(block, page)} is only shown when a condition is met, but no trigger in the course ever sets the variable it depends on -- this content may be unreachable.`,
-          entityType: 'block',
-          entityId: block.block_id,
-          location: blockLocation(page, block),
-        });
-      }
-    } else if (block.visibility?.initial === 'hidden') {
-      const edges = depIndex[block.block_id] || [];
-      const everTargeted = edges.some((e) => e.referenceType === 'trigger_targets_block');
-      if (!everTargeted) {
-        findings.push({
-          ruleId: 'unused.unreachable_block',
-          severity: 'warning',
-          message: `${labelFor(block, page)} is hidden until shown by a trigger, but no trigger in the course ever targets it -- this content may be unreachable.`,
-          entityType: 'block',
-          entityId: block.block_id,
-          location: blockLocation(page, block),
-        });
-      }
-    }
-  }
-  return findings;
-}
-
-// ---------------------------------------------------------------------
-// 15. COMPLETENESS
-// ---------------------------------------------------------------------
-
-// Rule 15: a page's continue_gate condition references a variable that
-// no trigger anywhere in the course ever sets -- the gate can never be
-// satisfied, permanently blocking the learner on that page. Same
-// "is this variable ever written" heuristic as rule 14's
-// visibility_condition check, applied to continue_gate instead. Marked
-// WARNING, not ERROR, despite being a real authoring mistake: unlike the
-// broken-reference rules above (a referenced id either exists or it
-// doesn't, zero false-positive risk), this is a heuristic over "no
-// plausible trigger sets it" -- see DECISIONS.md for the severity
-// reasoning.
-export function ruleUnsatisfiableContinueGate(course, depIndex) {
-  const findings = [];
-  for (const page of course.pages || []) {
-    if (!page.continue_gate) continue;
-    const varsRead = variablesReadVia(depIndex, 'continue_gate_reads_variable', page.page_id);
-    const anyWritten = varsRead.some((v) => isVariableEverWritten(v, depIndex));
-    if (varsRead.length > 0 && !anyWritten) {
-      findings.push({
-        ruleId: 'completeness.unsatisfiable_continue_gate',
-        severity: 'warning',
-        message: `"${page.title}"'s Continue gate depends on a variable that no trigger in the course ever sets -- learners may never be able to continue past this page.`,
-        entityType: 'page',
-        entityId: page.page_id,
-        location: { page_id: page.page_id },
-      });
+  for (const group of course?.meta?.page_groups || []) {
+    if ((group.page_ids || []).length === 0) {
+      findings.push(finding(
+        'asset.module_empty',
+        'warning',
+        FINDING_CATEGORIES.asset,
+        `Module "${group.title}" has no pages assigned.`,
+        'module',
+        group.group_id,
+      ));
     }
   }
   return findings;
@@ -558,21 +432,19 @@ export function ruleUnsatisfiableContinueGate(course, depIndex) {
 
 export const RULES = [
   ruleSchemaValidity,
-  ruleBrokenVariableReferences,
-  ruleBrokenVisibilityVariableReferences,
-  ruleBrokenBlockTargetReferences,
-  ruleBrokenPageTargetReferences,
-  ruleBrokenAssetReferences,
-  rulePageGroupMissingPage,
-  ruleImageMissingAlt,
-  ruleHotspotImageMissingAlt,
-  ruleCarouselImageMissingAlt,
-  ruleVideoMissingCaptions,
-  ruleVideoCaptionsUnreviewed,
-  ruleAudioMissingTranscript,
-  ruleTableMissingCaption,
-  ruleUnusedVariable,
-  ruleUnusedAsset,
-  ruleUnreachableBlock,
-  ruleUnsatisfiableContinueGate,
+  ruleBrokenReferences,
+  ruleOrphanedQuestionBank,
+  ruleDuplicateStableIds,
+  ruleImageAltMissing,
+  ruleVideoCaptionsMissing,
+  ruleVideoTranscriptMissing,
+  ruleEmbedLabelMissing,
+  ruleHeadingTextMissing,
+  ruleAssetFileMissing,
+  ruleResourceFileMissing,
+  ruleDuplicateAssetFilenames,
+  ruleLargeMediaAsset,
+  ruleQuestionBankDrawCount,
+  ruleEmptyPages,
+  ruleEmptyCourseOrModule,
 ];

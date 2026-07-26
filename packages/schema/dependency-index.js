@@ -227,10 +227,10 @@ function entityInventory(courseJson) {
   };
 }
 
-export function getBrokenReferences(courseJson) {
+export function getBrokenReferences(courseJson, prebuiltIndex = null) {
   const inventory = entityInventory(courseJson || {});
   const broken = [];
-  for (const edges of Object.values(buildDependencyIndex(courseJson))) {
+  for (const edges of Object.values(prebuiltIndex || buildDependencyIndex(courseJson))) {
     for (const edge of edges) {
       if (!edge.targetType || inventory[edge.targetType]?.has(edge.targetId)) continue;
       broken.push({ ...edge, reason: `${edge.targetType} does not exist` });
@@ -242,6 +242,6 @@ export function getBrokenReferences(courseJson) {
 // Alias with a verb that reads naturally at analyzer/caller sites.
 export const findBrokenReferences = getBrokenReferences;
 
-export function getDependents(entityId, courseJson) {
-  return buildDependencyIndex(courseJson)[entityId] || [];
+export function getDependents(entityId, courseJson, prebuiltIndex = null) {
+  return (prebuiltIndex || buildDependencyIndex(courseJson))[entityId] || [];
 }

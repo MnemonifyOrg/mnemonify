@@ -2,8 +2,8 @@
 
 **Version:** 0.3 (In development)
 **Companion to:** REQUIREMENTS.md
-**Status:** Phases 1-3 complete; Phase 3.5 next
-**Last updated:** July 14, 2026
+**Status:** Phases 1–4 are complete; Phase 3.5 implementation is complete; Phases 4.5 and 4.6 remain unmarked as formal phase completions; Phase 5 implementation and Phase 5.5 P1-68 through P1-75 are shipped. Recent verification/hardening fixes and v1-scope additions are complete, with remaining live SCORM/manual verification items recorded in DECISIONS.md.
+**Last updated:** July 25, 2026
 
 This document is the technical source of truth. Claude Code must read it at the start of every session and must not deviate from it without updating it first.
 
@@ -771,6 +771,30 @@ player renders accepted external anchors with `target="_blank"` and
 `rel="noopener noreferrer"`, which is the deliberate v1 exception to the
 general in-player containment rule because this feature explicitly requires
 learners to open external links in a new tab.
+
+### 3.20 Dashboard course search (P1-75)
+
+Dashboard search is an editor-only presentation concern and does not alter the
+course JSON document, schema version, migrations, server API, or course-list
+fetching contract. `CourseLibrary.jsx` owns the transient query state and
+passes it to the pure `filterCoursesByTitle()` helper and `CourseResults`
+presentational component. The helper trims and lowercases the query and title,
+then performs a substring match; an empty query returns the original array so
+the existing ordering and card behavior are preserved.
+
+When the loaded course list is non-empty, the dashboard renders a tokenized
+search input above the grid. A query with no matches renders a status empty
+state instead of an empty grid. Course-card duplicate, delete, and navigation
+callbacks continue to receive the same course objects and use the existing
+handlers. Search state is intentionally not persisted: leaving or reloading
+the dashboard starts with the complete course list.
+
+The implementation uses the existing `--border-strong`, `--radius-input`,
+`--text-tertiary`, `--accent`, and `--accent-soft` tokens. Focused editor tests,
+the full repository test suite, the editor production build, and a local
+browser smoke test covering match, no-match, and clear-to-restore behavior
+passed on July 25, 2026. This browser check does not claim live SCORM or
+cross-browser verification.
 
 ## 4. Trigger and Variable Engine (player core)
 

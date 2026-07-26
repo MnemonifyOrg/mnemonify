@@ -2,9 +2,9 @@
 
 **Version:** 0.5 (In development)
 **Owner:** Sebastin
-**Status:** Phases 1, 2, 3 complete (brand applied, bug fixes complete)
+**Status:** Phases 1–4 are complete; Phase 3.5 implementation is complete; Phases 4.5 and 4.6 remain unmarked as formal phase completions; Phase 5 implementation and Phase 5.5 P1-68 through P1-75 are shipped. The recent verification/hardening fixes and v1-scope additions are complete, while remaining live SCORM/manual verification items are recorded in DECISIONS.md.
 **License intent:** AGPL-3.0, open source
-**Last updated:** July 14, 2026
+**Last updated:** July 25, 2026
 
 ---
 
@@ -264,6 +264,7 @@ Long-term sustainability model: free self-hosting for anyone with one-click depl
 | P1-72 | **Question bank editor redesign:** The question-bank editor uses a large master-detail modal instead of a cramped side panel, with question search/filtering and bulk delete/objective/tag assignment within one bank. |
 | P1-73 | **Question bank export/import:** Authors can export a bank as full-fidelity Mnemonify JSON or an interoperability format such as QTI/GIFT, and import by merging into an existing bank or creating a new one. Missing objectives and variables are reported explicitly and never auto-created. |
 | P1-74 | **Linked question-to-bank:** A page question/block and a bank entry can reference one shared entity. Add-to-bank and drag-to-bank create the link; edits require confirmation before propagating; deletion offers unlink or delete-everywhere. The linking model applies to all registered block types and is fully linked or unlinked, never partially linked. |
+| P1-75 | **Dashboard course search:** Authors can filter the already-loaded course dashboard by title using a case-insensitive substring search. Matching course tiles remain in their existing order; no-match queries show an explicit empty state, and clearing the query restores the complete course list. This is a presentation-only feature with no course-schema or API change. |
 | P1-50 | **Traditional SCORM ZIP export mode:** Alongside the dynamic launcher (P1-25), authors can publish a fully self-contained SCORM 2004 3rd Ed package with the player bundle, course JSON, and all assets inside the zip. No dependency on Mnemonify servers at learner launch. Required for locked-down LMS environments that block externally loaded content. Author chooses mode at publish; dynamic remains the default and the strategic differentiator |
 
 ### P1-69 — Multi-select knowledge check
@@ -436,15 +437,30 @@ During development, the practical metric per phase is: the phase acceptance crit
 | 1 | JSON schema + responsive player | 7 core block types, keyboard accessibility verified. **COMPLETE** |
 | 2 | Dynamic SCORM 2004 3rd Ed wrapper | Thin launcher passes SCORM Cloud; suspend/resume verified; Ethos confirmed working. **COMPLETE** |
 | 3 | Block editor, backend, templates, Word round-trip, bulk upload, onboarding, brand | 16-step integration test passed; brand applied; 3 bug fixes shipped. **COMPLETE** |
-| 3.5 | Two-column block, table block, schema hooks, editor quality fixes | Two-column block renders at all breakpoints with draggable divider; embed block works in right slot (DigitalScope test); table block renders lab results with caption; move/copy block between pages works; page templates work; images in KC work; superscript/subscript work; undo/redo works reliably across all editor actions; schema carries answer-level feedback, faculty_notes, objectives, concepts, header/footer |
+| 3.5 | Two-column block, table block, schema hooks, editor quality fixes | Two-column block renders at all breakpoints with draggable divider; embed block works in right slot (DigitalScope test); table block renders lab results with caption; move/copy block between pages works; page templates work; images in KC work; superscript/subscript work; undo/redo works reliably across all editor actions; schema carries answer-level feedback, faculty_notes, objectives, concepts, header/footer. **IMPLEMENTATION COMPLETE; formal phase acceptance remains subject to the verification notes below.** |
 | 4 | Trigger and variable engine + trigger builder UI + player chrome + media manager | Author builds a branching course through dropdowns only; player chrome renders with hybrid drawer, Continue button, linear nav; one-active-media rule verified with two videos in tabs. Plus post-phase fixes: content-server stability root cause, self-owned block visibility rule (P1-55), custom block labels (P1-56), Player settings tab (P1-57), manually-attached course resources (P1-58). **COMPLETE** |
 | 4.5 | Foundations for Course Health (informed by ARCHITECTURE-AUDIT.md and the strategic docs) | **4.5a Identity + migration:** stable IDs on every addressable entity (answer options, nested accordion/tab items, feedback variants, objectives, mappings); sequential schema migration service with the first real migration; historical fixtures migrate automatically. **4.5b Block registry + dependency index:** block behavior consolidated into a central registry (all block-discovery surfaces derive from it); derived dependency index enabling safe-delete, "used by", broken-reference detection. **4.5c Minimal technical Course Analyzer:** ~15 deterministic high-confidence rules (schema validity, broken references, missing alt text/captions, unused variables/assets), finding model, panel that navigates to the affected object, pre-publish error gating. No profiles/snapshots/pedagogical rules yet — those are the later "Learning Alignment" grouping |
 | 4.6 | UX polish pass (informed by UX-AUDIT.md, Priority 1 items only) | Basic/Advanced settings grouping (built on the 4.5b registry so it's consistent per block); collapsible page and settings panels + Focus Mode; between-block insertion controls; simplified primary toolbar (Preview consolidated, device widths inside preview; less-frequent actions under "More tools"); clearer module/page visual hierarchy; reduced border/icon density on unselected blocks; contextual "i" info tooltips; **Course Health finding grouping** (identical findings collapse into one entry with a count, e.g. "18 images missing alt text", rather than N separate rows — needed as findings scale); **bulk alt-text review screen** reachable from a grouped alt-text finding, showing every flagged image in one focused list (thumbnail, its existing caption as read-only reference text, an editable alt-text field the author fills or adapts) instead of hunting through pages one image at a time — explicitly does NOT auto-copy caption into alt text silently, since a screen reader announces both and silent duplication makes the listening experience worse, not better; author always makes the conscious edit. **Terminology decision:** keep all existing standard terminology as the visible labels (Trigger, Variables, Completion rule, etc.) — do NOT rename — and add accessible, keyboard-operable "i" info tooltips with teaching-oriented plain-language explanations (sourced from UX-AUDIT.md section 5's explanations) on domain-specific/advanced controls only. This serves both the first-time educator and the experienced-ID validation audience without a credibility tax. Intent-based Add Content (UX-AUDIT §6), plain-language logic recipes (UX-AUDIT §14), and AI-suggested alt text (a real future idea, needs an API integration and is properly Phase 5+ scope per the project's principle of keeping AI features optional and outside the free core) are explicitly DEFERRED — they are real features, not UX polish |
-| 5 | States, expanded block types, interactive video, captions, PDF artifacts, analytics (ANALYTICS TELEMETRY COMPLETE — see DECISIONS.md), Word importers. Translation parked to P3-1, revisit post-beta | 4-case pathology course with WSI in two-column layout, interactive video, auto-captions, PDF summary, and worksheet export passes full manual QA. Smart Import (rule-based) produces a usable draft from a real Word document with no API key. AI Import produces a usable draft from a real CAP storyboard. Flashcard (P1-59), matching (P1-60), ordering (P1-61), hotspot (P1-62), and reflection blocks all work and are keyboard operable. Text-to-speech works on text blocks |
-| 6 | Accounts, shared library, review and commenting, anonymous links, deployment, and the P1-69 through P1-74 authoring/reuse extensions | Team of 5 in shared workspace; reviewer completes comment round; anonymous share link works with aggregate-only results; both SCORM modes (dynamic and traditional ZIP) pass SCORM Cloud; multi-select scoring, named restore, glossary linking, redesigned bank workflow, bank import/export, and linked-entity propagation pass focused acceptance tests; deployed to Vercel + Railway + R2; one-click deploy verified by a non-technical tester |
+| 5 | States, expanded block types, interactive video, captions, PDF artifacts, analytics (ANALYTICS TELEMETRY COMPLETE — see DECISIONS.md), Word importers. Translation parked to P3-1, revisit post-beta | 4-case pathology course with WSI in two-column layout, interactive video, auto-captions, PDF summary, and worksheet export passes full manual QA. Smart Import (rule-based) produces a usable draft from a real Word document with no API key. AI Import produces a usable draft from a real CAP storyboard. Flashcard (P1-59), matching (P1-60), ordering (P1-61), hotspot (P1-62), and reflection blocks all work and are keyboard operable. Text-to-speech works on text blocks. **IMPLEMENTATION COMPLETE; remaining manual/SCORM checks are tracked in DECISIONS.md.** |
+| 6 | Accounts, shared library, review and commenting, anonymous links, deployment, and the P1-69 through P1-74 authoring/reuse extensions | Team of 5 in shared workspace; reviewer completes comment round; anonymous share link works with aggregate-only results; both SCORM modes (dynamic and traditional ZIP) pass SCORM Cloud; multi-select scoring, named restore, glossary linking, redesigned bank workflow, bank import/export, and linked-entity propagation pass focused acceptance tests; deployed to Vercel + Railway + R2; one-click deploy verified by a non-technical tester. **P1-69 through P1-74 are already implemented and shipped ahead of this formal phase sequence; they remain held out of the v1 release for phased v1.1–v1.4 rollout.** |
 | 7 | Pathology signature: deep-zoom whole-slide viewer (P2-8) | Learner pans/zooms tiled slide; annotations reveal at zoom levels; reuses Phase 5 zoom engine |
 
 Accessibility (P1-11) is a build practice, not a phase. Semantic HTML, keyboard operability, and alt text fields are implemented from Phase 1, with a formal WCAG AA audit before public release.
+
+**Phase table status clarification:** Phase 4.5 and Phase 4.6 are intentionally not marked **COMPLETE**. The codebase and DECISIONS.md contain selected implementation milestones for these areas, but this status pass does not declare the full phase acceptance criteria complete. The recent UI modernization must not be read as completion of Phase 4.5's foundational work or of every Phase 4.6 Course Health deliverable.
+
+**Ahead-of-sequence release note:** P1-69 through P1-74 are complete implementation work, but are not part of the v1 release surface. The current v1 feature-flag module defaults `versionHistory`, `glossary`, `bankImportExport`, and `linkedQuestions` to false. Multi-select knowledge checks (P1-69) and the bank-editor redesign (P1-72) do not currently have separate named flags in the codebase, so their v1 exclusion is a rollout/release decision rather than an independent runtime flag; adding separate flags is future release work if needed.
+
+### Verification and hardening additions outside the formal phase plan (July 2026)
+
+Hands-on verification produced a set of real-usage-driven additions that were not in the original phase table and are now implemented:
+
+- **Four original bug fixes:** authored course titles now flow into SCORM package/player titles; question-bank pages reset to the top on navigation; variable-chip insertion preserves cursor position and formatting while supporting typed `{VariableName}` syntax; and the first `nav_mode` setting change reliably persists through save and publish.
+- **UI/UX modernization:** design tokens were applied across the editor; the left navigation was cleaned up; the icon rail and drawer shell replaced the old inspector workflow; the top bar and drawer contents were modernized; block hover/settings affordances were clarified; and the rich-text toolbar gained consolidated colors, lists, alignment, links, and custom-menu-message support.
+- **Ad hoc v1 additions:** the Back button setting, generic internal-navigation Button block, external rich-text hyperlinks, and dashboard course search were added and documented as additive features.
+- **External-resource hardening:** DigitalScope focus/scroll mitigation and PDF-aware embed rendering were added after real embedded-resource verification exposed gaps in the generic iframe path.
+
+These additions preserve the formal phase numbering and do not imply that the full Phase 4.5 or Phase 4.6 acceptance criteria are complete. In particular, the recent UI polish must not be read as completion of the 4.5 foundational work or as completion of every 4.6 Course Health deliverable.
 
 Phases 5 and 7 form the pathology differentiation wedge. No free tool or AI generator currently offers this combination.
 
@@ -557,3 +573,22 @@ Add this section to REQUIREMENTS.md before requesting a build prompt.
 - Trigger/variable engine actions for the Button block
 - Internal page links in rich text (external URLs only)
 - Lightbox/image-carousel in-text references (logged as a V2 roadmap item, not part of this spec)
+
+### P1-75 — Dashboard course search
+
+**Status:** Implemented July 25, 2026.
+
+**Functional requirements:**
+
+- Render a search input above the dashboard course grid when courses exist.
+- Filter visible course tiles as the author types using a case-insensitive substring match against each course title.
+- Preserve the existing course-card actions, ordering, fetching, and navigation behavior.
+- Show a clear empty state such as “No courses match your search.” when the query matches no course.
+- Clearing the query restores the full course list.
+- Use the existing design tokens for the input border, radius, placeholder text, and focus ring.
+
+**Technical scope and verification:**
+
+- Client-side presentation only; no course JSON, schema, migration, API, or persistence changes.
+- Focused editor tests cover case-insensitive matching, no-match rendering, and clearing the query.
+- The full repository test suite and editor production build pass. A local browser smoke test confirmed matching, no-match, and clear-to-restore behavior; this does not replace the outstanding live SCORM/manual checks documented in DECISIONS.md.

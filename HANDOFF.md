@@ -212,8 +212,22 @@ createdb mnemonify_dev
 npm run migrate --workspace=packages/server
 ```
 Migrations run in order from `packages/server/src/migrations/*.sql`
-(currently 001–007); `migrate.js` just runs each file straight through —
-there's no down-migration or rollback mechanism.
+(currently 001–013, including `013_phase6a_accounts.sql`); `migrate.js` runs
+each file straight through on every invocation — there is no migration ledger,
+down-migration, or rollback mechanism. Run the same command after a fresh
+clone or whenever a new numbered migration is added. Phase 6a's migration
+creates the PostgreSQL session, token, invitation, login-rate-limit, and
+email-outbox tables, backfills organization memberships, and seeds the local
+owner account `dev@mnemonify.org` with password `dev-password`.
+
+After migration, a quick local auth smoke test is:
+```
+curl -c /tmp/mnemonify.cookies \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"dev@mnemonify.org","password":"dev-password"}' \
+  http://localhost:3001/api/auth/login
+curl -b /tmp/mnemonify.cookies http://localhost:3001/api/auth/me
+```
 
 `packages/server/.env` (copy from `.env.example`):
 ```

@@ -6,7 +6,7 @@ import { applyGlossarySuggestion, effectiveGlossaryTerms, findGlossarySuggestion
 function course(overrides = {}) {
   const { meta: metaOverride, ...rest } = overrides;
   return {
-    schema_version: 5,
+    schema_version: 6,
     meta: { course_id: 'crs_glossary', title: 'Glossary', theme: { accent: '#0f766e' }, ...metaOverride },
     variables: [], assets: [], question_banks: [], linked_entities: [],
     pages: [{ page_id: 'pg_one', title: 'One', blocks: [{ block_id: 'blk_one', type: 'text', content: { rich_text: [{ t: 'text', v: 'A biopsy shows anemia.' }] } }] }],

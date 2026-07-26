@@ -1,4 +1,4 @@
-import { genBlockId, genPageId } from './idGen.js';
+import { genBlockId, genItemId, genOptionId, genPageId } from './idGen.js';
 import { DEFAULT_NAV_MODE } from '@mnemonify/schema/navigation.js';
 
 // Hardcoded starter templates shown on first login when no real templates
@@ -39,12 +39,12 @@ export const STARTER_TEMPLATES = [
     course_json: baseCourse('Untitled Case-Based Course', [
       block('heading', { text: '[Case title here]', level: 1 }),
       block('text', { rich_text: [{ t: 'text', v: '[Case narrative here]' }] }),
-      block('accordion', { items: [{ title: '[Reveal diagnosis]', body_blocks: [] }] }),
+      block('accordion', { items: [{ item_id: genItemId(), title: '[Reveal diagnosis]', body_blocks: [] }] }),
       block('knowledge-check', {
         question: '[Question text here]',
         options: [
-          { id: 'opt_a', text: '[Answer option here]', correct: true },
-          { id: 'opt_b', text: '[Answer option here]', correct: false },
+          { id: genOptionId(), text: '[Answer option here]', correct: true },
+          { id: genOptionId(), text: '[Answer option here]', correct: false },
         ],
       }),
     ]),
@@ -60,8 +60,8 @@ export const STARTER_TEMPLATES = [
       block('knowledge-check', {
         question: '[Question text here]',
         options: [
-          { id: 'opt_a', text: '[Answer option here]', correct: true },
-          { id: 'opt_b', text: '[Answer option here]', correct: false },
+          { id: genOptionId(), text: '[Answer option here]', correct: true },
+          { id: genOptionId(), text: '[Answer option here]', correct: false },
         ],
       }),
     ]),
@@ -74,12 +74,12 @@ export const STARTER_TEMPLATES = [
       block('heading', { text: '[Case title here]', level: 1 }),
       block('carousel', { asset_ids: [] }),
       block('text', { rich_text: [{ t: 'text', v: '[Case history here]' }] }),
-      block('accordion', { items: [{ title: '[Differential diagnosis]', body_blocks: [] }] }),
+      block('accordion', { items: [{ item_id: genItemId(), title: '[Differential diagnosis]', body_blocks: [] }] }),
       block('knowledge-check', {
         question: '[Question text here]',
         options: [
-          { id: 'opt_a', text: '[Answer option here]', correct: true },
-          { id: 'opt_b', text: '[Answer option here]', correct: false },
+          { id: genOptionId(), text: '[Answer option here]', correct: true },
+          { id: genOptionId(), text: '[Answer option here]', correct: false },
         ],
       }),
     ]),

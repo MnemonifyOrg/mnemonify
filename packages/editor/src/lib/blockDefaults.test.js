@@ -10,3 +10,15 @@ describe('Button block defaults', () => {
     });
   });
 });
+
+describe('stable IDs on newly-created nested entities', () => {
+  it('creates IDs for every supported repeated question/block item', () => {
+    expect(createBlock('knowledge-check').content.options.every((option) => /^opt_/.test(option.id))).toBe(true);
+    expect(createBlock('accordion').content.items.every((item) => /^itm_/.test(item.item_id))).toBe(true);
+    expect(createBlock('tabs').content.items.every((item) => /^itm_/.test(item.item_id))).toBe(true);
+    expect(createBlock('flashcards').content.cards.every((card) => /^crd_/.test(card.card_id))).toBe(true);
+    expect(createBlock('matching').content.prompts.every((prompt) => /^mp_/.test(prompt.prompt_id))).toBe(true);
+    expect(createBlock('matching').content.options.every((option) => /^mo_/.test(option.option_id))).toBe(true);
+    expect(createBlock('ordering').content.items.every((item) => /^ord_/.test(item.item_id))).toBe(true);
+  });
+});

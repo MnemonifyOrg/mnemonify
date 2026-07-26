@@ -1,12 +1,9 @@
 import { genItemId, genVariableId } from './idGen.js';
 
-// Phase 4.5a's real gap (DECISIONS.md, Step 1 identity audit): accordion
-// and tab nested items have no id at all in every course document created
-// before this migration existed, and variables are identified only by
-// `name`. This migration fills in both, and nothing else -- it never
-// touches, removes, or renumbers any id that already exists (blocks,
-// pages, triggers, assets, KC options, resources, objectives/concepts all
-// already had stable ids before 4.5a and are left completely alone here).
+// Phase 4.5a's original v1->v2 step fills the first historical gaps:
+// accordion/tab nested items and variables. The v5->v6 completion step
+// handles the later nested entities introduced by subsequent feature work;
+// both steps preserve every existing ID exactly.
 //
 // Pure function: takes one course document at schema_version 1, returns a
 // new document at schema_version 2 plus a diagnostics summary. Never
@@ -15,11 +12,11 @@ import { genItemId, genVariableId } from './idGen.js';
 // item that already had an item_id still gets a new item object, because
 // its body_blocks may need migrating even though the item_id itself
 // doesn't change).
-function migrateBlockList(blocks, diagnostics) {
-  return (blocks || []).map((block) => migrateBlock(block, diagnostics));
+function migrateBlockList(blocks, diagnostics, path = 'pages') {
+  return (blocks || []).map((block, index) => migrateBlock(block, diagnostics, `${path}/block-${index}`));
 }
 
-function migrateBlock(block, diagnostics) {
+function migrateBlock(block, diagnostics, path) {
   if (!block || typeof block !== 'object') return block;
 
   let next = block;
@@ -29,14 +26,14 @@ function migrateBlock(block, diagnostics) {
       ...block,
       content: {
         ...block.content,
-        items: block.content.items.map((item) => {
+        items: block.content.items.map((item, index) => {
           if (!item || typeof item !== 'object') return item;
           const hadId = Boolean(item.item_id);
           if (!hadId) diagnostics.itemsAssigned += 1;
           return {
             ...item,
-            item_id: hadId ? item.item_id : genItemId(),
-            body_blocks: migrateBlockList(item.body_blocks, diagnostics),
+            item_id: hadId ? item.item_id : genItemId(`${path}/item-${index}`),
+            body_blocks: migrateBlockList(item.body_blocks, diagnostics, `${path}/item-${index}`),
           };
         }),
       },
@@ -49,17 +46,17 @@ function migrateBlock(block, diagnostics) {
   // the pre-existing assignBlockIds/rebuildBlockWithIds recursion in
   // CourseEditor.jsx always walks left/right too: correctness shouldn't
   // depend on remembering that constraint holds forever.
-  if (next.left) next = { ...next, left: migrateBlock(next.left, diagnostics) };
-  if (next.right) next = { ...next, right: migrateBlock(next.right, diagnostics) };
+  if (next.left) next = { ...next, left: migrateBlock(next.left, diagnostics, `${path}/left`) };
+  if (next.right) next = { ...next, right: migrateBlock(next.right, diagnostics, `${path}/right`) };
 
   return next;
 }
 
 function migrateVariables(variables, diagnostics) {
-  return (variables || []).map((v) => {
+  return (variables || []).map((v, index) => {
     if (v.variable_id) return v;
     diagnostics.variablesAssigned += 1;
-    return { variable_id: genVariableId(), ...v };
+    return { variable_id: genVariableId(`variables/${index}/${v.name || ''}`), ...v };
   });
 }
 
@@ -89,9 +86,9 @@ export default {
   migrate(document) {
     const diagnostics = { itemsAssigned: 0, variablesAssigned: 0, resourceSizesCoerced: 0 };
 
-    const pages = (document.pages || []).map((page) => ({
+    const pages = (document.pages || []).map((page, index) => ({
       ...page,
-      blocks: migrateBlockList(page.blocks, diagnostics),
+      blocks: migrateBlockList(page.blocks, diagnostics, `pages/${page.page_id || 'page-' + index}`),
     }));
 
     const variables = migrateVariables(document.variables, diagnostics);

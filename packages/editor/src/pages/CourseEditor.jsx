@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../lib/api.js';
-import { genPageId } from '../lib/idGen.js';
+import {
+  genCardId,
+  genFeedbackId,
+  genHotspotRegionId,
+  genItemId,
+  genMatchingOptionId,
+  genMatchingPromptId,
+  genOptionId,
+  genOrderingItemId,
+  genPageId,
+} from '../lib/idGen.js';
 import PageList from '../components/PageList.jsx';
 import BlockCanvas from '../components/BlockCanvas.jsx';
 import DrawerSettingsContent from '../components/DrawerSettingsContent.jsx';
@@ -997,6 +1007,51 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     }
   }
 
+  // A copied block is a new authoring entity. Remint every repeated nested
+  // entity alongside block_id/trigger_id so copied questions/cards/items do
+  // not share answer-state or future dependency references with the source.
+  function rebuildNestedContentWithIds(content, type, rebuildChild) {
+    if (!content || typeof content !== 'object') return content;
+    let next = { ...content };
+    if (Array.isArray(content.options) && type === 'knowledge-check') {
+      const optionIds = new Map();
+      next.options = content.options.map((option) => {
+        const nextId = genOptionId();
+        optionIds.set(option.id, nextId);
+        return {
+          ...option,
+          id: nextId,
+          ...(option.feedback ? { feedback: { ...option.feedback, feedback_id: genFeedbackId() } } : {}),
+        };
+      });
+      if (typeof content.correct_option_id === 'string') next.correct_option_id = optionIds.get(content.correct_option_id) || content.correct_option_id;
+      if (Array.isArray(content.correct_option_ids)) next.correct_option_ids = content.correct_option_ids.map((id) => optionIds.get(id) || id);
+    }
+    if (Array.isArray(content.items) && (type === 'accordion' || type === 'tabs' || type === 'ordering')) {
+      next.items = content.items.map((item) => ({
+        ...item,
+        item_id: type === 'ordering' ? genOrderingItemId() : genItemId(),
+        ...(Array.isArray(item.body_blocks) ? { body_blocks: item.body_blocks.map(rebuildChild) } : {}),
+      }));
+    }
+    if (Array.isArray(content.cards) && type === 'flashcards') {
+      next.cards = content.cards.map((card) => ({ ...card, card_id: genCardId() }));
+    }
+    if (Array.isArray(content.prompts) && type === 'matching') {
+      const optionIds = new Map((content.options || []).map((option) => [option.option_id, genMatchingOptionId()]));
+      next.prompts = content.prompts.map((prompt) => ({
+        ...prompt,
+        prompt_id: genMatchingPromptId(),
+        correct_option_id: optionIds.get(prompt.correct_option_id) || prompt.correct_option_id,
+      }));
+      next.options = (content.options || []).map((option) => ({ ...option, option_id: optionIds.get(option.option_id) || genMatchingOptionId() }));
+    }
+    if (Array.isArray(content.regions) && type === 'hotspot') {
+      next.regions = content.regions.map((region) => ({ ...region, region_id: genHotspotRegionId() }));
+    }
+    return next;
+  }
+
   // Rebuilds a block using a previously-populated idMap: applies the new
   // block_id, regenerates trigger_ids, and rewrites any action target that
   // matches an old id in idMap. Targets not in idMap (another block that
@@ -1013,23 +1068,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     }
     if (next.left) next.left = rebuildBlockWithIds(next.left, idMap);
     if (next.right) next.right = rebuildBlockWithIds(next.right, idMap);
-    if (next.content?.items) {
-      next.content = {
-        ...next.content,
-        items: next.content.items.map((item) =>
-          item && typeof item === 'object' && item.body_blocks
-            ? {
-                ...item,
-                // Fresh item_id on every copy (never carried over), same as
-                // block_id/trigger_id above -- keeps item_id globally unique
-                // per DATA-MODEL.md 19. Items copied from pre-migration data
-                // with no item_id yet stay unset; the migration assigns one.
-                ...(item.item_id ? { item_id: genId('itm') } : {}),
-                body_blocks: item.body_blocks.map((child) => rebuildBlockWithIds(child, idMap)),
-              }
-            : item
-        ),
-      };
+    if (Object.prototype.hasOwnProperty.call(next, 'content')) {
+      next.content = rebuildNestedContentWithIds(next.content, next.type, (child) => rebuildBlockWithIds(child, idMap));
     }
     return next;
   }
@@ -1097,19 +1137,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     if (newBlock.triggers) {
       newBlock.triggers = newBlock.triggers.map((t) => ({ ...t, trigger_id: `trg_${Math.random().toString(36).slice(2, 8)}` }));
     }
-    if (newBlock.content?.items) {
-      newBlock.content = {
-        ...newBlock.content,
-        items: newBlock.content.items.map((item) =>
-          item && typeof item === 'object' && item.body_blocks
-            ? {
-                ...item,
-                ...(item.item_id ? { item_id: `itm_${Math.random().toString(36).slice(2, 8)}` } : {}),
-                body_blocks: item.body_blocks.map(regenerateIds),
-              }
-            : item
-        ),
-      };
+    if (Object.prototype.hasOwnProperty.call(newBlock, 'content')) {
+      newBlock.content = rebuildNestedContentWithIds(newBlock.content, newBlock.type, regenerateIds);
     }
     return newBlock;
   }

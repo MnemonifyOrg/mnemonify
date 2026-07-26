@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ConditionBuilder, { ValueInput } from './ConditionBuilder.jsx';
 import { ACTION_LABELS, ACTION_TYPES, blockLabel, defaultValueForType, eventLabelFor, newTriggerId } from '../lib/triggerUtils.js';
+import { genOptionId } from '../lib/idGen.js';
 
 function emptyAction(type, variables, pageBlocks, pages) {
   const editableVariables = (variables || []).filter((v) => !v.readOnly);
@@ -55,8 +56,8 @@ function OverlayContentEditor({ action, onChange }) {
             content: {
               question: 'Question',
               options: [
-                { id: 'opt_overlay_a', text: 'Correct answer', correct: true },
-                { id: 'opt_overlay_b', text: 'Incorrect answer', correct: false },
+                { id: genOptionId(), text: 'Correct answer', correct: true },
+                { id: genOptionId(), text: 'Incorrect answer', correct: false },
               ],
             },
             triggers: block.triggers || [],

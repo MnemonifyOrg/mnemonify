@@ -12,6 +12,7 @@ export const genUtilityItemId = () => `util_${shortId()}`;
 // prefix pattern to every entity DATA-MODEL.md section 2 requires a
 // stable id for.
 export const genOptionId = () => `opt_${shortId()}`;
+export const genFeedbackId = () => `fbk_${shortId()}`;
 export const genItemId = () => `itm_${shortId()}`;
 export const genVariableId = () => `var_${shortId()}`;
 export const genObjectiveId = () => `obj_${shortId()}`;

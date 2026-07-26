@@ -11,7 +11,7 @@ import { validateCourse } from './index.js';
 
 function baseCourse() {
   return {
-    schema_version: 5,
+    schema_version: 6,
     meta: {
       course_id: 'crs_transfer',
       title: 'Transfer Course',

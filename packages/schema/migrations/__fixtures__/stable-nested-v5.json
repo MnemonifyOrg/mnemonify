@@ -1,0 +1,52 @@
+{
+  "schema_version": 5,
+  "meta": {
+    "course_id": "crs_stableids",
+    "title": "Stable ID migration fixture",
+    "theme": { "accent": "#0f766e" },
+    "objectives": [{ "label": "Identify the finding" }],
+    "page_groups": [{ "title": "Module one", "page_ids": ["pg_one"] }],
+    "resources": [{ "filename": "handout.pdf", "file_path": "handout.pdf", "size_bytes": 4, "uploaded_at": "2026-07-25T00:00:00.000Z" }]
+  },
+  "variables": [{ "name": "attempts", "type": "number", "default": 0 }],
+  "assets": [],
+  "question_banks": [{
+    "bank_id": "bnk_one",
+    "questions": [{
+      "scored": true,
+      "objective_ids": [],
+      "content": {
+        "question": "Select all that apply",
+        "multi_select": true,
+        "correct_option_ids": [],
+        "options": [
+          { "text": "A", "correct": true, "feedback": { "rich_text": [{ "t": "text", "v": "Good" }] } },
+          { "text": "B", "correct": false }
+        ]
+      }
+    }]
+  }],
+  "glossary_terms": [{ "term": "Stable ID", "definition": { "rich_text": [{ "t": "text", "v": "An ID that does not change." }] } }],
+  "linked_entities": [{
+    "entity_id": "ent_matching",
+    "block_type": "matching",
+    "content": {
+      "prompts": [{ "text": "Prompt", "correct_option_id": "" }],
+      "options": [{ "text": "Option" }]
+    },
+    "metadata": { "scored": true, "objective_ids": [], "tags": [], "block_fields": {} }
+  }],
+  "pages": [{
+    "page_id": "pg_one",
+    "title": "Page one",
+    "blocks": [
+      { "block_id": "blk_accordion", "type": "accordion", "content": { "items": [{ "title": "Item", "body_blocks": [] }] } },
+      { "block_id": "blk_tabs", "type": "tabs", "content": { "items": [{ "label": "Tab", "body_blocks": [] }] } },
+      { "block_id": "blk_cards", "type": "flashcards", "content": { "cards": [{ "front": { "rich_text": [] }, "back": { "rich_text": [] } }] } },
+      { "block_id": "blk_matching", "type": "matching", "content": { "prompts": [{ "text": "Prompt", "correct_option_id": "" }], "options": [{ "text": "Option" }] } },
+      { "block_id": "blk_ordering", "type": "ordering", "content": { "items": [{ "text": "First", "correct_position": 0 }] } },
+      { "block_id": "blk_hotspot", "type": "hotspot", "content": { "regions": [{ "shape": "rect", "x_pct": 1, "y_pct": 1, "width_pct": 10, "height_pct": 10 }] } },
+      { "block_id": "blk_kc", "type": "knowledge-check", "content": { "question": "Question", "options": [{ "text": "A", "correct": true }, { "text": "B", "correct": false }] } }
+    ]
+  }]
+}

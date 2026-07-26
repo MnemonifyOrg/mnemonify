@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { genBankId, genBankQuestionId } from '../lib/idGen.js';
+import { genBankId, genBankQuestionId, genOptionId } from '../lib/idGen.js';
 import QuestionBankEditorModal from './QuestionBankEditorModal.jsx';
 import BankExportModal from './BankExportModal.jsx';
 import BankImportReviewModal from './BankImportReviewModal.jsx';
@@ -16,8 +16,8 @@ function emptyQuestion() {
       scored: true,
       question: '',
       options: [
-        { id: `opt_${genBankQuestionId().slice(3)}`, text: '', correct: true },
-        { id: `opt_${genBankQuestionId().slice(3)}`, text: '', correct: false },
+        { id: genOptionId(), text: '', correct: true },
+        { id: genOptionId(), text: '', correct: false },
       ],
     },
   };

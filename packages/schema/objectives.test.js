@@ -5,7 +5,7 @@ import { objectiveLabel, resolveQuestionBankDrawPool, resolveQuestionBankPool } 
 
 function course(overrides = {}) {
   return {
-    schema_version: 5,
+    schema_version: 6,
     meta: {
       course_id: 'crs_objectives',
       title: 'Objectives',

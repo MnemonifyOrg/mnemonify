@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import EditableRichField from './EditableRichField.jsx';
 import RichTextToolbar from '../RichTextToolbar.jsx';
-import { genOptionId } from '../../lib/idGen.js';
+import { genFeedbackId, genOptionId } from '../../lib/idGen.js';
 import { insertVariableAtSelection } from '../../lib/richText.js';
 import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
 import { getCorrectOptionIds } from '@mnemonify/schema/knowledge-check.js';
@@ -185,7 +185,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
       options: options.map((o) => {
         if (o.id !== id) return o;
         const feedback = o.feedback || { rich_text: [], reference_ids: [] };
-        return { ...o, feedback: { ...feedback, image_id: imageId } };
+        return { ...o, feedback: { feedback_id: feedback.feedback_id || genFeedbackId(), ...feedback, image_id: imageId } };
       }),
     });
   }
@@ -235,7 +235,7 @@ export default function KnowledgeCheckBlockEditor({ block, onChange, assets, cou
           const { feedback: _feedback, ...rest } = o;
           return rest;
         }
-        return { ...o, feedback: { rich_text: richText, image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
+        return { ...o, feedback: { feedback_id: o.feedback?.feedback_id || genFeedbackId(), rich_text: richText, image_id: o.feedback?.image_id ?? null, reference_ids: [] } };
       }),
     });
   }

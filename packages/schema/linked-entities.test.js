@@ -15,7 +15,7 @@ import {
 
 function baseCourse() {
   return {
-    schema_version: 5,
+    schema_version: 6,
     meta: { course_id: 'crs_linked', title: 'Linked', theme: { accent: '#0f766e' } },
     variables: [],
     assets: [],

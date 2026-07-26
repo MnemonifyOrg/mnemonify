@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 5
+      "const": 6
     },
     "meta": { "$ref": "#/definitions/meta" },
     "variables": {
@@ -256,7 +256,7 @@
         },
         "question": { "type": ["string", "array"] },
         "question_image_id": { "type": ["string", "null"] },
-        "options": { "type": "array", "minItems": 2, "items": { "type": "object" } },
+        "options": { "type": "array", "minItems": 2, "items": { "$ref": "#/definitions/knowledge_check_option" } },
         "correct_option_id": { "type": "string" },
         "correct_option_ids": {
           "type": "array",
@@ -269,6 +269,88 @@
         "correct_feedback": { "type": ["string", "array"] },
         "incorrect_feedback": { "type": ["string", "array"] },
         "show_feedback": { "type": "boolean" }
+      }
+    },
+    "knowledge_check_option": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "pattern": "^opt_[a-zA-Z0-9_]+$" },
+        "text": { "type": ["string", "array"] },
+        "correct": { "type": "boolean" },
+        "feedback": {
+          "type": "object",
+          "required": ["feedback_id"],
+          "additionalProperties": true,
+          "properties": {
+            "feedback_id": { "type": "string", "pattern": "^fbk_[a-zA-Z0-9_]+$" }
+          }
+        }
+      }
+    },
+    "flashcards_content": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "cards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["card_id"],
+            "properties": { "card_id": { "type": "string", "pattern": "^crd_[a-zA-Z0-9_]+$" } }
+          }
+        }
+      }
+    },
+    "matching_content": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "prompts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["prompt_id"],
+            "properties": { "prompt_id": { "type": "string", "pattern": "^mp_[a-zA-Z0-9_]+$" } }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["option_id"],
+            "properties": { "option_id": { "type": "string", "pattern": "^mo_[a-zA-Z0-9_]+$" } }
+          }
+        }
+      }
+    },
+    "ordering_content": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["item_id"],
+            "properties": { "item_id": { "type": "string", "pattern": "^ord_[a-zA-Z0-9_]+$" } }
+          }
+        }
+      }
+    },
+    "hotspot_content": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["region_id"],
+            "properties": { "region_id": { "type": "string", "pattern": "^hs_[a-zA-Z0-9_]+$" } }
+          }
+        }
       }
     },
     "objective": {
@@ -558,6 +640,18 @@
           }
         },
         {
+          "if": { "properties": { "type": { "const": "flashcards" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/flashcards_content" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "matching" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/matching_content" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ordering" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/ordering_content" } } }
+        },
+        {
           "if": {
             "properties": {
               "type": { "const": "hotspot" }
@@ -571,6 +665,10 @@
               }
             }
           }
+        },
+        {
+          "if": { "properties": { "type": { "const": "hotspot" } } },
+          "then": { "properties": { "content": { "$ref": "#/definitions/hotspot_content" } } }
         },
         {
           "if": {

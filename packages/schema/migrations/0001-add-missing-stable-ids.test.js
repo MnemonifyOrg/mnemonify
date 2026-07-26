@@ -145,3 +145,39 @@ test('refuses a course document claiming a schema_version newer than this codeba
   future.schema_version = CURRENT_SCHEMA_VERSION + 1;
   assert.throws(() => migrateCourse(future, { courseId: 'from-the-future' }), /newer than this codebase's current version/);
 });
+
+test('deterministically assigns every Phase 4.5a nested ID and leaves the source untouched', () => {
+  const original = loadFixture('stable-nested-v5.json');
+  const firstInput = structuredClone(original);
+  const first = migrateCourse(firstInput, { courseId: 'stable-nested-first' });
+  const second = migrateCourse(structuredClone(original), { courseId: 'stable-nested-second' });
+
+  assert.deepEqual(first.document, second.document, 'the same historical document must receive the same IDs');
+  assert.deepEqual(firstInput, original, 'migration must not mutate its input');
+  assert.equal(first.document.schema_version, CURRENT_SCHEMA_VERSION);
+
+  const pageBlocks = first.document.pages[0].blocks;
+  const accordionItem = pageBlocks[0].content.items[0];
+  const tabItem = pageBlocks[1].content.items[0];
+  assert.match(accordionItem.item_id, /^itm_/);
+  assert.match(tabItem.item_id, /^itm_/);
+  assert.match(pageBlocks[2].content.cards[0].card_id, /^crd_/);
+  assert.match(pageBlocks[3].content.prompts[0].prompt_id, /^mp_/);
+  assert.match(pageBlocks[3].content.options[0].option_id, /^mo_/);
+  assert.match(pageBlocks[4].content.items[0].item_id, /^ord_/);
+  assert.match(pageBlocks[5].content.regions[0].region_id, /^hs_/);
+  assert.match(pageBlocks[6].content.options[0].id, /^opt_/);
+  assert.match(first.document.question_banks[0].questions[0].content.options[0].feedback.feedback_id, /^fbk_/);
+  assert.match(first.document.meta.objectives[0].objective_id, /^obj_/);
+  assert.match(first.document.meta.page_groups[0].group_id, /^grp_/);
+  assert.match(first.document.meta.resources[0].resource_id, /^res_/);
+  assert.match(first.document.variables[0].variable_id, /^var_/);
+  assert.match(first.document.glossary_terms[0].term_id, /^term_course_/);
+  assert.match(first.document.question_banks[0].questions[0].question_id, /^bq_/);
+  assert.match(first.document.question_banks[0].questions[0].content.options[0].id, /^opt_/);
+  assert.match(first.document.linked_entities[0].content.prompts[0].prompt_id, /^mp_/);
+
+  const stableDiagnostics = first.diagnostics.find((entry) => entry.id === '0005-complete-stable-ids');
+  assert.ok(stableDiagnostics.answerOptionsAssigned >= 2);
+  assert.ok(stableDiagnostics.feedbackVariantsAssigned >= 1);
+});

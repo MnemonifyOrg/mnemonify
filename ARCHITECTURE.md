@@ -1467,3 +1467,65 @@ The exact final rule set may be adjusted slightly during implementation as real 
 - Course Health panel groups findings by category, shows counts, and each finding navigates to the right object
 - Publishing is blocked when unresolved errors exist, with a clear message; warnings do not block
 - Manual verification: Sebastin runs this against a real course with at least one deliberately introduced error (e.g. a broken reference, a bank with insufficient questions for its draw count) and confirms the panel surfaces it correctly, navigation works, and publish is correctly blocked — then removes the issue and confirms publish is unblocked
+
+
+# Phase 6a: Accounts, Roles, and Permissions
+
+Add this section to ARCHITECTURE.md (technical foundation) with a summary/reference in REQUIREMENTS.md's Phase 6 row. Commit before requesting a build prompt.
+
+## Decisions (confirmed)
+
+- **Authentication:** self-hosted email/password auth using a mature, well-vetted library for the security-sensitive parts (password hashing, session management) — not a third-party SaaS auth provider. This keeps the tool freely self-hostable per its AGPL-3.0 open-source intent, with no external service dependency or cost imposed on future self-hosters.
+- **Roles:** role-based permissions are required — owner, editor, reviewer (at minimum), not flat equal access within an organization.
+- Multi-tenancy foundation already exists (`organisation_id` is present throughout the schema per real course data) — this phase builds real accounts and membership on top of that existing structure, not a new tenancy model from scratch.
+
+## Part 1: Authentication
+
+### Requirements
+- Email/password signup and login.
+- Passwords hashed with a modern, vetted algorithm (bcrypt or argon2 — implementer's choice, argon2 preferred if available without adding heavy new infra).
+- Secure session handling: HttpOnly, Secure, SameSite cookies; sessions stored server-side (e.g. in Postgres or Redis if already available — do not introduce a new infra dependency without asking) rather than trusting client-side tokens alone.
+- Rate limiting on login attempts to prevent brute-force.
+- Email verification on signup (can be a simple token-link flow; do not over-engineer).
+- Password reset flow (token-link via email).
+- Logout invalidates the session server-side, not just client-side cookie clearing.
+
+### Out of scope for this pass
+- Social login (Google/Microsoft/etc.) — future, addable independently later.
+- SSO/SAML — future, only relevant if enterprise customers require it.
+- Two-factor authentication — future.
+
+## Part 2: Organizations and membership
+
+- A user can belong to one or more organizations (the existing `organisation_id` concept), each with their own role.
+- Organization owner can invite users by email; invited users who don't yet have an account get a signup-and-join flow, existing users get added directly.
+- Organization owner can change a member's role or remove them.
+- At least one owner must always exist per organization (prevent removing/demoting the last owner).
+
+## Part 3: Roles and permissions
+
+Minimum three roles, each with clearly defined permissions:
+- **Owner:** full control — manage organization membership/roles, create/edit/delete/publish any course, access all settings.
+- **Editor:** create/edit courses, manage content, cannot manage organization membership or delete the organization.
+- **Reviewer:** read-only access to courses plus the ability to leave comments (Phase 6b) — cannot edit course content or publish.
+
+### Requirements
+- Every course-affecting action (edit, publish, delete, manage banks/objectives, etc.) checks the acting user's role and is denied with a clear message if insufficient.
+- Enforcement happens server-side (API-level checks), not just hidden/disabled UI in the editor — the editor UI should also reflect permissions (e.g. hide edit controls for a Reviewer), but the real security boundary is the server.
+- Existing single-user/no-auth local development and testing flows should continue to work in a development mode (do not break the existing dev/test setup) — clarify with a sensible default (e.g. a seeded default owner account for local dev) rather than breaking existing test fixtures.
+
+## Out of scope for 6a entirely
+
+- Review/commenting UI and data model (Phase 6b, next stage)
+- Anonymous share links (Phase 6c)
+- Deployment (separate, near-term item, not blocked by this phase)
+- Any billing/subscription concept — not part of this project's scope as currently discussed
+
+## Acceptance criteria
+
+- A user can sign up, verify their email, log in, and log out securely
+- An organization owner can invite a member, assign a role, change a role, and remove a member (except the last owner)
+- Permissions are enforced server-side for at least: editing a course, publishing a course, managing organization membership
+- Existing courses/data (organisation_id: "00000000-0000-0000-0000-000000000001" seen in real production data) migrate cleanly to have a real owning organization and at least one owner account
+- All automated tests pass
+- Manual verification: Sebastin creates a second account, invites it to his organization as a Reviewer, and confirms that account cannot edit or publish a course but can view it; then confirms an Editor-role account can edit but not manage membership

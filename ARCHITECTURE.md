@@ -2,8 +2,8 @@
 
 **Version:** 0.3 (In development)
 **Companion to:** REQUIREMENTS.md
-**Status:** Phases 1–4 are complete; Phase 3.5 implementation is complete; Phases 4.5 and 4.6 remain unmarked as formal phase completions; Phase 5 implementation and Phase 5.5 P1-68 through P1-75 are shipped. Recent verification/hardening fixes and v1-scope additions are complete, with remaining live SCORM/manual verification items recorded in DECISIONS.md.
-**Last updated:** July 25, 2026
+**Status:** Phases 1–4, Phase 3.5, and Phase 4.5 (4.5a stable IDs and migrations, 4.5b block registry and dependency index, and 4.5c the minimal Course Analyzer) are complete and verified against real production course data. Phase 4.6 is partially complete: Course Health finding grouping shipped with 4.5c, while Basic/Advanced settings grouping and the bulk alt-text review screen remain. Phase 5 implementation and Phase 5.5 P1-68 through P1-75 are shipped. Recent verification/hardening fixes and v1-scope additions are complete, with remaining live SCORM/manual verification items recorded in DECISIONS.md.
+**Last updated:** July 26, 2026
 
 This document is the technical source of truth. Claude Code must read it at the start of every session and must not deviate from it without updating it first.
 

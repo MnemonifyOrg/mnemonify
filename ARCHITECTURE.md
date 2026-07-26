@@ -1393,3 +1393,77 @@ A derived (not separately authored) index of references between objects, built f
 - All automated tests pass
 - Manual verification: Sebastin confirms in a real course that adding/editing a block still works exactly as before (no regression), and reviews the registry/index code or a demo output showing broken-reference detection working on a real example
 
+# Phase 4.5c: Minimal Course Analyzer
+
+Add this section to ARCHITECTURE.md (or REQUIREMENTS.md if that better matches where Course Health / analyzer-facing specs already live — follow existing convention). Commit before requesting a build prompt. Depends on Phase 4.5a (stable IDs) and 4.5b (block registry + dependency index) — both complete.
+
+## Scope discipline
+
+Per COURSE-ANALYZER.md, this is "Phase 1: foundation" only — a small, deterministic slice of that document's much larger multi-year vision. This stage builds ONLY:
+- Schema and reference errors (using the 4.5b dependency index directly — no new detection logic needed for these, just surfacing what it already finds)
+- Basic accessibility checks
+- Basic asset checks
+- The finding model, a Course Health panel with click-to-navigate, and pre-publish error gating
+
+Explicitly NOT in this stage: analyzer profiles, snapshots/history, the learning-alignment graph, instructional-design suggestions, pedagogical rules, or any of COURSE-ANALYZER.md's other rule categories beyond the three above. If implementation surfaces a rule that feels valuable but falls outside this scope, note it as a future candidate rather than building it now.
+
+## Part 1: Finding model
+
+A finding has, at minimum:
+- a stable rule ID (e.g. `broken-reference`, `missing-alt-text`)
+- severity: `error` (blocks publish) or `warning` (does not block)
+- a human-readable message
+- the entity/object it concerns, referenced by its stable ID (per 4.5a) and type (per 4.5b's registry), so the UI can navigate directly to it
+- category (matches the three scope areas above: reference, accessibility, asset)
+
+## Part 2: Rules (~15 total across the three categories)
+
+### Reference errors (source: 4.5b dependency index directly)
+1. Broken reference of any kind returned by `getBrokenReferences()` (trigger target, asset reference, bank reference, objective reference, variable reference) — each broken reference type from 4.5b becomes its own finding, or one generic rule parameterized by reference type, whichever fits the registry better.
+2. Orphaned question bank (a bank with zero blocks referencing it via `getDependents()`) — warning, not error (an author may intentionally keep a bank in reserve).
+3. Duplicate `question_id`/`block_id`/other stable ID collision, if one is ever found (defensive check — should be prevented by 4.5a, but worth a rule in case a manual edit or future migration reintroduces one) — error.
+
+### Basic accessibility checks
+4. Image asset with missing or empty `alt` text — warning.
+5. Video asset with `caption_status` not `ready` — warning (matches the existing caption/transcript status fields already in the schema).
+6. Video asset with `transcript_status` not `ready` — warning.
+7. Embed block with no descriptive `label` — warning.
+8. Heading block with empty or missing text — warning.
+
+### Basic asset checks
+9. Asset referenced in course JSON but with no corresponding uploaded file (broken asset, distinct from broken block-reference — this checks the asset's own file existence, not who references it).
+10. Resource (per `meta.resources[]`) with a `file_path` that doesn't resolve to an actual uploaded file — error (a missing downloadable resource is a real authoring mistake, not just a style warning).
+11. Duplicate asset filenames that could cause ambiguity, if detectable cheaply — warning.
+12. Video/image asset exceeding a sane file-size threshold likely to cause slow load — warning (threshold to be decided during implementation based on realistic course sizes; do not over-engineer this).
+
+### Structural completeness (small additions to round out ~15, still within "schema/reference" and "basic asset" spirit — implementer may adjust count as long as scope stays within the three categories)
+13. Question bank block (`question_bank_draw`) with a `draw_count` greater than the number of questions actually available in the referenced bank — error (this would fail silently or misbehave at runtime otherwise).
+14. Page with zero blocks — warning.
+15. Course with zero pages, or a `page_groups` entry with zero `page_ids` — warning.
+
+The exact final rule set may be adjusted slightly during implementation as real schema shapes are examined, as long as it stays within the three scope categories above and around 15 rules — this list is a strong starting point, not a rigid contract.
+
+## Part 3: Course Health panel
+
+- Extends the existing Course Health icon-rail drawer (already present as a placeholder/existing feature per prior UI work) rather than building a new UI surface.
+- Lists findings grouped by category (Reference, Accessibility, Asset) per ARCHITECTURE-AUDIT.md/COURSE-ANALYZER.md's own recommendation for finding grouping (this also satisfies part of the still-outstanding Phase 4.6 UX item).
+- Each finding is clickable and navigates the author directly to the relevant page/block, using the stable ID from the finding model.
+- Shows counts (e.g. "3 errors, 5 warnings") consistent with the existing warnings-badge pattern already in the top bar.
+- Findings recompute on course load and on save (or on-demand via a refresh action — implementer's choice, note which was built).
+
+## Part 4: Pre-publish gating
+
+- Findings with severity `error` block publishing. The Publish button (or the publish action) must check for zero unresolved errors before proceeding.
+- Findings with severity `warning` do not block publishing but should be visible to the author before they publish (e.g. shown in a summary if any exist, without a hard stop).
+- This must not silently fail — if publish is blocked, the author needs a clear message pointing them to the Course Health panel to see what's blocking.
+
+## Out of scope for 4.5c
+- Everything listed under "Scope discipline" above
+- Bulk alt-text review screen (a real Phase 4.6 item, but distinct enough in scope to be its own follow-up rather than bundled here)
+- Any UI beyond the Course Health panel itself (no dashboard-level health summary across all courses, for instance)
+
+## Acceptance criteria
+- All ~15 rules implemented, using the finding model consistently
+- Course Health panel groups findings by category, shows counts, and each finding navigates to the right object
+- Publishing is blocked when unresolved errors exist, with a clear message; warnings do not block
+- Manual verification: Sebastin runs this against a real course with at least one deliberately introduced error (e.g. a broken reference, a bank with insufficient questions for its draw count) and confirms the panel surfaces it correctly, navigation works, and publish is correctly blocked — then removes the issue and confirms publish is unblocked

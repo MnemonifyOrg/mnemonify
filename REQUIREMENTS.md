@@ -448,6 +448,7 @@ During development, the practical metric per phase is: the phase acceptance crit
 Accessibility (P1-11) is a build practice, not a phase. Semantic HTML, keyboard operability, and alt text fields are implemented from Phase 1, with a formal WCAG AA audit before public release.
 
 **Phase table status clarification:** Phase 4.5 and Phase 4.6 are intentionally not marked **COMPLETE**. The codebase and DECISIONS.md contain selected implementation milestones for these areas, but this status pass does not declare the full phase acceptance criteria complete. The recent UI modernization must not be read as completion of Phase 4.5's foundational work or of every Phase 4.6 Course Health deliverable.
+**Refer to Phase 4.5a: Stable IDs and Schema Migration Service in the ARCHITECTURE.md
 
 **Ahead-of-sequence release note:** P1-69 through P1-74 are complete implementation work, but are not part of the v1 release surface. The current v1 feature-flag module defaults `versionHistory`, `glossary`, `bankImportExport`, and `linkedQuestions` to false. Multi-select knowledge checks (P1-69) and the bank-editor redesign (P1-72) do not currently have separate named flags in the codebase, so their v1 exclusion is a rollout/release decision rather than an independent runtime flag; adding separate flags is future release work if needed.
 

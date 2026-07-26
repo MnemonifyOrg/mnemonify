@@ -1274,3 +1274,59 @@ The Claude API call uses the standard Anthropic /v1/messages endpoint. The syste
 - Last-write-wins editing with lock warnings instead of collaborative editing.
 - Local file storage for assets in development; storage abstraction in one module so S3 slots in later.
 - Whisper runs server-side locally in development; can be replaced with a hosted API in production without changing the caption pipeline interface.
+
+# Phase 4.5a: Stable IDs and Schema Migration Service
+
+Add this section to ARCHITECTURE.md (technical foundation) and reference it from REQUIREMENTS.md's Phase 4.5 row. Commit before requesting a build prompt.
+
+## Problem
+
+Every addressable entity needs a stable, permanent ID so that later work (dependency index, Course Analyzer findings, safe-delete, "used by" navigation) can reference objects reliably instead of by array position or text matching. Some entities already have IDs (blocks, pages, assets per ARCHITECTURE.md 3.2). Others do not: individual answer options, nested accordion/tab items, per-option feedback variants, objectives, and objective-to-question mappings.
+
+Separately, `schema_version` exists as a field but there is no actual migration pipeline. Opening an older course document currently has no deterministic upgrade path.
+
+## Part 1: Stable IDs
+
+### Scope — entities that need a stable ID and currently may not have one
+- Answer options within knowledge-check and multi-select questions
+- Nested items within accordion, tabs, flashcards, matching, ordering blocks
+- Per-option feedback variants (correct/incorrect feedback tied to a specific option)
+- Objectives (course-level and any per-module assignment records)
+- Objective-to-question mapping records
+- Any other nested/repeated sub-object identified during implementation that lacks an ID today
+
+### Requirements
+- ID format matches the existing convention (`ARCHITECTURE.md` 3.2: short unique string with a type prefix, e.g. `opt_`, `obj_`, `map_`) — do not invent a new ID scheme.
+- IDs are generated once at creation and never change, matching the existing rule for blocks/pages/assets.
+- Existing courses that lack these IDs get them generated deterministically during migration (Part 2), not silently at runtime — a course opened twice should not get two different sets of generated IDs.
+- No visible change to authors — this is a data-layer addition, not a new authoring surface.
+
+## Part 2: Schema migration service
+
+### Requirements
+- A sequential migration chain: `load → inspect schema_version → migrate N to N+1 (repeat until current) → validate → normalize → open`.
+- Each migration step is a pure function: takes a course document at version N, returns a document at version N+1. No side effects, fully repeatable.
+- Migrations run in the `schema` package (shared by editor, player, server per ARCHITECTURE.md Section 2), since all three need consistent migrated output.
+- The original (pre-migration) document is retained until the migrated document saves successfully — never destroy the source before confirming the migration succeeded.
+- Migrations emit structured diagnostics (what changed, what was added/generated) rather than silently transforming data.
+- Downgrades are not supported or assumed.
+- Test suite includes representative historical fixtures (real or representative course JSON at older schema versions) that must migrate correctly and deterministically.
+
+### First real migration
+The first migration implemented under this service is the one that adds the stable IDs from Part 1 to existing course documents that predate them. This proves the pipeline works end-to-end on real data before anything else depends on it.
+
+## Out of scope for 4.5a
+- The block registry (4.5b, next stage)
+- The dependency index (4.5b, next stage)
+- The Course Analyzer (4.5c, next stage)
+- Plugin-owned migration hooks (future, per ARCHITECTURE-AUDIT.md 4.3 — noted for later, not built now)
+- Any UI changes — this is entirely a data/schema-layer change
+
+## Acceptance criteria
+- Every entity listed in Part 1's scope has a stable ID, generated once and preserved across saves/reloads
+- A course document at an older schema version opens correctly and is migrated to current version automatically
+- The migration is a pure, tested, repeatable function living in the `schema` package
+- Historical fixture tests pass
+- No existing functionality regresses — this is purely additive at the data layer
+- Manual verification: Sebastin opens a real pre-existing course (created before this change) and confirms it loads correctly, IDs are visibly present in the saved JSON, and nothing in the authoring experience changed
+

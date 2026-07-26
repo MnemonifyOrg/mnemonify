@@ -3,7 +3,8 @@ import pool from '../db.js';
 import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
 import { templatizeCourse } from '../lib/templatize.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
-import { migrateCourse, MigrationError } from '@mnemonify/schema/migrations/index.js';
+import { MigrationError } from '@mnemonify/schema/migrations/index.js';
+import { migrateCourseForPersistence } from '../lib/courseMigration.js';
 import { queueCoursePdfs } from '../lib/pdfPipeline.js';
 import {
   createNamedSnapshot,
@@ -37,7 +38,7 @@ const router = express.Router();
 export async function loadAndMigrateCourseRow(row) {
   let migrationResult;
   try {
-    migrationResult = migrateCourse(row.course_json, { courseId: row.id });
+    migrationResult = migrateCourseForPersistence(row.course_json, row.id);
   } catch (err) {
     if (err instanceof MigrationError) {
       console.error(`[courses] course ${row.id} failed to migrate:`, err.message);
@@ -255,8 +256,11 @@ router.patch('/courses/:id', asyncHandler(async (req, res) => {
     values.push(title);
   }
   if (course_json !== undefined) {
+    // Autosave is also a course-open/write boundary. Migrate here as well as
+    // on load so a stale pre-v6 editor payload cannot overwrite stable IDs.
+    const migrationResult = migrateCourseForPersistence(course_json, req.params.id);
     fields.push(`course_json = $${i++}`);
-    values.push(course_json);
+    values.push(migrationResult.document);
   }
   if (status !== undefined) {
     fields.push(`status = $${i++}`);

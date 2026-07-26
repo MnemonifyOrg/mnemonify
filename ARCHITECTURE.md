@@ -1330,3 +1330,66 @@ The first migration implemented under this service is the one that adds the stab
 - No existing functionality regresses — this is purely additive at the data layer
 - Manual verification: Sebastin opens a real pre-existing course (created before this change) and confirms it loads correctly, IDs are visibly present in the saved JSON, and nothing in the authoring experience changed
 
+# Phase 4.5b: Block Registry and Dependency Index
+
+Add this section to ARCHITECTURE.md. Commit before requesting a build prompt. Depends on Phase 4.5a (stable IDs) being complete — this stage assumes every entity it needs to index already has a stable ID.
+
+## Problem
+
+Per ARCHITECTURE-AUDIT.md Section 4.1: "Block behavior should not be distributed across switch statements and manually synchronized menus." Today, adding or reasoning about a block type likely means touching several separate places (editor component, player renderer, Add Block menu, PDF export, block-discovery surfaces) that are not derived from one source. Similarly, per Section 4.4, references between objects (which question uses which objective, which page a trigger targets, which asset a block displays) are not indexed anywhere — so deleting or renaming something can silently break a reference elsewhere with no warning.
+
+## Part 1: Block registry
+
+### Requirements
+A central registry, one entry per block type, containing at minimum (per ARCHITECTURE-AUDIT.md 4.1, scoped to what already exists in the codebase — do not build adapters for exporters/contracts that don't exist yet):
+- stable type identifier (matches existing block `type` field values)
+- default/empty content shape for that block type
+- editor component reference
+- player renderer reference
+- PDF export inclusion default (matches existing `include_in_pdf` per-type defaults, ARCHITECTURE.md 3.2 rule 6)
+- icon, label, and category metadata (matches what the Add Block popup already displays, per commit ceeedcd2)
+- nested-content permissions (which block types may contain nested blocks — two-column, accordion, tabs already do this; the registry should describe this declaratively rather than each container special-casing it)
+- supported trigger events/actions for that block type, where applicable
+
+### Migration approach
+This is a refactor, not new functionality. Existing block-discovery surfaces (Add Block popup, editor rendering switch, player rendering switch, PDF export logic) should be refactored to derive from this registry rather than duplicating block-type lists. Behavior must not change for authors — this is invisible restructuring.
+
+### Explicitly out of scope for 4.5b
+- Plugin/extension capability model (ARCHITECTURE-AUDIT.md 4.2) — future, requires its own security/capability design
+- Migration functions living in the registry (mentioned in the audit's ideal registry shape) — the 4.5a migration service is separate for now; unifying them is a future refinement, not required here
+- Static preview renderer, Word export adapters — only build what block types actually already have equivalents for today
+
+## Part 2: Dependency index
+
+### Requirements
+A derived (not separately authored) index of references between objects, built from the canonical course JSON. Per ARCHITECTURE-AUDIT.md 4.4, it should cover the reference types that actually exist in the current schema:
+- objective → question/module (already tracked via `objective_ids` arrays)
+- trigger → target block (`SHOW_BLOCK`/`HIDE_BLOCK`/`JUMP_TO_PAGE` targets, etc.)
+- block → asset (image/video/carousel asset references)
+- question bank → block (`question_bank_draw` blocks referencing a `bank_id`)
+- variable → trigger/condition (which triggers read or set a given variable)
+- linked entities (`linked_entities[]`) → their usages
+
+### Capabilities this unlocks (build only what's needed for the capabilities below, not speculative extras)
+- **Broken-reference detection:** find any reference (trigger target, asset_id, bank_id, objective_id, variable name) that points to an object that no longer exists.
+- **"Used by" lookup:** given an object (an asset, a variable, an objective, a bank), list everything that references it.
+- **Safe-delete check:** before deleting an object, check the dependency index and warn the author what currently references it, rather than silently breaking those references.
+
+### Requirements
+- The index is derived and rebuildable from course JSON at load/save time (or on demand) — it is never a second source of truth that could drift from the actual document.
+- It should be efficient enough to run on save/load for realistically-sized courses without noticeable delay (no specific performance budget mandated yet — that's Phase 4.5's own future concern per the audit, not blocking this stage).
+
+## Out of scope for 4.5b entirely
+- The Course Analyzer itself (4.5c, next stage) — this stage only builds the index the Analyzer will consume
+- Any new author-facing UI (no "used by" panel, no safe-delete confirmation dialog yet) — 4.5c and later UX work will surface this data to authors; 4.5b just makes the data available
+- Rename/replace operations, orphan cleanup tooling, impact analysis reports — future capabilities once the index exists
+
+## Acceptance criteria
+- A single block registry exists; Add Block popup, editor rendering, player rendering, and PDF export logic all derive block-type behavior from it rather than independent lists
+- No change in authoring or player behavior — this is a refactor
+- A dependency index can be built from any course JSON, covering the reference types listed in Part 2
+- Given a test course with a deliberately broken reference (e.g. a trigger targeting a deleted block, a question bank draw referencing a nonexistent bank), the index correctly identifies it
+- Given an object referenced from multiple places, a "used by" query returns all of them correctly
+- All automated tests pass
+- Manual verification: Sebastin confirms in a real course that adding/editing a block still works exactly as before (no regression), and reviews the registry/index code or a demo output showing broken-reference detection working on a real example
+

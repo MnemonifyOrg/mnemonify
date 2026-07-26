@@ -1137,9 +1137,18 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   function regeneratePageIds(pageShape) {
     const idMap = new Map();
     pageShape.blocks.forEach((b) => assignBlockIds(b, idMap));
+    const newPageId = genPageId();
+    const targetMap = new Map([...idMap, [pageShape.page_id, newPageId]]);
     return {
       ...pageShape,
-      page_id: genPageId(),
+      page_id: newPageId,
+      triggers: (pageShape.triggers || []).map((trigger) => ({
+        ...trigger,
+        trigger_id: genId('trg'),
+        actions: (trigger.actions || []).map((action) => (
+          action.target && targetMap.has(action.target) ? { ...action, target: targetMap.get(action.target) } : action
+        )),
+      })),
       blocks: pageShape.blocks.map((b) => rebuildBlockWithIds(b, idMap)),
     };
   }

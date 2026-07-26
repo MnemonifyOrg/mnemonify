@@ -15,6 +15,161 @@ function generatedId(prefix, existing = new Set()) {
   return id;
 }
 
+function collectStableIds(value, ids) {
+  if (Array.isArray(value)) {
+    value.forEach((child) => collectStableIds(child, ids));
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  Object.entries(value).forEach(([key, child]) => {
+    if ((key === 'id' || key.endsWith('_id')) && typeof child === 'string' && child) ids.add(child);
+    collectStableIds(child, ids);
+  });
+}
+
+// A transferred question is a new authoring entity, even when its source id
+// does not collide with anything in the target course. Keep the copy
+// independent from the source by reminting every stable id in its nested
+// content, not just the top-level question id. The editor's page/block copy
+// code follows the same rule; this helper keeps the schema-owned bank import
+// path from becoming a second exception.
+const NESTED_ID_PREFIXES = {
+  bank: 'bnk',
+  question: 'bq',
+  entity: 'ent',
+  block: 'blk',
+  trigger: 'trg',
+  option: 'opt',
+  feedback: 'fbk',
+  item: 'itm',
+  orderingItem: 'ord',
+  card: 'crd',
+  matchingPrompt: 'mp',
+  matchingOption: 'mo',
+  hotspotRegion: 'hs',
+};
+
+function nextFreshId(kind, existing, idFactory) {
+  const prefix = NESTED_ID_PREFIXES[kind] || kind;
+  const factory = idFactory[kind];
+  let id = typeof factory === 'function' ? factory(existing) : generatedId(prefix, existing);
+  while (!id || existing.has(id)) {
+    id = generatedId(prefix, existing);
+  }
+  existing.add(id);
+  return id;
+}
+
+function defaultNestedIdFactory() {
+  return {
+    bank: (existing) => generatedId('bnk', existing),
+    question: (existing) => generatedId('bq', existing),
+    entity: (existing) => generatedId('ent', existing),
+    block: (existing) => generatedId('blk', existing),
+    trigger: (existing) => generatedId('trg', existing),
+    option: (existing) => generatedId('opt', existing),
+    feedback: (existing) => generatedId('fbk', existing),
+    item: (existing) => generatedId('itm', existing),
+    orderingItem: (existing) => generatedId('ord', existing),
+    card: (existing) => generatedId('crd', existing),
+    matchingPrompt: (existing) => generatedId('mp', existing),
+    matchingOption: (existing) => generatedId('mo', existing),
+    hotspotRegion: (existing) => generatedId('hs', existing),
+  };
+}
+
+function regenerateBlockCopy(block, type, idFactory, usedIds) {
+  if (!block || typeof block !== 'object') return block;
+  const next = { ...clone(block), block_id: nextFreshId('block', usedIds, idFactory) };
+  if (Array.isArray(next.triggers)) {
+    next.triggers = next.triggers.map((trigger) => ({
+      ...trigger,
+      trigger_id: nextFreshId('trigger', usedIds, idFactory),
+    }));
+  }
+  if (Object.prototype.hasOwnProperty.call(next, 'content')) {
+    next.content = regenerateNestedContentIds(next.content, type || next.type, idFactory, usedIds);
+  }
+  if (next.left) next.left = regenerateBlockCopy(next.left, next.left.type, idFactory, usedIds);
+  if (next.right) next.right = regenerateBlockCopy(next.right, next.right.type, idFactory, usedIds);
+  return next;
+}
+
+function regenerateNestedContentIds(content, type, idFactory, usedIds) {
+  if (!content || typeof content !== 'object') return content;
+  let next = clone(content);
+
+  const answerOptions = Array.isArray(content.options)
+    && content.options.some((option) => option && Object.prototype.hasOwnProperty.call(option, 'id'))
+    && (type === 'knowledge-check' || type === 'knowledge_check' || type === 'question-bank' || !type);
+  if (answerOptions) {
+    const optionIdMap = new Map();
+    next.options = content.options.map((option) => {
+      if (!option || typeof option !== 'object') return option;
+      const nextId = nextFreshId('option', usedIds, idFactory);
+      if (typeof option.id === 'string' && !optionIdMap.has(option.id)) optionIdMap.set(option.id, nextId);
+      const feedback = option.feedback && typeof option.feedback === 'object'
+        ? { ...clone(option.feedback), feedback_id: nextFreshId('feedback', usedIds, idFactory) }
+        : option.feedback;
+      return { ...clone(option), id: nextId, ...(feedback ? { feedback } : {}) };
+    });
+    if (typeof content.correct_option_id === 'string') {
+      next.correct_option_id = optionIdMap.get(content.correct_option_id) || content.correct_option_id;
+    }
+    if (Array.isArray(content.correct_option_ids)) {
+      next.correct_option_ids = content.correct_option_ids.map((id) => optionIdMap.get(id) || id);
+    }
+  }
+
+  const matchingOptions = Array.isArray(content.options)
+    && content.options.some((option) => option && Object.prototype.hasOwnProperty.call(option, 'option_id'));
+  if (matchingOptions) {
+    const optionIdMap = new Map();
+    next.options = content.options.map((option) => {
+      if (!option || typeof option !== 'object') return option;
+      const nextId = nextFreshId('matchingOption', usedIds, idFactory);
+      if (typeof option.option_id === 'string') optionIdMap.set(option.option_id, nextId);
+      return { ...clone(option), option_id: nextId };
+    });
+    if (Array.isArray(content.prompts)) {
+      next.prompts = content.prompts.map((prompt) => ({
+        ...clone(prompt),
+        prompt_id: nextFreshId('matchingPrompt', usedIds, idFactory),
+        correct_option_id: optionIdMap.get(prompt.correct_option_id) || prompt.correct_option_id,
+      }));
+    }
+  } else if (Array.isArray(content.prompts)) {
+    next.prompts = content.prompts.map((prompt) => ({
+      ...clone(prompt),
+      prompt_id: nextFreshId('matchingPrompt', usedIds, idFactory),
+    }));
+  }
+
+  if (Array.isArray(content.items) && content.items.some((item) => item && Object.prototype.hasOwnProperty.call(item, 'item_id'))) {
+    const itemKind = type === 'ordering' || content.items.some((item) => String(item?.item_id || '').startsWith('ord_'))
+      ? 'orderingItem'
+      : 'item';
+    next.items = content.items.map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      return {
+        ...clone(item),
+        item_id: nextFreshId(itemKind, usedIds, idFactory),
+        ...(Array.isArray(item.body_blocks)
+          ? { body_blocks: item.body_blocks.map((block) => regenerateBlockCopy(block, block.type, idFactory, usedIds)) }
+          : {}),
+      };
+    });
+  }
+
+  if (Array.isArray(content.cards)) {
+    next.cards = content.cards.map((card) => ({ ...clone(card), card_id: nextFreshId('card', usedIds, idFactory) }));
+  }
+  if (Array.isArray(content.regions)) {
+    next.regions = content.regions.map((region) => ({ ...clone(region), region_id: nextFreshId('hotspotRegion', usedIds, idFactory) }));
+  }
+  return next;
+}
+
 function objectivesForCourse(course) {
   return course?.objectives || course?.meta?.objectives || [];
 }
@@ -145,26 +300,20 @@ export function inspectNativeQuestionBankImport(course, payload, targetBankId = 
 }
 
 function defaultIdFactory() {
-  return {
-    bank: (existing) => generatedId('bnk', existing),
-    question: (existing) => generatedId('bq', existing),
-    entity: (existing) => generatedId('ent', existing),
-  };
+  return defaultNestedIdFactory();
 }
 
 export function importNativeQuestionBank(course, payload, { mode = 'create_new', targetBankId = null, idFactory = defaultIdFactory() } = {}) {
   const parsed = parseNativeQuestionBankExport(payload);
+  const factories = { ...defaultIdFactory(), ...idFactory };
   const existingBanks = course?.question_banks || [];
   const target = mode === 'merge' ? sourceBank(course, targetBankId) : null;
   if (mode === 'merge' && !target) throw new Error('Choose an existing question bank before merging.');
-  const bankId = target?.bank_id || idFactory.bank(new Set(existingBanks.map((bank) => bank.bank_id)));
-  // Question ids are stable identifiers used by draw/resume state, so keep
-  // them unique across the target course, not only within the selected bank.
-  const existingQuestionIds = new Set(existingBanks.flatMap((bank) => (bank.questions || []).map((question) => question.question_id)));
-  const importedQuestionIds = new Set();
+  const usedIds = new Set();
+  collectStableIds(course, usedIds);
+  const bankId = target?.bank_id || nextFreshId('bank', usedIds, factories);
   const idRemaps = [];
   const sourceEntities = new Map((parsed.linked_entities || []).map((entity) => [entity.entity_id, entity]));
-  const existingEntityIds = new Set((course?.linked_entities || []).map((entity) => entity.entity_id));
   const entityIdMap = new Map();
   const importedEntities = [];
 
@@ -177,22 +326,24 @@ export function importNativeQuestionBank(course, payload, { mode = 'create_new',
       content: clone(fallbackQuestion?.content || {}),
       metadata: { scored: fallbackQuestion?.scored !== false, objective_ids: [...(fallbackQuestion?.objective_ids || [])], tags: [...(fallbackQuestion?.tags || [])], block_fields: {} },
     };
-    const nextEntityId = existingEntityIds.has(entityId) ? idFactory.entity(new Set([...existingEntityIds, ...importedEntities.map((entity) => entity.entity_id)])) : entityId;
+    const nextEntityId = nextFreshId('entity', usedIds, factories);
     entityIdMap.set(entityId, nextEntityId);
-    importedEntities.push({ ...clone(sourceEntity), entity_id: nextEntityId });
+    importedEntities.push({
+      ...clone(sourceEntity),
+      entity_id: nextEntityId,
+      content: regenerateNestedContentIds(sourceEntity.content || fallbackQuestion?.content || {}, sourceEntity.block_type, factories, usedIds),
+    });
     return nextEntityId;
   }
 
   const questions = (parsed.bank.questions || []).map((sourceQuestion) => {
     const question = clone(sourceQuestion);
     const originalId = question.question_id;
-    let nextId = originalId;
-    if (existingQuestionIds.has(nextId) || importedQuestionIds.has(nextId)) {
-      nextId = idFactory.question(new Set([...existingQuestionIds, ...importedQuestionIds]));
-      idRemaps.push({ from: originalId, to: nextId });
-    }
-    importedQuestionIds.add(nextId);
+    const nextId = nextFreshId('question', usedIds, factories);
+    idRemaps.push({ from: originalId, to: nextId });
+    const questionType = question.type;
     question.question_id = nextId;
+    if (question.content) question.content = regenerateNestedContentIds(question.content, questionType, factories, usedIds);
     delete question.type;
     if (question.linked_entity_id) {
       const mappedEntityId = mapEntity(question.linked_entity_id, question);

@@ -45,7 +45,7 @@ export default function BankImportReviewModal({ payload, courseJson, questionBan
         {preview.idCollisions.length > 0 && (
           <div className="bank-transfer-review__info">
             <strong>{preview.idCollisions.length} question ID collision{preview.idCollisions.length === 1 ? '' : 's'}</strong>
-            <p>Colliding imported IDs will be regenerated; existing questions will not be overwritten.</p>
+            <p>Imported questions and nested entities receive fresh stable IDs; existing questions will not be overwritten.</p>
             <code>{preview.idCollisions.join(', ')}</code>
           </div>
         )}

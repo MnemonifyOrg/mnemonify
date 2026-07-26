@@ -8,6 +8,7 @@ import {
 } from './question-bank-transfer.js';
 import { materializeLinkedEntities } from './linked-entities.js';
 import { validateCourse } from './index.js';
+import { analyzeCourse } from './analyzer/index.js';
 
 function baseCourse() {
   return {
@@ -67,7 +68,11 @@ test('native export/import round-trips full question fidelity', () => {
   });
   assert.equal(imported.course.question_banks[0].name, 'Case bank');
   assert.equal(validateCourse(imported.course).valid, true);
-  assert.deepEqual(imported.importedQuestions[0], question());
+  assert.equal(imported.importedQuestions[0].content.question[0].v, 'Choose {ScoreRaw}');
+  assert.notEqual(imported.importedQuestions[0].question_id, question().question_id);
+  assert.notEqual(imported.importedQuestions[0].content.options[0].id, question().content.options[0].id);
+  assert.notEqual(imported.importedQuestions[0].content.options[1].id, question().content.options[1].id);
+  assert.equal(imported.importedQuestions[0].content.options[0].correct, true);
 });
 
 test('native exports preserve linked-question metadata and import it as a valid canonical entity', () => {
@@ -82,8 +87,9 @@ test('native exports preserve linked-question metadata and import it as a valid 
   const exported = buildNativeQuestionBankExport(course, 'bnk_case', '2026-07-22T00:00:00.000Z');
   assert.equal(exported.linked_entities[0].entity_id, 'ent_source');
   const imported = importNativeQuestionBank(baseCourse(), exported, { mode: 'merge', targetBankId: 'bnk_other', idFactory: { bank: () => 'bnk_new', question: () => 'bq_new', entity: () => 'ent_new' } });
-  assert.equal(imported.course.question_banks.find((bank) => bank.bank_id === 'bnk_other').questions[0].linked_entity_id, 'ent_source');
-  assert.equal(imported.course.linked_entities[0].entity_id, 'ent_source');
+  assert.equal(imported.course.question_banks.find((bank) => bank.bank_id === 'bnk_other').questions[0].linked_entity_id, 'ent_new');
+  assert.equal(imported.course.linked_entities[0].entity_id, 'ent_new');
+  assert.notEqual(imported.course.linked_entities[0].content.options[0].id, course.linked_entities[0].content.options[0].id);
   assert.equal(materializeLinkedEntities(imported.course).question_banks[1].questions[0].content.question[0].v, 'Choose {ScoreRaw}');
 });
 
@@ -109,6 +115,41 @@ test('merge appends questions, create-new makes a new bank, and collisions are r
   const created = importNativeQuestionBank(target, exported, { mode: 'create_new', idFactory: { bank: () => 'bnk_created', question: () => 'bq_created', entity: () => 'ent_new' } });
   assert.ok(created.course.question_banks.some((bank) => bank.bank_id === 'bnk_created'));
   assert.equal(created.course.question_banks.find((bank) => bank.bank_id === 'bnk_created').questions[0].question_id, 'bq_created');
+});
+
+test('importing copied questions regenerates duplicate nested IDs and leaves the analyzer clean', () => {
+  const sourceQuestion = (id) => question({
+    question_id: id,
+    content: {
+      ...question().content,
+      options: [
+        { id: 'opt_shared', text: 'Correct', correct: true },
+        { id: `opt_${id}`, text: 'Wrong', correct: false },
+      ],
+    },
+  });
+  const source = {
+    ...baseCourse(),
+    question_banks: [{ bank_id: 'bnk_source', name: 'Source', questions: [sourceQuestion('bq_source_one'), sourceQuestion('bq_source_two')] }],
+  };
+  const payload = buildNativeQuestionBankExport(source, 'bnk_source');
+  let optionSequence = 0;
+  const imported = importNativeQuestionBank(baseCourse(), payload, {
+    mode: 'create_new',
+    idFactory: {
+      bank: () => 'bnk_copied',
+      question: (() => { let index = 0; return () => `bq_copied_${index++}`; })(),
+      option: () => `opt_copied_${optionSequence++}`,
+    },
+  });
+  const copied = imported.course.question_banks.find((bank) => bank.bank_id === 'bnk_copied');
+  const copiedOptions = copied.questions.flatMap((entry) => entry.content.options.map((option) => option.id));
+  assert.equal(new Set(copiedOptions).size, copiedOptions.length);
+  assert.ok(copiedOptions.every((id) => id.startsWith('opt_copied_')));
+  assert.deepEqual(
+    analyzeCourse(imported.course).filter((finding) => finding.ruleId === 'reference.duplicate_stable_id'),
+    [],
+  );
 });
 
 test('missing objectives and variables are listed with question locations and do not block preview', () => {

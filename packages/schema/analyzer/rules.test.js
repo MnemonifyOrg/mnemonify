@@ -110,6 +110,59 @@ test('duplicate stable IDs are defensive reference errors', () => {
   assert.equal(findings[0].severity, 'error');
 });
 
+test('accordion, tab, and ordering items are classified once by their owning block type', () => {
+  const course = baseCourse({
+    pages: [{
+      page_id: 'pg_one',
+      title: 'One',
+      blocks: [
+        {
+          block_id: 'blk_accordion',
+          type: 'accordion',
+          content: { items: [{ item_id: 'itm_accordion', title: 'Accordion item', body_blocks: [] }] },
+        },
+        {
+          block_id: 'blk_tabs',
+          type: 'tabs',
+          content: { items: [{ item_id: 'itm_tab', label: 'Tab item', body_blocks: [] }] },
+        },
+        {
+          block_id: 'blk_ordering',
+          type: 'ordering',
+          content: { items: [{ item_id: 'ord_item', text: 'Ordering item', correct_position: 0 }] },
+        },
+      ],
+    }],
+  });
+
+  assert.deepEqual(findingsFor(course, 'reference.duplicate_stable_id'), []);
+});
+
+test('a stable ID shared by different nested objects is still reported', () => {
+  const course = baseCourse({
+    pages: [{
+      page_id: 'pg_one',
+      title: 'One',
+      blocks: [
+        {
+          block_id: 'blk_accordion',
+          type: 'accordion',
+          content: { items: [{ item_id: 'itm_shared', title: 'Accordion item', body_blocks: [] }] },
+        },
+        {
+          block_id: 'blk_ordering',
+          type: 'ordering',
+          content: { items: [{ item_id: 'itm_shared', text: 'Ordering item', correct_position: 0 }] },
+        },
+      ],
+    }],
+  });
+
+  const findings = findingsFor(course, 'reference.duplicate_stable_id');
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /accordion_item and ordering_item/);
+});
+
 test('basic accessibility rules cover image alt, video captions/transcript, embeds, and headings', () => {
   const course = baseCourse({
     assets: [

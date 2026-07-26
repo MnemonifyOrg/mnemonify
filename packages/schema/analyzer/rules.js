@@ -193,14 +193,19 @@ function collectBlockIds(block, page, add) {
   add(block.block_id, 'block', block.block_id, location);
   for (const trigger of block.triggers || []) add(trigger.trigger_id, 'trigger', trigger.trigger_id, location);
   for (const trigger of block.timeline_triggers || []) add(trigger.trigger_id, 'trigger', trigger.trigger_id, location);
-  for (const item of block.content?.items || []) {
-    add(item.item_id, 'nested_item', item.item_id, location);
-    for (const child of item.body_blocks || []) collectBlockIds(child, page, add);
+  if (block.type === 'accordion' || block.type === 'tabs') {
+    const entityType = block.type === 'accordion' ? 'accordion_item' : 'tab_item';
+    for (const item of block.content?.items || []) {
+      add(item.item_id, entityType, item.item_id, location);
+      for (const child of item.body_blocks || []) collectBlockIds(child, page, add);
+    }
   }
   for (const card of block.content?.cards || []) add(card.card_id, 'flashcard', card.card_id, location);
   for (const prompt of block.content?.prompts || []) add(prompt.prompt_id, 'matching_prompt', prompt.prompt_id, location);
   for (const option of block.content?.options || []) add(option.option_id, 'matching_option', option.option_id, location);
-  for (const item of block.content?.items || []) add(item.item_id, 'ordering_item', item.item_id, location);
+  if (block.type === 'ordering') {
+    for (const item of block.content?.items || []) add(item.item_id, 'ordering_item', item.item_id, location);
+  }
   for (const region of block.content?.regions || []) add(region.region_id, 'hotspot_region', region.region_id, location);
   addQuestionContentIds(block.content, block.block_id, add, location);
   if (block.left) collectBlockIds(block.left, page, add);

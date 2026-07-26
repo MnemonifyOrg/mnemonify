@@ -9,7 +9,7 @@ function headingBlock(id = 'blk_heading', text = 'A heading') {
 
 function baseCourse(overrides = {}) {
   return {
-    schema_version: 6,
+    schema_version: 7,
     meta: {
       course_id: 'crs_analyzer',
       title: 'Analyzer test course',

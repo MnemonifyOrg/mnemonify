@@ -5,7 +5,7 @@ import { getCorrectOptionIds, isKnowledgeCheckAnswerCorrect, getKnowledgeCheckOp
 
 function courseWithBlock(content) {
   return {
-    schema_version: 6,
+    schema_version: 7,
     meta: { course_id: 'crs_multiselect', title: 'Multi-select', theme: { accent: '#0f766e' } },
     variables: [],
     assets: [],

@@ -4,7 +4,7 @@ import { validateCourse } from './index.js';
 
 function courseWithUtility(custom) {
   return {
-    schema_version: 6,
+    schema_version: 7,
     meta: {
       course_id: 'crs_richtext',
       title: 'Rich text',

@@ -257,7 +257,7 @@ router.patch('/courses/:id', asyncHandler(async (req, res) => {
   }
   if (course_json !== undefined) {
     // Autosave is also a course-open/write boundary. Migrate here as well as
-    // on load so a stale pre-v6 editor payload cannot overwrite stable IDs.
+    // on load so a stale pre-v7 editor payload cannot overwrite stable IDs.
     const migrationResult = migrateCourseForPersistence(course_json, req.params.id);
     fields.push(`course_json = $${i++}`);
     values.push(migrationResult.document);

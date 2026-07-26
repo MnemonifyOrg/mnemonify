@@ -1,0 +1,64 @@
+{
+  "schema_version": 6,
+  "meta": {
+    "course_id": "crs_duplicateoptions",
+    "title": "Duplicate option IDs",
+    "theme": { "accent": "#0f766e" }
+  },
+  "variables": [],
+  "assets": [],
+  "question_banks": [
+    {
+      "bank_id": "bnk_duplicate_options",
+      "name": "Duplicate options",
+      "questions": [
+        {
+          "question_id": "bq_three",
+          "scored": true,
+          "content": {
+            "question": "Which answer is correct?",
+            "options": [
+              { "id": "opt_shared", "text": "Bank answer", "correct": true },
+              { "id": "opt_bank_other", "text": "Other", "correct": false }
+            ],
+            "correct_option_id": "opt_shared"
+          }
+        }
+      ]
+    }
+  ],
+  "linked_entities": [],
+  "pages": [
+    {
+      "page_id": "pg_duplicate_options",
+      "title": "Duplicate options",
+      "blocks": [
+        {
+          "block_id": "blk_one",
+          "type": "knowledge-check",
+          "content": {
+            "question": "First question",
+            "options": [
+              { "id": "opt_shared", "text": "First answer", "correct": true },
+              { "id": "opt_one_other", "text": "Other", "correct": false }
+            ],
+            "correct_option_id": "opt_shared"
+          }
+        },
+        {
+          "block_id": "blk_two",
+          "type": "knowledge-check",
+          "content": {
+            "question": "Second question",
+            "multi_select": true,
+            "options": [
+              { "id": "opt_shared", "text": "Second answer", "correct": true },
+              { "id": "opt_two_other", "text": "Other", "correct": true }
+            ],
+            "correct_option_ids": ["opt_shared", "opt_two_other"]
+          }
+        }
+      ]
+    }
+  ]
+}

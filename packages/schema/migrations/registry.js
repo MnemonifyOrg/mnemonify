@@ -3,10 +3,11 @@ import migration0002 from './0002-add-scoring-settings.js';
 import migration0003 from './0003-add-question-banks.js';
 import migration0004 from './0004-add-linked-entities.js';
 import migration0005 from './0005-complete-stable-ids.js';
+import migration0006 from './0006-regenerate-duplicate-option-ids.js';
 
 // Ordered chain of course-document migrations. index.js walks this list
 // by matching each step's fromVersion against the document's current
 // schema_version -- order in this array doesn't itself matter (the
 // matching is by fromVersion, not position), but keeping it in ascending
 // version order makes the chain readable at a glance.
-export default [migration0001, migration0002, migration0003, migration0004, migration0005];
+export default [migration0001, migration0002, migration0003, migration0004, migration0005, migration0006];

@@ -303,8 +303,7 @@ router.post('/organizations/:organisationId/invitations', requireRole(ROLES.OWNE
   const token = crypto.randomBytes(32).toString('base64url');
   await pool.query(
     `INSERT INTO organisation_invitations (organisation_id, email, role, invited_by, token_hash, expires_at)
-     VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')
-     ON CONFLICT (organisation_id, email) DO UPDATE SET role = EXCLUDED.role, invited_by = EXCLUDED.invited_by, token_hash = EXCLUDED.token_hash, expires_at = EXCLUDED.expires_at, accepted_at = NULL, accepted_by = NULL`,
+     VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')`,
     [req.auth.organisationId, email, role, req.auth.userId, hashToken(token)]
   );
   const invitationUrl = appAuthUrl(req, '/signup', token).replace('?token=', '?invite_token=');

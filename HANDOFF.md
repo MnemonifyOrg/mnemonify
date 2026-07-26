@@ -212,7 +212,8 @@ createdb mnemonify_dev
 npm run migrate --workspace=packages/server
 ```
 Migrations run in order from `packages/server/src/migrations/*.sql`
-(currently 001–013, including `013_phase6a_accounts.sql`); `migrate.js` runs
+(currently 001–014, including `013_phase6a_accounts.sql` and the invitation
+follow-up `014_allow_multiple_invitations.sql`); `migrate.js` runs
 each file straight through on every invocation — there is no migration ledger,
 down-migration, or rollback mechanism. Run the same command after a fresh
 clone or whenever a new numbered migration is added. Phase 6a's migration

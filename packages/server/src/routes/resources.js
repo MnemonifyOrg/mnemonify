@@ -92,7 +92,7 @@ export async function upsertGeneratedResource({ courseId, filename, filePath, la
   return { ...result.rows[0], size_bytes: Number(result.rows[0].size_bytes) };
 }
 
-router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
+export async function listCourseResources(courseId) {
   const result = await pool.query(
     `SELECT r.resource_id, r.filename, r.file_path, r.label, r.size_bytes, r.created_at AS uploaded_at, r.source, r.resource_kind
      FROM resources r
@@ -104,13 +104,17 @@ router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
          OR COALESCE((c.course_json->'meta'->'pdf_settings'->>'enabled')::boolean, true)
        )
      ORDER BY r.created_at ASC`,
-    [req.params.courseId, DEV_ORG_ID]
+    [courseId, DEV_ORG_ID]
   );
-  res.json(result.rows.map((row) => ({
+  return result.rows.map((row) => ({
     ...row,
     size_bytes: Number(row.size_bytes),
     file_exists: fs.existsSync(path.join(UPLOADS_DIR, row.file_path)),
-  })));
+  }));
+}
+
+router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
+  res.json(await listCourseResources(req.params.courseId));
 }));
 
 const singleUpload = multer({

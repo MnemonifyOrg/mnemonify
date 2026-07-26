@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import coursesRouter, { loadAndMigrateCourseRow } from './routes/courses.js';
 import assetsRouter from './routes/assets.js';
-import resourcesRouter from './routes/resources.js';
+import resourcesRouter, { listCourseResources } from './routes/resources.js';
+import { mergeCourseResources } from './lib/courseResources.js';
 import usersRouter from './routes/users.js';
 import wordRouter from './routes/word.js';
 import pageTemplatesRouter from './routes/pageTemplates.js';
@@ -109,7 +110,8 @@ app.get('/content/:courseId', asyncHandler(async (req, res) => {
     return;
   }
   const row = await loadAndMigrateCourseRow(result.rows[0]);
-  res.json(row.course_json);
+  const resources = await listCourseResources(courseId);
+  res.json(mergeCourseResources(row.course_json, resources));
 }));
 
 app.use('/assets', express.static(PLAYER_ASSETS_DIR));

@@ -44,6 +44,7 @@ import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transf
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import { toggleRailDrawer } from '../lib/editorDrawer.js';
 import { installEmbedFocusGuard } from '../lib/embedFocusGuard.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 import '../styles/courseEditor.css';
 
 const AUTOSAVE_DELAY_MS = 5000;
@@ -118,6 +119,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { canEdit, isReviewer } = useAuth();
 
   const [course, setCourse] = useState(null);
   const [activePageId, setActivePageId] = useState(null);
@@ -1323,7 +1325,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   ].filter(Boolean).join(', ');
 
   return (
-    <div className="course-editor">
+    <div className={isReviewer ? 'course-editor course-editor--read-only' : 'course-editor'}>
       <header className="top-bar course-editor__top-bar">
         <div className="course-editor__top-bar-left">
           <button className="btn-text course-editor__back-button" onClick={handleBack} aria-label="Back to course library" title="Back to course library">
@@ -1342,13 +1344,13 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           <h1
             className="course-editor__title"
             title={json.meta?.title || 'Untitled Course'}
-            onClick={() => setEditingTitle(true)}
+            onClick={() => canEdit && setEditingTitle(true)}
           >
             {json.meta?.title || 'Untitled Course'}
           </h1>
         )}
         <TopBarDivider />
-        <div className="course-editor__history-controls">
+        {canEdit && <div className="course-editor__history-controls">
           <button
             className="btn-text"
             onClick={handleUndo}
@@ -1367,7 +1369,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           >
             <RedoIcon />
           </button>
-        </div>
+        </div>}
         <TopBarDivider />
         </div>
 
@@ -1403,9 +1405,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           icon={<MoreIcon />}
           items={[
             { label: 'Image Library', onClick: () => setShowMediaLibrary(true) },
-            { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
-            { label: 'Export Worksheet', onClick: handleExportWorksheet },
-            featureFlags.versionHistory && { label: 'Version History', onClick: openVersionHistory },
+            canEdit && { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
+            canEdit && { label: 'Export Worksheet', onClick: handleExportWorksheet },
+            canEdit && featureFlags.versionHistory && { label: 'Version History', onClick: openVersionHistory },
             course.is_template && {
               label: showExportSaving ? 'Saving before export...' : 'Export Word',
               onClick: handleExportWord,
@@ -1439,9 +1441,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           {saveLabel}
         </span>
         <TopBarDivider />
-        <button className="btn btn-primary course-editor__publish-button" onClick={handlePublish} disabled={publishing}>
+        {canEdit && <button className="btn btn-primary course-editor__publish-button" onClick={handlePublish} disabled={publishing}>
           {publishing ? 'Publishing...' : 'Publish'}
-        </button>
+        </button>}
         </div>
       </header>
 

@@ -3,6 +3,18 @@
   flex-direction: column;
   height: 100vh;
 }
+.course-editor--read-only .block-wrapper__content {
+  pointer-events: none;
+}
+.course-editor--read-only .block-wrapper__toolbar,
+.course-editor--read-only .block-canvas__insert,
+.course-editor--read-only .block-canvas__add,
+.course-editor--read-only .page-list__footer,
+.course-editor--read-only .page-list__menu,
+.course-editor--read-only .page-list__drag-handle,
+.course-editor--read-only .page-list__add-module {
+  display: none;
+}
 
 .course-editor__top-bar {
   flex-shrink: 0;

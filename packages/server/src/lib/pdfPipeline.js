@@ -3,7 +3,6 @@ import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import puppeteer from 'puppeteer';
 import pool from '../db.js';
-import { DEV_ORG_ID } from './devUser.js';
 import { upsertGeneratedResource } from '../routes/resources.js';
 
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
@@ -14,7 +13,7 @@ function safeName(value) {
 }
 
 async function loadCourse(courseId) {
-  const result = await pool.query(`SELECT title, course_json FROM courses WHERE id = $1 AND organisation_id = $2`, [courseId, DEV_ORG_ID]);
+  const result = await pool.query(`SELECT organisation_id, title, course_json FROM courses WHERE id = $1`, [courseId]);
   if (!result.rows.length) throw new Error(`Course ${courseId} not found`);
   return result.rows[0];
 }
@@ -46,11 +45,11 @@ async function mergePdfs(buffers) {
   return Buffer.from(await output.save());
 }
 
-async function savePdf(courseId, filename, label, kind, buffer) {
+async function savePdf(organisationId, courseId, filename, label, kind, buffer) {
   const dir = path.join(UPLOADS_DIR, courseId, 'resources');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, filename), buffer);
-  return upsertGeneratedResource({ courseId, filename, filePath: `${courseId}/resources/${filename}`, label, sizeBytes: buffer.length, resourceKind: kind });
+  return upsertGeneratedResource({ organisationId, courseId, filename, filePath: `${courseId}/resources/${filename}`, label, sizeBytes: buffer.length, resourceKind: kind });
 }
 
 export async function generateCoursePdfs(courseId, { worksheet = false } = {}) {
@@ -72,12 +71,12 @@ export async function generateCoursePdfs(courseId, { worksheet = false } = {}) {
     const outputs = [];
     if (mode === 'combined' || mode === 'both') {
       const buffer = await mergePdfs(rendered);
-      outputs.push(await savePdf(courseId, worksheet ? `${base}-worksheet.pdf` : `${base}.pdf`, worksheet ? 'Worksheet' : 'Course PDF', worksheet ? 'worksheet_pdf' : 'combined_pdf', buffer));
+      outputs.push(await savePdf(course.organisation_id, courseId, worksheet ? `${base}-worksheet.pdf` : `${base}.pdf`, worksheet ? 'Worksheet' : 'Course PDF', worksheet ? 'worksheet_pdf' : 'combined_pdf', buffer));
     }
     if (!worksheet && (mode === 'per_page' || mode === 'both')) {
       for (let i = 0; i < rendered.length; i += 1) {
         const page = pages[i];
-        outputs.push(await savePdf(courseId, `${base}-page-${i + 1}.pdf`, `Page ${i + 1}: ${page.title}`, 'page_pdf', rendered[i]));
+        outputs.push(await savePdf(course.organisation_id, courseId, `${base}-page-${i + 1}.pdf`, `Page ${i + 1}: ${page.title}`, 'page_pdf', rendered[i]));
       }
     }
     return { outputs };

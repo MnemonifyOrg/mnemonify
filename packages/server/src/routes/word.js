@@ -2,19 +2,20 @@ import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
 import pool from '../db.js';
-import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
+import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { buildTemplateWordDoc } from '../lib/wordExport.js';
 import { parseTables } from '../lib/htmlTableParser.js';
 import { applyFieldValue } from '../lib/wordFieldMap.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
+router.use(requireAuth);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 router.get('/templates/:id/export-word', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 AND is_template = true`, [
     req.params.id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Template not found' });
@@ -30,7 +31,7 @@ router.get('/templates/:id/export-word', asyncHandler(async (req, res) => {
   res.send(buffer);
 }));
 
-router.post('/courses/import-word', upload.single('file'), asyncHandler(async (req, res) => {
+router.post('/courses/import-word', requireRole(ROLES.OWNER, ROLES.EDITOR), upload.single('file'), asyncHandler(async (req, res) => {
   const { template_id } = req.body;
   if (!req.file || !template_id) {
     res.status(400).json({ error: 'file and template_id are required' });
@@ -39,7 +40,7 @@ router.post('/courses/import-word', upload.single('file'), asyncHandler(async (r
 
   const templateResult = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     template_id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (templateResult.rows.length === 0) {
     res.status(404).json({ error: 'Template not found' });
@@ -86,13 +87,13 @@ router.post('/courses/import-word', upload.single('file'), asyncHandler(async (r
   res.json({ mapped, flagged, skipped, proposed_course_json: proposedCourseJson });
 }));
 
-router.post('/courses/import-word/confirm', asyncHandler(async (req, res) => {
+router.post('/courses/import-word/confirm', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { proposed_course_json, title } = req.body;
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [DEV_ORG_ID, title || 'Untitled Course', proposed_course_json, DEV_USER_ID]
+    [req.auth.organisationId, title || 'Untitled Course', proposed_course_json, req.auth.userId]
   );
   res.status(201).json(result.rows[0]);
 }));

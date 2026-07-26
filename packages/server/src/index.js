@@ -14,8 +14,9 @@ import pageTemplatesRouter from './routes/pageTemplates.js';
 import analyticsRouter from './routes/analytics.js';
 import glossariesRouter from './routes/glossaries.js';
 import captionsRouter from './routes/captions.js';
+import authRouter from './routes/auth.js';
 import pool from './db.js';
-import { DEV_ORG_ID } from './lib/devUser.js';
+import { authContext } from './lib/auth.js';
 import { asyncHandler } from './lib/asyncHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,11 @@ dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const PORT = process.env.PORT || 3001;
 const CONTENT_BASE_URL = process.env.CONTENT_BASE_URL || 'http://localhost:3001';
+// Reflect the configured editor origin so browser auth requests can carry the
+// HttpOnly session cookie. Public content and analytics remain usable from
+// embedded LMS origins; production deployments should set CORS_ORIGIN to the
+// trusted editor origin (or origins via the hosting proxy).
+const CORS_ORIGIN = process.env.CORS_ORIGIN || true;
 
 const PLAYER_DIST_DIR = path.resolve(__dirname, '../../player/dist');
 const PLAYER_ASSETS_DIR = path.resolve(__dirname, '../../player/public/assets');
@@ -56,7 +62,8 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: '*',
+    origin: CORS_ORIGIN,
+    credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: '*',
   })
@@ -65,6 +72,11 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Authentication is optional only in local development, where authContext
+// resolves the seeded owner account. Production requests without a valid
+// server-side session are rejected by the protected routers below.
+app.use('/api', authContext);
+app.use('/api', authRouter);
 app.use('/api', coursesRouter);
 app.use('/api', assetsRouter);
 app.use('/api', captionsRouter);
@@ -101,16 +113,13 @@ app.get('/content/:courseId', asyncHandler(async (req, res) => {
     return;
   }
 
-  const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
-    courseId,
-    DEV_ORG_ID,
-  ]);
+  const result = await pool.query(`SELECT * FROM courses WHERE id = $1`, [courseId]);
   if (result.rows.length === 0) {
     res.status(404).json({ error: `No course found with id "${courseId}".` });
     return;
   }
   const row = await loadAndMigrateCourseRow(result.rows[0]);
-  const resources = await listCourseResources(courseId);
+  const resources = await listCourseResources(courseId, row.organisation_id);
   res.json(mergeCourseResources(row.course_json, resources));
 }));
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import pool from '../db.js';
-import { DEV_ORG_ID } from '../lib/devUser.js';
+import { requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
@@ -48,20 +48,35 @@ function normalizeVtt(buffer, filename) {
 }
 
 router.get('/assets/:assetId/captions', asyncHandler(async (req, res) => {
-  const result = await pool.query(
-    `SELECT kind, content, source, review_status, status, error_message, generated_at, updated_at
-       FROM captions WHERE organisation_id = $1 AND asset_id = $2 ORDER BY kind`,
-    [DEV_ORG_ID, req.params.assetId]
-  );
+  // Caption tracks are consumed by the unauthenticated published player;
+  // author edits remain protected below. When an author session exists, keep
+  // the organization filter that prevents cross-tenant reads.
+  const result = req.auth
+    ? await pool.query(
+      `SELECT kind, content, source, review_status, status, error_message, generated_at, updated_at
+         FROM captions WHERE organisation_id = $1 AND asset_id = $2 ORDER BY kind`,
+      [req.auth.organisationId, req.params.assetId]
+    )
+    : await pool.query(
+      `SELECT kind, content, source, review_status, status, error_message, generated_at, updated_at
+         FROM captions WHERE asset_id = $1 ORDER BY kind`,
+      [req.params.assetId]
+    );
   res.json(result.rows);
 }));
 
 router.get('/assets/:assetId/captions/caption.vtt', asyncHandler(async (req, res) => {
-  const result = await pool.query(
-    `SELECT content FROM captions
-      WHERE organisation_id = $1 AND asset_id = $2 AND kind = 'caption' AND status = 'ready'`,
-    [DEV_ORG_ID, req.params.assetId]
-  );
+  const result = req.auth
+    ? await pool.query(
+      `SELECT content FROM captions
+        WHERE organisation_id = $1 AND asset_id = $2 AND kind = 'caption' AND status = 'ready'`,
+      [req.auth.organisationId, req.params.assetId]
+    )
+    : await pool.query(
+      `SELECT content FROM captions
+        WHERE asset_id = $1 AND kind = 'caption' AND status = 'ready'`,
+      [req.params.assetId]
+    );
   if (result.rows.length === 0) {
     res.status(404).send('Caption file not available.');
     return;
@@ -69,7 +84,7 @@ router.get('/assets/:assetId/captions/caption.vtt', asyncHandler(async (req, res
   res.type('text/vtt').send(result.rows[0].content);
 }));
 
-router.patch('/assets/:assetId/captions/:kind', asyncHandler(async (req, res) => {
+router.patch('/assets/:assetId/captions/:kind', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { content, review_status: reviewStatus } = req.body;
   if (!['caption', 'transcript'].includes(req.params.kind) || typeof content !== 'string') {
     res.status(400).json({ error: 'kind must be caption or transcript, and content must be a string.' });
@@ -79,7 +94,7 @@ router.patch('/assets/:assetId/captions/:kind', asyncHandler(async (req, res) =>
     `UPDATE captions SET content = $1, status = 'ready', review_status = $2,
             source = COALESCE(source, 'whisper'), error_message = '', updated_at = now()
       WHERE organisation_id = $3 AND asset_id = $4 AND kind = $5 RETURNING *`,
-    [content, reviewStatus === 'reviewed' ? 'reviewed' : 'draft', DEV_ORG_ID, req.params.assetId, req.params.kind]
+    [content, reviewStatus === 'reviewed' ? 'reviewed' : 'draft', req.auth.organisationId, req.params.assetId, req.params.kind]
   );
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Caption or transcript not found.' });
@@ -88,7 +103,7 @@ router.patch('/assets/:assetId/captions/:kind', asyncHandler(async (req, res) =>
   res.json(result.rows[0]);
 }));
 
-router.post('/assets/:assetId/captions/upload', upload.single('file'), asyncHandler(async (req, res) => {
+router.post('/assets/:assetId/captions/upload', requireRole(ROLES.OWNER, ROLES.EDITOR), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: 'A .vtt or .srt file is required.' });
     return;
@@ -104,7 +119,7 @@ router.post('/assets/:assetId/captions/upload', upload.single('file'), asyncHand
     `UPDATE captions SET content = $1, source = 'manual', status = 'ready',
             review_status = 'draft', error_message = '', generated_at = now(), updated_at = now()
       WHERE organisation_id = $2 AND asset_id = $3 AND kind = 'caption' RETURNING *`,
-    [content, DEV_ORG_ID, req.params.assetId]
+    [content, req.auth.organisationId, req.params.assetId]
   );
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Caption record not found for this asset.' });

@@ -5,6 +5,8 @@ import { STARTER_TEMPLATES } from '../lib/starterTemplates.js';
 import { createBlankCourseJson } from '../lib/blockDefaults.js';
 import { getCourseAccent, getCourseCoverImage, getCourseInitial } from '../lib/courseCard.js';
 import ImportWordModal from '../components/ImportWordModal.jsx';
+import OrganizationMembersPanel from '../components/OrganizationMembersPanel.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 import '../styles/courseLibrary.css';
 
 function formatDate(iso) {
@@ -60,7 +62,7 @@ export function CourseCard({ course, onOpen, onDuplicate, onDelete }) {
           <p className="course-card__meta">Updated {formatDate(course.updated_at)}</p>
         </div>
       </div>
-      <div className="course-card__menu" onClick={(event) => event.stopPropagation()}>
+      {(onDuplicate || onDelete) && <div className="course-card__menu" onClick={(event) => event.stopPropagation()}>
         <button
           type="button"
           className="course-card__menu-toggle"
@@ -73,15 +75,11 @@ export function CourseCard({ course, onOpen, onDuplicate, onDelete }) {
         </button>
         {menuOpen && (
           <div className="course-card__menu-popover" role="menu">
-            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDuplicate(course.id); }}>
-              Duplicate
-            </button>
-            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDelete(course.id); }}>
-              Delete
-            </button>
+            {onDuplicate && <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDuplicate(course.id); }}>Duplicate</button>}
+            {onDelete && <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onDelete(course.id); }}>Delete</button>}
           </div>
         )}
-      </div>
+      </div>}
     </article>
   );
 }
@@ -197,20 +195,20 @@ function NewCourseModal({ templates, onClose, onCreated }) {
 
 export default function CourseLibrary() {
   const navigate = useNavigate();
+  const { user, canEdit, canManageMembership, logout, refresh: refreshAuth } = useAuth();
   const [courses, setCourses] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showNewModal, setShowNewModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
 
   async function refresh() {
-    const [c, t, u] = await Promise.all([api.listCourses(), api.listTemplates(), api.getMe()]);
+    const [c, t] = await Promise.all([api.listCourses(), api.listTemplates()]);
     setCourses(c);
     setTemplates(t);
-    setUser(u);
     setLoading(false);
   }
 
@@ -241,7 +239,7 @@ export default function CourseLibrary() {
 
   async function skipOnboarding() {
     await api.updateMe({ onboarding_completed: true });
-    setUser((u) => ({ ...u, onboarding_completed: true }));
+    await refreshAuth();
   }
 
   if (loading) return null;
@@ -260,12 +258,10 @@ export default function CourseLibrary() {
           Templates
         </Link>
         <div className="top-bar__nav" />
-        <button className="btn" onClick={() => setShowImportModal(true)}>
-          Import Word
-        </button>
-        <button className="btn btn-primary top-bar__new" onClick={() => setShowNewModal(true)}>
-          New Course
-        </button>
+        {canEdit && <button className="btn" onClick={() => setShowImportModal(true)}>Import Word</button>}
+        {canManageMembership && <button className="btn" onClick={() => setShowMembers(true)}>Team</button>}
+        {canEdit && <button className="btn btn-primary top-bar__new" onClick={() => setShowNewModal(true)}>New Course</button>}
+        <button className="btn-text" onClick={logout} title={`Sign out ${user?.email || ''}`}>Sign out</button>
       </header>
 
       <main className="course-library__main">
@@ -275,12 +271,12 @@ export default function CourseLibrary() {
               <strong>Welcome to Mnemonify.</strong> Let&rsquo;s build your first course.
             </div>
             <div className="onboarding-banner__actions">
-              <button className="btn btn-primary" onClick={startTour}>
+              {canEdit && <button className="btn btn-primary" onClick={startTour}>
                 Start guided tour
-              </button>
-              <button className="btn-text" onClick={skipOnboarding}>
+              </button>}
+              {canEdit && <button className="btn-text" onClick={skipOnboarding}>
                 Skip
-              </button>
+              </button>}
             </div>
           </div>
         )}
@@ -303,17 +299,17 @@ export default function CourseLibrary() {
         {courses.length === 0 ? (
           <div className="empty-state">
             <p>No courses yet. Let&rsquo;s change that.</p>
-            <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
+            {canEdit && <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
               Create your first course
-            </button>
+            </button>}
           </div>
         ) : (
           <CourseResults
             courses={courses}
             query={searchQuery}
             onOpen={(id) => navigate(`/courses/${id}/edit`)}
-            onDuplicate={handleDuplicate}
-            onDelete={setDeleteTarget}
+            onDuplicate={canEdit ? handleDuplicate : undefined}
+            onDelete={canEdit ? setDeleteTarget : undefined}
           />
         )}
       </main>
@@ -331,6 +327,8 @@ export default function CourseLibrary() {
           }}
         />
       )}
+
+      {showMembers && <OrganizationMembersPanel onClose={() => setShowMembers(false)} />}
 
       {deleteTarget && (
         <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>

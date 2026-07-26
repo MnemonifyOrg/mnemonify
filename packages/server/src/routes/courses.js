@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../db.js';
-import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
+import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { templatizeCourse } from '../lib/templatize.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { MigrationError } from '@mnemonify/schema/migrations/index.js';
@@ -14,6 +14,7 @@ import {
 } from '../lib/courseVersions.js';
 
 const router = express.Router();
+router.use(requireAuth);
 
 // Phase 4.5a: this handler is the content server's one real course-serving
 // path (ARCHITECTURE-AUDIT.md 4.3's "load -> inspect version -> migrate ->
@@ -49,7 +50,7 @@ export async function loadAndMigrateCourseRow(row) {
 
   const updateResult = await pool.query(
     `UPDATE courses SET course_json = $1, updated_at = now() WHERE id = $2 AND organisation_id = $3 RETURNING *`,
-    [migrationResult.document, row.id, DEV_ORG_ID]
+    [migrationResult.document, row.id, row.organisation_id]
   );
   if (updateResult.rows.length === 0) {
     throw new MigrationError(`Migrated course ${row.id} could not be saved (no matching row).`, { courseId: row.id });
@@ -63,7 +64,7 @@ router.get('/courses', asyncHandler(async (req, res) => {
      FROM courses
      WHERE organisation_id = $1 AND is_template = false AND status != 'deleted'
      ORDER BY updated_at DESC`,
-    [DEV_ORG_ID]
+    [req.auth.organisationId]
   );
   res.json(result.rows);
 }));
@@ -74,7 +75,7 @@ router.get('/templates', asyncHandler(async (req, res) => {
      FROM courses
      WHERE organisation_id = $1 AND is_template = true AND status != 'deleted'
      ORDER BY updated_at DESC`,
-    [DEV_ORG_ID]
+    [req.auth.organisationId]
   );
   res.json(result.rows);
 }));
@@ -82,7 +83,7 @@ router.get('/templates', asyncHandler(async (req, res) => {
 router.get('/courses/:id', asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Course not found' });
@@ -100,12 +101,12 @@ router.get('/courses/:id/versions', asyncHandler(async (req, res) => {
      LEFT JOIN users u ON u.id = v.created_by
      WHERE v.course_id = $1 AND v.organisation_id = $2 AND v.kind = 'named_snapshot'
      ORDER BY v.created_at DESC, v.version_id DESC`,
-    [req.params.id, DEV_ORG_ID]
+    [req.params.id, req.auth.organisationId]
   );
   res.json(result.rows.map(versionForResponse));
 }));
 
-router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
+router.post('/courses/:id/versions', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   let name;
   try {
     name = validateVersionName(req.body?.name);
@@ -119,7 +120,7 @@ router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
     await client.query('BEGIN');
     const courseResult = await client.query(
       `SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 FOR UPDATE`,
-      [req.params.id, DEV_ORG_ID]
+      [req.params.id, req.auth.organisationId]
     );
     if (courseResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -129,7 +130,7 @@ router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
     const snapshot = createNamedSnapshot({
       courseId: req.params.id,
       name,
-      createdBy: DEV_USER_ID,
+      createdBy: req.auth.userId,
       courseJson: courseResult.rows[0].course_json,
     });
     const versionResult = await client.query(
@@ -142,7 +143,7 @@ router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
       [
         snapshot.version_id,
         snapshot.course_id,
-        DEV_ORG_ID,
+        req.auth.organisationId,
         snapshot.kind,
         snapshot.name,
         snapshot.created_by,
@@ -153,7 +154,7 @@ router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
       ]
     );
     await client.query('COMMIT');
-    res.status(201).json(versionForResponse({ ...versionResult.rows[0], author: 'Dev User' }));
+    res.status(201).json(versionForResponse({ ...versionResult.rows[0], author: req.auth.name }));
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -162,13 +163,13 @@ router.post('/courses/:id/versions', asyncHandler(async (req, res) => {
   }
 }));
 
-router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req, res) => {
+router.post('/courses/:id/versions/:versionId/restore', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const courseResult = await client.query(
       `SELECT * FROM courses WHERE id = $1 AND organisation_id = $2 FOR UPDATE`,
-      [req.params.id, DEV_ORG_ID]
+      [req.params.id, req.auth.organisationId]
     );
     if (courseResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -179,7 +180,7 @@ router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req,
       `SELECT * FROM course_versions
        WHERE version_id = $1 AND course_id = $2 AND organisation_id = $3
          AND kind = 'named_snapshot'`,
-      [req.params.versionId, req.params.id, DEV_ORG_ID]
+      [req.params.versionId, req.params.id, req.auth.organisationId]
     );
     if (sourceResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -189,12 +190,12 @@ router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req,
     const restored = restoreCourseFromSnapshot({
       currentCourse: courseResult.rows[0],
       sourceVersion: sourceResult.rows[0],
-      createdBy: DEV_USER_ID,
+      createdBy: req.auth.userId,
     });
     const courseUpdate = await client.query(
       `UPDATE courses SET title = $1, course_json = $2, updated_at = now()
        WHERE id = $3 AND organisation_id = $4 RETURNING *`,
-      [restored.course.title, restored.course.course_json, req.params.id, DEV_ORG_ID]
+      [restored.course.title, restored.course.course_json, req.params.id, req.auth.organisationId]
     );
     const versionResult = await client.query(
       `INSERT INTO course_versions
@@ -206,7 +207,7 @@ router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req,
       [
         restored.version.version_id,
         restored.version.course_id,
-        DEV_ORG_ID,
+        req.auth.organisationId,
         restored.version.kind,
         restored.version.name,
         restored.version.created_by,
@@ -219,7 +220,7 @@ router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req,
     await client.query('COMMIT');
     res.json({
       course: courseUpdate.rows[0],
-      version: versionForResponse({ ...versionResult.rows[0], author: 'Dev User' }),
+      version: versionForResponse({ ...versionResult.rows[0], author: req.auth.name }),
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -229,13 +230,13 @@ router.post('/courses/:id/versions/:versionId/restore', asyncHandler(async (req,
   }
 }));
 
-router.post('/courses', asyncHandler(async (req, res) => {
+router.post('/courses', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { title, course_json } = req.body;
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [DEV_ORG_ID, title || 'Untitled Course', course_json || {}, DEV_USER_ID]
+    [req.auth.organisationId, title || 'Untitled Course', course_json || {}, req.auth.userId]
   );
   res.status(201).json(result.rows[0]);
 }));
@@ -245,7 +246,7 @@ router.post('/courses', asyncHandler(async (req, res) => {
 // traffic, highest-risk-of-a-transient-failure handler in the whole API,
 // and the one most likely to have been the actual crash source before this
 // file had any error handling at all (see DECISIONS.md, Step 0).
-router.patch('/courses/:id', asyncHandler(async (req, res) => {
+router.patch('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { title, course_json, status } = req.body;
   const fields = [];
   const values = [];
@@ -268,7 +269,7 @@ router.patch('/courses/:id', asyncHandler(async (req, res) => {
   }
   fields.push(`updated_at = now()`);
 
-  values.push(req.params.id, DEV_ORG_ID);
+  values.push(req.params.id, req.auth.organisationId);
   const result = await pool.query(
     `UPDATE courses SET ${fields.join(', ')} WHERE id = $${i++} AND organisation_id = $${i} RETURNING *`,
     values
@@ -281,8 +282,8 @@ router.patch('/courses/:id', asyncHandler(async (req, res) => {
   res.json(result.rows[0]);
 }));
 
-router.post('/courses/:id/publish-artifacts', asyncHandler(async (req, res) => {
-  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+router.post('/courses/:id/publish-artifacts', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, req.auth.organisationId]);
   if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
   const queued = queueCoursePdfs(req.params.id);
   res.status(202).json({ queued });
@@ -290,31 +291,31 @@ router.post('/courses/:id/publish-artifacts', asyncHandler(async (req, res) => {
 
 // The current editor has no separate review-publish endpoint yet; keep the
 // same queue available for the review-link flow when that UI is introduced.
-router.post('/courses/:id/review-publish-artifacts', asyncHandler(async (req, res) => {
-  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+router.post('/courses/:id/review-publish-artifacts', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, req.auth.organisationId]);
   if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
   res.status(202).json({ queued: queueCoursePdfs(req.params.id) });
 }));
 
-router.post('/courses/:id/worksheet-export', asyncHandler(async (req, res) => {
-  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, DEV_ORG_ID]);
+router.post('/courses/:id/worksheet-export', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const course = await pool.query(`SELECT id FROM courses WHERE id = $1 AND organisation_id = $2`, [req.params.id, req.auth.organisationId]);
   if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
   const queued = queueCoursePdfs(req.params.id, { worksheet: true });
   res.status(202).json({ queued });
 }));
 
-router.delete('/courses/:id', asyncHandler(async (req, res) => {
+router.delete('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   await pool.query(`UPDATE courses SET status = 'deleted', updated_at = now() WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   res.status(204).end();
 }));
 
-router.post('/courses/:id/duplicate', asyncHandler(async (req, res) => {
+router.post('/courses/:id/duplicate', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const original = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (original.rows.length === 0) {
     res.status(404).json({ error: 'Course not found' });
@@ -325,16 +326,16 @@ router.post('/courses/:id/duplicate', asyncHandler(async (req, res) => {
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [DEV_ORG_ID, `${source.title} (Copy)`, source.course_json, DEV_USER_ID]
+    [req.auth.organisationId, `${source.title} (Copy)`, source.course_json, req.auth.userId]
   );
   res.status(201).json(result.rows[0]);
 }));
 
-router.post('/courses/:id/save-as-template', asyncHandler(async (req, res) => {
+router.post('/courses/:id/save-as-template', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { template_scope, title } = req.body;
   const original = await pool.query(`SELECT * FROM courses WHERE id = $1 AND organisation_id = $2`, [
     req.params.id,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (original.rows.length === 0) {
     res.status(404).json({ error: 'Course not found' });
@@ -348,7 +349,7 @@ router.post('/courses/:id/save-as-template', asyncHandler(async (req, res) => {
     `INSERT INTO courses (organisation_id, title, is_template, template_scope, course_json, created_by)
      VALUES ($1, $2, true, $3, $4, $5)
      RETURNING *`,
-    [DEV_ORG_ID, templateTitle, template_scope || 'personal', templatizedJson, DEV_USER_ID]
+    [req.auth.organisationId, templateTitle, template_scope || 'personal', templatizedJson, req.auth.userId]
   );
   res.status(201).json(result.rows[0]);
 }));

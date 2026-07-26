@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
-import { DEV_ORG_ID } from '../lib/devUser.js';
+import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { validateFileSignature } from '../lib/fileSignature.js';
 
 const router = express.Router();
+router.use(requireAuth);
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
 const MAX_RESOURCE_BYTES = 50 * 1024 * 1024; // 50MB per file (Step 2, this session)
 
@@ -57,13 +58,13 @@ function uniqueFilename(dir, originalName) {
   return candidate;
 }
 
-async function insertResource({ courseId, filename, filePath, label, sizeBytes }) {
+async function insertResource({ organisationId, courseId, filename, filePath, label, sizeBytes }) {
   const resourceId = `res_${uuidv4().slice(0, 8)}`;
   const result = await pool.query(
     `INSERT INTO resources (organisation_id, course_id, resource_id, filename, file_path, label, size_bytes)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [DEV_ORG_ID, courseId, resourceId, filename, filePath, label || filename, sizeBytes]
+    [organisationId, courseId, resourceId, filename, filePath, label || filename, sizeBytes]
   );
   const row = result.rows[0];
   // pg returns a BIGINT column (size_bytes) as a JS string, not a number,
@@ -78,7 +79,7 @@ async function insertResource({ courseId, filename, filePath, label, sizeBytes }
   return { ...row, size_bytes: Number(row.size_bytes) };
 }
 
-export async function upsertGeneratedResource({ courseId, filename, filePath, label, sizeBytes, resourceKind }) {
+export async function upsertGeneratedResource({ organisationId, courseId, filename, filePath, label, sizeBytes, resourceKind }) {
   await pool.query(
     `DELETE FROM resources WHERE course_id = $1 AND source = 'generated' AND resource_kind = $2 AND filename = $3`,
     [courseId, resourceKind, filename]
@@ -87,12 +88,12 @@ export async function upsertGeneratedResource({ courseId, filename, filePath, la
   const result = await pool.query(
     `INSERT INTO resources (organisation_id, course_id, resource_id, filename, file_path, label, size_bytes, source, resource_kind)
      VALUES ($1, $2, $3, $4, $5, $6, $7, 'generated', $8) RETURNING *`,
-    [DEV_ORG_ID, courseId, resourceId, filename, filePath, label || filename, sizeBytes, resourceKind]
+    [organisationId, courseId, resourceId, filename, filePath, label || filename, sizeBytes, resourceKind]
   );
   return { ...result.rows[0], size_bytes: Number(result.rows[0].size_bytes) };
 }
 
-export async function listCourseResources(courseId) {
+export async function listCourseResources(courseId, organisationId) {
   const result = await pool.query(
     `SELECT r.resource_id, r.filename, r.file_path, r.label, r.size_bytes, r.created_at AS uploaded_at, r.source, r.resource_kind
      FROM resources r
@@ -104,7 +105,7 @@ export async function listCourseResources(courseId) {
          OR COALESCE((c.course_json->'meta'->'pdf_settings'->>'enabled')::boolean, true)
        )
      ORDER BY r.created_at ASC`,
-    [courseId, DEV_ORG_ID]
+    [courseId, organisationId]
   );
   return result.rows.map((row) => ({
     ...row,
@@ -114,7 +115,7 @@ export async function listCourseResources(courseId) {
 }
 
 router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
-  res.json(await listCourseResources(req.params.courseId));
+  res.json(await listCourseResources(req.params.courseId, req.auth.organisationId));
 }));
 
 const singleUpload = multer({
@@ -122,7 +123,7 @@ const singleUpload = multer({
   limits: { fileSize: MAX_RESOURCE_BYTES },
 });
 
-router.post('/resources/upload', singleUpload.single('file'), async (req, res) => {
+router.post('/resources/upload', requireRole(ROLES.OWNER, ROLES.EDITOR), singleUpload.single('file'), async (req, res) => {
   // Express 4 does not catch rejected promises from async handlers (see
   // routes/assets.js's own comment on this, and DECISIONS.md's Step 0
   // root-cause entry) -- every failure path below must produce a response.
@@ -156,6 +157,7 @@ router.post('/resources/upload', singleUpload.single('file'), async (req, res) =
     fs.writeFileSync(path.join(dir, filename), req.file.buffer);
 
     const resource = await insertResource({
+      organisationId: req.auth.organisationId,
       courseId: course_id,
       filename,
       filePath: `${course_id}/resources/${filename}`,
@@ -174,7 +176,7 @@ router.post('/resources/upload', singleUpload.single('file'), async (req, res) =
 // into course_json.meta.resources[] on upload; unlike assets.js's
 // :assetId (which matches the DB `id`), there's no separate DB-only id
 // the client would otherwise need to track.
-router.patch('/resources/:resourceId', asyncHandler(async (req, res) => {
+router.patch('/resources/:resourceId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { label } = req.body;
   if (label === undefined) {
     res.status(400).json({ error: 'Nothing to update' });
@@ -182,7 +184,7 @@ router.patch('/resources/:resourceId', asyncHandler(async (req, res) => {
   }
   const result = await pool.query(
     `UPDATE resources SET label = $1 WHERE resource_id = $2 AND organisation_id = $3 RETURNING *`,
-    [label, req.params.resourceId, DEV_ORG_ID]
+    [label, req.params.resourceId, req.auth.organisationId]
   );
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Resource not found' });
@@ -191,10 +193,10 @@ router.patch('/resources/:resourceId', asyncHandler(async (req, res) => {
   res.json(result.rows[0]);
 }));
 
-router.delete('/resources/:resourceId', asyncHandler(async (req, res) => {
+router.delete('/resources/:resourceId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM resources WHERE resource_id = $1 AND organisation_id = $2`, [
     req.params.resourceId,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Resource not found' });

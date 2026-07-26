@@ -1,15 +1,16 @@
 import express from 'express';
 import pool from '../db.js';
-import { DEV_USER_ID } from '../lib/devUser.js';
+import { requireAuth } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 
 const router = express.Router();
+router.use(requireAuth);
 
 router.get('/users/me', asyncHandler(async (req, res) => {
-  const result = await pool.query(`SELECT id, email, name, role, onboarding_completed FROM users WHERE id = $1`, [
-    DEV_USER_ID,
+  const result = await pool.query(`SELECT id, email, name, onboarding_completed, email_verified_at FROM users WHERE id = $1`, [
+    req.auth.userId,
   ]);
-  res.json(result.rows[0]);
+  res.json({ ...result.rows[0], role: req.auth.role, organisation_id: req.auth.organisationId, email_verified: Boolean(result.rows[0]?.email_verified_at) });
 }));
 
 router.patch('/users/me', asyncHandler(async (req, res) => {
@@ -25,12 +26,12 @@ router.patch('/users/me', asyncHandler(async (req, res) => {
     res.status(400).json({ error: 'Nothing to update' });
     return;
   }
-  values.push(DEV_USER_ID);
+  values.push(req.auth.userId);
   const result = await pool.query(
-    `UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, email, name, role, onboarding_completed`,
+    `UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, email, name, onboarding_completed`,
     values
   );
-  res.json(result.rows[0]);
+  res.json({ ...result.rows[0], role: req.auth.role, organisation_id: req.auth.organisationId });
 }));
 
 export default router;

@@ -1,13 +1,13 @@
 import express from 'express';
 import crypto from 'node:crypto';
 import pool from '../db.js';
-import { DEV_ORG_ID, DEV_USER_ID } from '../lib/devUser.js';
+import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { createLibraryTerm, validateGlossaryName, validateGlossaryTerm } from '../lib/glossaries.js';
 
 const router = express.Router();
 
-router.get('/glossaries', asyncHandler(async (req, res) => {
+router.get('/glossaries', requireAuth, asyncHandler(async (req, res) => {
   const result = await pool.query(
     `SELECT g.glossary_id, g.name, g.created_by, g.created_at, g.updated_at,
             COUNT(t.term_id)::integer AS term_count
@@ -16,17 +16,26 @@ router.get('/glossaries', asyncHandler(async (req, res) => {
      WHERE g.organisation_id = $1
      GROUP BY g.glossary_id
      ORDER BY g.name ASC`,
-    [DEV_ORG_ID]
+    [req.auth.organisationId]
   );
   res.json(result.rows);
 }));
 
 router.get('/glossaries/:id', asyncHandler(async (req, res) => {
-  const glossaryResult = await pool.query(
-    `SELECT glossary_id, name, created_by, created_at, updated_at
-     FROM glossaries WHERE glossary_id = $1 AND organisation_id = $2`,
-    [req.params.id, DEV_ORG_ID]
-  );
+  // Player playback has always loaded an attached glossary by id without an
+  // author session. Keep this read path public; author listing and all writes
+  // remain protected by the membership middleware below.
+  const glossaryResult = req.auth
+    ? await pool.query(
+      `SELECT glossary_id, name, created_by, created_at, updated_at
+       FROM glossaries WHERE glossary_id = $1 AND organisation_id = $2`,
+      [req.params.id, req.auth.organisationId]
+    )
+    : await pool.query(
+      `SELECT glossary_id, name, created_by, created_at, updated_at
+       FROM glossaries WHERE glossary_id = $1`,
+      [req.params.id]
+    );
   if (glossaryResult.rows.length === 0) {
     res.status(404).json({ error: 'Glossary not found' });
     return;
@@ -39,7 +48,7 @@ router.get('/glossaries/:id', asyncHandler(async (req, res) => {
   res.json({ ...glossaryResult.rows[0], terms: termsResult.rows });
 }));
 
-router.post('/glossaries', asyncHandler(async (req, res) => {
+router.post('/glossaries', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   let name;
   try {
     name = validateGlossaryName(req.body?.name);
@@ -51,12 +60,12 @@ router.post('/glossaries', asyncHandler(async (req, res) => {
   const result = await pool.query(
     `INSERT INTO glossaries (glossary_id, organisation_id, name, created_by)
      VALUES ($1, $2, $3, $4) RETURNING glossary_id, name, created_by, created_at, updated_at`,
-    [glossaryId, DEV_ORG_ID, name, DEV_USER_ID]
+    [glossaryId, req.auth.organisationId, name, req.auth.userId]
   );
   res.status(201).json({ ...result.rows[0], term_count: 0 });
 }));
 
-router.post('/glossaries/:id/terms', asyncHandler(async (req, res) => {
+router.post('/glossaries/:id/terms', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   let validated;
   try {
     validated = validateGlossaryTerm(req.body?.term, req.body?.definition);
@@ -66,7 +75,7 @@ router.post('/glossaries/:id/terms', asyncHandler(async (req, res) => {
   }
   const glossaryResult = await pool.query(
     `SELECT glossary_id FROM glossaries WHERE glossary_id = $1 AND organisation_id = $2`,
-    [req.params.id, DEV_ORG_ID]
+    [req.params.id, req.auth.organisationId]
   );
   if (glossaryResult.rows.length === 0) {
     res.status(404).json({ error: 'Glossary not found' });
@@ -90,7 +99,7 @@ router.post('/glossaries/:id/terms', asyncHandler(async (req, res) => {
     glossaryId: req.params.id,
     term: validated.term,
     definition: validated.definition,
-    createdBy: DEV_USER_ID,
+    createdBy: req.auth.userId,
   });
   const result = await pool.query(
     `INSERT INTO glossary_terms

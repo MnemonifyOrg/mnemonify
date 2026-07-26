@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const client = axios.create({ baseURL: '/' });
+const client = axios.create({ baseURL: '/', withCredentials: true });
 
 export const api = {
   // Courses
@@ -54,6 +54,21 @@ export const api = {
   // Users
   getMe: () => client.get('/api/users/me').then((r) => r.data),
   updateMe: (payload) => client.patch('/api/users/me', payload).then((r) => r.data),
+
+  // Phase 6a authentication and organization membership
+  signup: (payload) => client.post('/api/auth/signup', payload).then((r) => r.data),
+  login: (payload) => client.post('/api/auth/login', payload).then((r) => r.data),
+  logout: () => client.post('/api/auth/logout').then((r) => r.data),
+  getAuthMe: () => client.get('/api/auth/me').then((r) => r.data),
+  verifyEmail: (token) => client.get(`/api/auth/verify-email?token=${encodeURIComponent(token)}`).then((r) => r.data),
+  requestPasswordReset: (email) => client.post('/api/auth/password-reset/request', { email }).then((r) => r.data),
+  confirmPasswordReset: (payload) => client.post('/api/auth/password-reset/confirm', payload).then((r) => r.data),
+  listOrganizations: () => client.get('/api/organizations').then((r) => r.data),
+  switchOrganization: (organisation_id) => client.post('/api/organizations/switch', { organisation_id }).then((r) => r.data),
+  listOrganizationMembers: (organisationId) => client.get(`/api/organizations/${organisationId}/members`).then((r) => r.data),
+  inviteOrganizationMember: (organisationId, payload) => client.post(`/api/organizations/${organisationId}/invitations`, payload).then((r) => r.data),
+  updateOrganizationMember: (organisationId, userId, payload) => client.patch(`/api/organizations/${organisationId}/members/${userId}`, payload).then((r) => r.data),
+  removeOrganizationMember: (organisationId, userId) => client.delete(`/api/organizations/${organisationId}/members/${userId}`),
 
   // Page templates
   listPageTemplates: () => client.get('/api/page-templates').then((r) => r.data),

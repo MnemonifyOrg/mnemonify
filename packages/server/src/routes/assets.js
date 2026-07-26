@@ -5,11 +5,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
-import { DEV_ORG_ID } from '../lib/devUser.js';
+import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { queueTranscription } from '../lib/captionPipeline.js';
 
 const router = express.Router();
+router.use(requireAuth);
 const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB per file (images, via bulk upload -- unchanged, P1-17)
 const MAX_ZIP_BYTES = 500 * 1024 * 1024; // 500MB per ZIP
@@ -55,13 +56,13 @@ function uniqueFilename(dir, originalName) {
   return candidate;
 }
 
-async function insertAsset({ courseId, kind, filename, filePath, alt, caption }) {
+async function insertAsset({ organisationId, courseId, kind, filename, filePath, alt, caption }) {
   const assetId = `ast_${uuidv4().slice(0, 8)}`;
   const result = await pool.query(
     `INSERT INTO assets (organisation_id, course_id, asset_id, kind, filename, file_path, alt, caption)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [DEV_ORG_ID, courseId, assetId, kind, filename, filePath, alt || '', caption || '']
+    [organisationId, courseId, assetId, kind, filename, filePath, alt || '', caption || '']
   );
   return result.rows[0];
 }
@@ -75,7 +76,7 @@ const singleUpload = multer({
   limits: { fileSize: MAX_BYTES_BY_KIND.video },
 });
 
-router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
+router.post('/assets/upload', requireRole(ROLES.OWNER, ROLES.EDITOR), singleUpload.single('file'), async (req, res) => {
   // Express 4 does not catch rejected promises from async handlers -- an
   // uncaught error here previously left the request hanging forever
   // (client stuck on "Uploading...", see DECISIONS.md). Every failure
@@ -103,6 +104,7 @@ router.post('/assets/upload', singleUpload.single('file'), async (req, res) => {
     fs.writeFileSync(path.join(dir, filename), req.file.buffer);
 
     const asset = await insertAsset({
+      organisationId: req.auth.organisationId,
       courseId: course_id,
       kind,
       filename,
@@ -125,7 +127,7 @@ const bulkUpload = multer({
   limits: { fileSize: MAX_ZIP_BYTES },
 });
 
-router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 }, { name: 'zip', maxCount: 1 }]), asyncHandler(async (req, res) => {
+router.post('/assets/bulk', requireRole(ROLES.OWNER, ROLES.EDITOR), bulkUpload.fields([{ name: 'files', maxCount: 200 }, { name: 'zip', maxCount: 1 }]), asyncHandler(async (req, res) => {
   const courseId = req.body.course_id;
   if (!courseId) {
     res.status(400).json({ error: 'course_id is required' });
@@ -154,7 +156,7 @@ router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 },
       const filename = uniqueFilename(dir, path.basename(entry.entryName));
       fs.writeFileSync(path.join(dir, filename), data);
       created.push(
-        await insertAsset({ courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
+        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
       );
     }
   }
@@ -168,7 +170,7 @@ router.post('/assets/bulk', bulkUpload.fields([{ name: 'files', maxCount: 200 },
       const filename = uniqueFilename(dir, file.originalname);
       fs.writeFileSync(path.join(dir, filename), file.buffer);
       created.push(
-        await insertAsset({ courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
+        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
       );
     }
   }
@@ -187,7 +189,7 @@ router.get('/assets/:courseId', asyncHandler(async (req, res) => {
        LEFT JOIN captions tr ON tr.organisation_id = a.organisation_id AND tr.course_id = a.course_id
          AND tr.asset_id = a.asset_id AND tr.kind = 'transcript'
       WHERE a.course_id = $1 AND a.organisation_id = $2 ORDER BY a.created_at ASC`,
-    [req.params.courseId, DEV_ORG_ID]
+    [req.params.courseId, req.auth.organisationId]
   );
   res.json(result.rows.map((asset) => ({
     ...asset,
@@ -195,7 +197,7 @@ router.get('/assets/:courseId', asyncHandler(async (req, res) => {
   })));
 }));
 
-router.patch('/assets/:assetId', asyncHandler(async (req, res) => {
+router.patch('/assets/:assetId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { alt, caption } = req.body;
   const fields = [];
   const values = [];
@@ -212,7 +214,7 @@ router.patch('/assets/:assetId', asyncHandler(async (req, res) => {
     res.status(400).json({ error: 'Nothing to update' });
     return;
   }
-  values.push(req.params.assetId, DEV_ORG_ID);
+  values.push(req.params.assetId, req.auth.organisationId);
   const result = await pool.query(
     `UPDATE assets SET ${fields.join(', ')} WHERE id = $${i++} AND organisation_id = $${i} RETURNING *`,
     values
@@ -224,10 +226,10 @@ router.patch('/assets/:assetId', asyncHandler(async (req, res) => {
   res.json(result.rows[0]);
 }));
 
-router.delete('/assets/:assetId', asyncHandler(async (req, res) => {
+router.delete('/assets/:assetId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const result = await pool.query(`SELECT * FROM assets WHERE id = $1 AND organisation_id = $2`, [
     req.params.assetId,
-    DEV_ORG_ID,
+    req.auth.organisationId,
   ]);
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Asset not found' });
@@ -238,7 +240,7 @@ router.delete('/assets/:assetId', asyncHandler(async (req, res) => {
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
-  await pool.query(`DELETE FROM captions WHERE organisation_id = $1 AND asset_id = $2`, [DEV_ORG_ID, asset.asset_id]);
+  await pool.query(`DELETE FROM captions WHERE organisation_id = $1 AND asset_id = $2`, [req.auth.organisationId, asset.asset_id]);
   await pool.query(`DELETE FROM assets WHERE id = $1`, [asset.id]);
   res.status(204).end();
 }));

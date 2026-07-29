@@ -18,6 +18,7 @@ import GlossaryPanel from './GlossaryPanel.jsx';
 import StyledSelect from './StyledSelect.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import SettingsSection from './SettingsSection.jsx';
+import CommentsPanel from './CommentsPanel.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -446,6 +447,19 @@ export default function DrawerSettingsContent({
   onCreateGlossary,
   onPublishGlossaryTerm,
   onApplyGlossarySuggestion,
+  comments,
+  commentAnchor,
+  defaultCommentAnchor,
+  currentUserId,
+  currentRole,
+  commentsLoading,
+  commentsError,
+  onCreateComment,
+  onReplyComment,
+  onUpdateCommentStatus,
+  onEditComment,
+  onDeleteComment,
+  onNavigateToComment,
   featureFlags = FEATURE_FLAGS,
 }) {
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
@@ -516,6 +530,25 @@ export default function DrawerSettingsContent({
   }
   if (drawer === 'course-health') {
     return <CourseHealthPanel findings={findings || []} onNavigateToFinding={onNavigateToFinding} onOpenAltTextReview={onOpenAltTextReview} />;
+  }
+  if (drawer === 'comments') {
+    return (
+      <CommentsPanel
+        comments={comments}
+        commentAnchor={commentAnchor}
+        defaultAnchor={defaultCommentAnchor}
+        currentUserId={currentUserId}
+        currentRole={currentRole}
+        loading={commentsLoading}
+        error={commentsError}
+        onCreateComment={onCreateComment}
+        onReply={onReplyComment}
+        onStatus={onUpdateCommentStatus}
+        onEdit={onEditComment}
+        onDelete={onDeleteComment}
+        onNavigate={onNavigateToComment}
+      />
+    );
   }
   if (drawer === 'page' && page) {
     return <PageSettingsPanel page={page} pages={pages} variables={conditionVariables} onChangePage={onChangePage} onOpenVariableManager={onOpenVariableManager} />;

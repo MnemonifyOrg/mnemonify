@@ -58,6 +58,8 @@ function BlockWrapper({
   onCopyBlockToPage,
   questionBanks,
   onLinkBlockToBank,
+  commentCounts = {},
+  onOpenComments,
   featureFlags = FEATURE_FLAGS,
 }) {
   const Editor = BLOCK_EDITORS[block.type] || GenericBlockPreview;
@@ -110,6 +112,17 @@ function BlockWrapper({
             </span>
           )}
           <span className="block-wrapper__spacer" />
+          <button
+            className="btn-text block-wrapper__comment-btn"
+            title={commentCounts[block.block_id] ? `${commentCounts[block.block_id]} comments` : 'Add comment'}
+            aria-label={commentCounts[block.block_id] ? `${commentCounts[block.block_id]} comments` : 'Add comment'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenComments?.(block.block_id);
+            }}
+          >
+            {commentCounts[block.block_id] ? `💬 ${commentCounts[block.block_id]}` : '💬'}
+          </button>
           <button
             className="btn-text"
             title="Move to page"
@@ -199,6 +212,11 @@ function BlockWrapper({
           variables={variables}
         />
       </div>
+      {commentCounts[block.block_id] > 0 && (
+        <span className="block-wrapper__comment-indicator" aria-label={`${commentCounts[block.block_id]} comment threads`}>
+          💬 {commentCounts[block.block_id]}
+        </span>
+      )}
       {moveCopyMode && (
         <MoveCopyBlockModal
           mode={moveCopyMode}
@@ -248,6 +266,8 @@ export default function BlockCanvas({
   onCopyBlockToPage,
   questionBanks,
   onLinkBlockToBank,
+  commentCounts = {},
+  onOpenComments,
   featureFlags = FEATURE_FLAGS,
 }) {
   // null = closed; a number = open, inserting at that block index.
@@ -293,6 +313,8 @@ export default function BlockCanvas({
                 onCopyBlockToPage={onCopyBlockToPage}
                 questionBanks={questionBanks}
                 onLinkBlockToBank={onLinkBlockToBank}
+                commentCounts={commentCounts}
+                onOpenComments={onOpenComments}
                 featureFlags={featureFlags}
               />
               <InsertionPoint index={index + 1} onInsert={setPickerInsertIndex} />

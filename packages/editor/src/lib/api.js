@@ -22,6 +22,14 @@ export const api = {
   duplicateCourse: (id) => client.post(`/api/courses/${id}/duplicate`).then((r) => r.data),
   saveAsTemplate: (id, payload) => client.post(`/api/courses/${id}/save-as-template`, payload).then((r) => r.data),
 
+  // Phase 6b review comments
+  listComments: (courseId) => client.get(`/api/courses/${courseId}/comments`).then((r) => r.data.comments || []),
+  createComment: (courseId, payload) => client.post(`/api/courses/${courseId}/comments`, payload).then((r) => r.data.comment),
+  createCommentReply: (courseId, commentId, payload) => client.post(`/api/courses/${courseId}/comments/${commentId}/replies`, payload).then((r) => r.data.comment),
+  updateComment: (courseId, commentId, payload) => client.patch(`/api/courses/${courseId}/comments/${commentId}`, payload).then((r) => r.data.comment),
+  updateCommentStatus: (courseId, commentId, status) => client.patch(`/api/courses/${courseId}/comments/${commentId}/status`, { status }).then((r) => r.data),
+  deleteComment: (courseId, commentId) => client.delete(`/api/courses/${courseId}/comments/${commentId}`),
+
   // Templates
   listTemplates: () => client.get('/api/templates').then((r) => r.data),
   exportTemplateWord: (id) => `/api/templates/${id}/export-word`,

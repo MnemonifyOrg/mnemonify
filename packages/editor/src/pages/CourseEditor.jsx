@@ -119,7 +119,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { canEdit, isReviewer } = useAuth();
+  const { canEdit, isReviewer, user, role } = useAuth();
 
   const [course, setCourse] = useState(null);
   const [activePageId, setActivePageId] = useState(null);
@@ -150,6 +150,10 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [assetMetadataById, setAssetMetadataById] = useState(null);
   const [uploadedAssetIds, setUploadedAssetIds] = useState(null);
   const [uploadedResourceIds, setUploadedResourceIds] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState(null);
+  const [commentAnchor, setCommentAnchor] = useState(null);
 
   const blockSettingsHintTimerRef = useRef(null);
 
@@ -196,15 +200,32 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   function handleCloseDrawer() {
     setActiveRailItem(null);
     setContextualDrawer(null);
+    setCommentAnchor(null);
   }
 
   function handleRailItemClick(itemId) {
+    const opening = activeRailItem !== itemId;
+    if (itemId === 'comments') {
+      if (opening) {
+        const current = courseRef.current?.course_json;
+        const currentPage = current?.pages?.find((candidate) => candidate.page_id === activePageId);
+        const selected = currentPage?.blocks?.find((block) => block.block_id === selectedBlockId);
+        setCommentAnchor(selected
+          ? { blockId: selected.block_id, pageId: activePageId, fallbackLabel: selected.label || `${selected.type} block` }
+          : (currentPage ? { pageId: currentPage.page_id, fallbackLabel: currentPage.title || 'Untitled page' } : null));
+      } else {
+        setCommentAnchor(null);
+      }
+    } else if (itemId !== 'comments') {
+      setCommentAnchor(null);
+    }
     setActiveRailItem((current) => toggleRailDrawer(current, itemId));
     setContextualDrawer(null);
     setSelectedBlockId(null);
   }
 
   function handleSelectBlock(blockId) {
+    setCommentAnchor(null);
     setSelectedBlockId(blockId);
     setActiveRailItem(null);
     setContextualDrawer(null);
@@ -214,6 +235,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }
 
   function handleOpenBlockSettings(blockId) {
+    setCommentAnchor(null);
     dismissBlockSettingsHint();
     setSelectedBlockId(blockId);
     setActiveRailItem(null);
@@ -221,6 +243,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }
 
   function clearContextualSelection() {
+    setCommentAnchor(null);
     dismissBlockSettingsHint();
     setSelectedBlockId(null);
     setContextualDrawer(null);
@@ -303,6 +326,20 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
         setUploadedResourceIds(resources.filter((resource) => resource.file_exists !== false).map((resource) => resource.resource_id));
       }).catch((error) => console.warn('[course-editor] could not load resource metadata:', error));
     });
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCommentsLoading(true);
+    setCommentsError(null);
+    api.listComments(id).then((result) => {
+      if (!cancelled) setComments(result);
+    }).catch((error) => {
+      if (!cancelled) setCommentsError(error?.response?.data?.error || error.message || 'Comments could not be loaded.');
+    }).finally(() => {
+      if (!cancelled) setCommentsLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
@@ -931,6 +968,90 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setContextualDrawer({ kind: 'page', id: pageId });
   }
 
+  async function refreshComments() {
+    setComments(await api.listComments(courseRef.current?.id || course.id));
+  }
+
+  async function handleCreateComment(payload) {
+    setCommentsError(null);
+    try {
+      await api.createComment(course.id, payload);
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(error?.response?.data?.error || error.message || 'Comment could not be created.');
+      throw error;
+    }
+  }
+
+  async function handleReplyComment(commentId, body) {
+    setCommentsError(null);
+    try {
+      await api.createCommentReply(course.id, commentId, { body });
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(error?.response?.data?.error || error.message || 'Reply could not be created.');
+      throw error;
+    }
+  }
+
+  async function handleUpdateCommentStatus(commentId, status) {
+    setCommentsError(null);
+    try {
+      await api.updateCommentStatus(course.id, commentId, status);
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(error?.response?.data?.error || error.message || 'Comment status could not be updated.');
+    }
+  }
+
+  async function handleEditComment(commentId, body) {
+    setCommentsError(null);
+    try {
+      await api.updateComment(course.id, commentId, { body });
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(error?.response?.data?.error || error.message || 'Comment could not be updated.');
+      throw error;
+    }
+  }
+
+  async function handleDeleteComment(commentId) {
+    if (!window.confirm('Delete this comment and its replies?')) return;
+    setCommentsError(null);
+    try {
+      await api.deleteComment(course.id, commentId);
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(error?.response?.data?.error || error.message || 'Comment could not be deleted.');
+    }
+  }
+
+  function handleOpenCommentsForBlock(blockId) {
+    const currentPage = courseRef.current?.course_json?.pages?.find((candidate) => candidate.page_id === activePageId);
+    const block = currentPage?.blocks?.find((candidate) => candidate.block_id === blockId);
+    setCommentAnchor({ blockId, pageId: activePageId, fallbackLabel: block?.label || `${block?.type || 'Block'} block` });
+    setSelectedBlockId(null);
+    setContextualDrawer(null);
+    setActiveRailItem('comments');
+  }
+
+  function handleNavigateToComment(comment) {
+    setCommentAnchor(null);
+    setActiveRailItem(null);
+    if (comment.page_id) setActivePageId(comment.page_id);
+    if (comment.block_id) {
+      handleSelectBlock(comment.block_id);
+      setTimeout(() => {
+        document.querySelector(`[data-block-id="${comment.block_id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 0);
+      return;
+    }
+    if (comment.page_id) {
+      setSelectedBlockId(null);
+      setContextualDrawer({ kind: 'page', id: comment.page_id });
+    }
+  }
+
   function handleSelectGroup(groupId) {
     dismissBlockSettingsHint();
     setSelectedBlockId(null);
@@ -1319,6 +1440,11 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const saveLabel = { saved: 'Saved ✓', saving: 'Saving...', unsaved: 'Unsaved changes' }[saveStatus];
   const errorFindingCount = findings.filter((f) => f.severity === 'error').length;
   const warningFindingCount = findings.filter((f) => f.severity === 'warning').length;
+  const commentCounts = comments.reduce((counts, comment) => {
+    if (comment.block_id) counts[comment.block_id] = (counts[comment.block_id] || 0) + 1;
+    return counts;
+  }, {});
+  const defaultCommentAnchor = page ? { pageId: page.page_id, fallbackLabel: page.title || 'Untitled page' } : null;
   const healthBadgeLabel = [
     errorFindingCount ? `${errorFindingCount} error${errorFindingCount === 1 ? '' : 's'}` : '',
     warningFindingCount ? `${warningFindingCount} warning${warningFindingCount === 1 ? '' : 's'}` : '',
@@ -1615,6 +1741,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 onCopyBlockToPage={handleCopyBlockToPage}
                 questionBanks={json.question_banks || []}
                 onLinkBlockToBank={handleLinkBlockToBank}
+                commentCounts={commentCounts}
+                onOpenComments={handleOpenCommentsForBlock}
                 featureFlags={featureFlags}
               />
             )
@@ -1661,6 +1789,19 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             findings={findings}
             onNavigateToFinding={handleNavigateToFinding}
             onOpenAltTextReview={() => setShowAltTextReview(true)}
+            comments={comments}
+            commentAnchor={commentAnchor}
+            defaultCommentAnchor={defaultCommentAnchor}
+            currentUserId={user?.id}
+            currentRole={role}
+            commentsLoading={commentsLoading}
+            commentsError={commentsError}
+            onCreateComment={handleCreateComment}
+            onReplyComment={handleReplyComment}
+            onUpdateCommentStatus={handleUpdateCommentStatus}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            onNavigateToComment={handleNavigateToComment}
             libraryGlossaries={libraryGlossaries}
             libraryGlossaryTerms={libraryGlossaryTerms}
             onChangeGlossaryTerms={handleChangeGlossaryTerms}

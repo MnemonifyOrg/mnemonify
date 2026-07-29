@@ -6,6 +6,7 @@ export const RAIL_ITEMS = Object.freeze([
   { id: 'variables', label: 'Variables' },
   { id: 'question-banks', label: 'Question Banks' },
   { id: 'objectives', label: 'Objectives' },
+  { id: 'comments', label: 'Comments' },
   { id: 'course-health', label: 'Course Health' },
   { id: 'glossary', label: 'Glossary', flag: 'glossary' },
   { id: 'version-history', label: 'Version History', flag: 'versionHistory' },

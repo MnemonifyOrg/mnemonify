@@ -15,6 +15,7 @@ import analyticsRouter from './routes/analytics.js';
 import glossariesRouter from './routes/glossaries.js';
 import captionsRouter from './routes/captions.js';
 import authRouter from './routes/auth.js';
+import commentsRouter from './routes/comments.js';
 import pool from './db.js';
 import { authContext } from './lib/auth.js';
 import { asyncHandler } from './lib/asyncHandler.js';
@@ -77,6 +78,7 @@ app.use(express.urlencoded({ extended: true }));
 // server-side session are rejected by the protected routers below.
 app.use('/api', authContext);
 app.use('/api', authRouter);
+app.use('/api', commentsRouter);
 app.use('/api', coursesRouter);
 app.use('/api', assetsRouter);
 app.use('/api', captionsRouter);

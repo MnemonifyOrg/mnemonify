@@ -1529,3 +1529,101 @@ Minimum three roles, each with clearly defined permissions:
 - Existing courses/data (organisation_id: "00000000-0000-0000-0000-000000000001" seen in real production data) migrate cleanly to have a real owning organization and at least one owner account
 - All automated tests pass
 - Manual verification: Sebastin creates a second account, invites it to his organization as a Reviewer, and confirms that account cannot edit or publish a course but can view it; then confirms an Editor-role account can edit but not manage membership
+
+# Phase 6b: Review and Commenting
+
+Add this section to ARCHITECTURE.md, with a summary/reference in REQUIREMENTS.md's Phase 6 row. Commit before requesting a build prompt. Depends on Phase 6a (accounts, roles, permissions) being complete — this stage assumes real users, organizations, and roles already exist and are enforced.
+
+## Decisions (confirmed)
+
+- Comments are anchored to a specific block or page — not a single flat course-level thread.
+- Comments support resolve/reopen (a comment thread can be marked resolved, and reopened if needed).
+
+## Part 1: Data model
+
+- A comment belongs to a course, and is anchored to either a specific block (via its stable `block_id` from Phase 4.5a) or a specific page (via `page_id`) when no specific block is the target.
+- A comment has: author (the real user, per Phase 6a accounts), body (plain text is sufficient for v1 of this feature — rich text formatting is not required), created timestamp, and a status (open or resolved).
+- Comments form threads: a top-level comment can have replies (a simple flat reply list under each top-level comment is sufficient — no nested reply-to-reply threading required for this pass).
+- Resolving a comment resolves the whole thread (top-level + replies together), not individual replies.
+- Reopening a resolved thread returns it to open status.
+- Use the Phase 4.5b dependency index / block registry conventions where relevant (e.g. if a commented-on block is later deleted, the comment should be handled per Phase 4.5b's existing "used by"/safe-delete awareness — at minimum, do not silently orphan comments with no way to see what they were about; note the block/page title or content snippet at comment-creation time as a fallback label).
+
+## Part 2: Permissions
+
+- All three roles (Owner, Editor, Reviewer) can view comments.
+- All three roles can create comments and replies — commenting is the core capability a Reviewer needs, per the whole point of adding the Reviewer role in 6a.
+- All three roles can resolve/reopen threads (a Reviewer should be able to resolve their own feedback once addressed, not just the person who "outranks" them) — unless you have a strong reason to restrict this differently, keep it permissive; note in your summary if you think a restriction makes more sense and why.
+- A user can edit or delete their own comments; Owners can delete any comment (moderation capability) — Editors cannot delete other users' comments.
+- Enforce server-side, consistent with the 6a permission model (not just hidden UI).
+
+## Part 3: Editor UI
+
+- A way to view comments anchored to the currently-selected block (e.g. a comment icon/indicator on blocks that have comments, similar in spirit to the existing block hover toolbar pattern) and a way to add a new comment to a block or page.
+- A course-wide comments view/panel (e.g. its own icon-rail drawer item, consistent with the existing icon-rail pattern from Phase 1C/1D) listing all comments across the course, filterable by open/resolved, with click-to-navigate to the relevant block/page (reusing the same navigation pattern established for Course Health findings in Phase 4.5c).
+- Visual distinction between open and resolved threads (e.g. resolved threads collapsed/greyed by default, per common review-tool conventions).
+
+## Part 4: Notifications (minimal, if in scope — otherwise defer)
+
+- This pass does NOT need to build email notifications for new comments/replies/resolutions — that's a reasonable future enhancement, not required for a working review/commenting feature. Note this explicitly as deferred rather than silently skipped.
+
+## Out of scope for 6b
+
+- Anonymous share links (Phase 6c, next stage) — commenting in this phase is only for authenticated organization members with a role
+- Email notifications (noted above, deferred)
+- Rich-text formatting within comments (plain text is sufficient)
+- Nested reply-to-reply threading (flat replies under a top-level comment are sufficient)
+
+## Acceptance criteria
+
+- A comment can be created anchored to a specific block or page, by any of the three roles
+- Replies can be added to a comment thread
+- A thread can be resolved and reopened
+- Comments are visible to all roles; creation/reply/resolve are available to all roles; delete is restricted per the Part 2 rules
+- Permission checks are enforced server-side
+- The course-wide comments panel correctly lists and filters comments, with working navigation to the anchored block/page
+- Manual verification: Sebastin creates comments as different real role accounts (Owner, Editor, Reviewer — reusing the accounts from 6a), confirms resolve/reopen works, confirms an Editor cannot delete another user's comment while an Owner can (tested via real server requests, not just UI, consistent with how 6a's permissions were verified)
+
+# Phase 6c: Anonymous Share Links
+
+Add this section to ARCHITECTURE.md, with a summary/reference in REQUIREMENTS.md's Phase 6 row. Commit before requesting a build prompt. Depends on Phase 6a (accounts, roles) being complete for the authenticated management side of this feature.
+
+## Decisions (confirmed)
+
+- Anonymous share links are **read-only** — viewing/preview only, no commenting, no editing.
+- A share link shows **only the last published version** of a course, never the live draft being edited.
+- Links support **optional expiration** (the author can set an expiration date) and can be **manually revoked at any time**, independent of any expiration date.
+
+## Part 1: Data model
+
+- A share link record belongs to a course, with: a unique unguessable token (used in the URL), created-by user, created-at timestamp, optional expires-at timestamp (nullable — no expiration if not set), and a revoked boolean/revoked-at timestamp.
+- A course can have more than one active share link at a time (e.g. an author may want to revoke and regenerate without needing to track down every place the old link was shared, or may want multiple links for different purposes) — do not assume a single link per course.
+- The token itself must be unguessable (sufficiently long, cryptographically random) — this is the only access control for anonymous viewers, so it carries real security weight.
+
+## Part 2: Access behavior
+
+- Visiting a valid, non-expired, non-revoked share link's URL renders the course's last published version in the player, without requiring login.
+- Visiting an expired or revoked link's URL shows a clear message (e.g. "This link is no longer available") rather than an error page or a confusing failure.
+- If a course has never been published, there is nothing for a share link to show — either prevent link creation until the course has a published version, or show a clear "not yet published" message if a link is created before the first publish (implementer's choice, note which was built and why).
+- If a course is republished after a link was created, the link should show the NEW last-published version (links point to "the course's last published version," not a frozen snapshot of the version at link-creation time) — confirm this is the intended behavior; if a frozen-snapshot-at-creation-time model would be simpler or safer, note that tradeoff in your summary rather than silently picking one.
+- Anonymous viewers must not be able to access anything beyond the published content itself — no access to comments (Phase 6b), no access to editor-only data, no access to other courses in the organization.
+
+## Part 3: Authenticated management UI
+
+- Course owners/editors can create a share link, see existing links (with their expiration/revoked status), set or change an expiration date, and revoke a link — from within the course's settings (e.g. the Course drawer, consistent with where other course-level settings live).
+- Copy-to-clipboard convenience for the link URL.
+- Permission: creating/revoking share links follows the same permission model as publishing (i.e. if only Owner/Editor can publish, the same roles should manage share links — Reviewers should not be able to create or revoke links, consistent with their read-only role). Enforce server-side.
+
+## Out of scope for 6c
+
+- Anonymous commenting (explicitly decided against — links are read-only)
+- Password-protecting a share link (not requested; note as a possible future enhancement if you think it's valuable, but do not build it now)
+- Analytics on share-link views (e.g. view counts) — not requested, future enhancement if wanted later
+
+## Acceptance criteria
+
+- A share link can be created, shows the correct last-published content to an anonymous (logged-out) visitor, and requires no authentication
+- An expired or revoked link correctly shows an unavailable message instead of content
+- A link continues to work across multiple republishes, always showing the current last-published version (or, if a snapshot model was chosen instead, this is clearly documented and justified)
+- Only Owner/Editor roles (matching the publish permission) can create or revoke links; enforced server-side
+- Anonymous viewers cannot access comments or any other authenticated-only data through the share link
+- Manual verification: Sebastin creates a share link, opens it in a logged-out/incognito browser session and confirms it works; revokes it and confirms it stops working; confirms a Reviewer-role account cannot create/revoke links (tested via real server requests, consistent with the verification rigor used in 6a/6b)

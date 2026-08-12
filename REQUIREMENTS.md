@@ -486,6 +486,8 @@ The authoritative strategic and architectural document set lives in the `mnemoni
 5. **(Product, resolve by Phase 6)** Hosted version pricing model, if any: donations, flat nominal fee, or free with paid support.
 6. **(Technical, verify after Phase 4)** Two QA items fixed but not yet independently confirmed outside the editor's dev environment: (a) table block scrollbar visibility/affordance on a paste-in-created table, (b) embed block scroll-jump on page load. Deferred deliberately: Phase 4 builds the full player chrome (nav drawer, top bar, progress bar), which changes the page's scroll container structure — better to verify both against the final chrome once, via a real SCORM package test, than re-verify twice.
 **Refer to the Phase 6a: Accounts, Roles, and Permissions section in the ARCHITECTURE.md
+**Refer to the Phase 6b: Review and Commenting in the ARCHITECTURE.md
+***Refer to the Phase 6c: Anonymous Share Links in the ARCHITECTURE.md
 
 ## 12. Out-of-Scope Parking Lot
 

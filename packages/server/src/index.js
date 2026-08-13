@@ -16,6 +16,7 @@ import glossariesRouter from './routes/glossaries.js';
 import captionsRouter from './routes/captions.js';
 import authRouter from './routes/auth.js';
 import commentsRouter from './routes/comments.js';
+import shareLinksRouter from './routes/shareLinks.js';
 import pool from './db.js';
 import { authContext } from './lib/auth.js';
 import { asyncHandler } from './lib/asyncHandler.js';
@@ -78,6 +79,7 @@ app.use(express.urlencoded({ extended: true }));
 // server-side session are rejected by the protected routers below.
 app.use('/api', authContext);
 app.use('/api', authRouter);
+app.use('/api', shareLinksRouter);
 app.use('/api', commentsRouter);
 app.use('/api', coursesRouter);
 app.use('/api', assetsRouter);
@@ -128,6 +130,18 @@ app.get('/content/:courseId', asyncHandler(async (req, res) => {
 app.use('/assets', express.static(PLAYER_ASSETS_DIR));
 
 app.get('/player', (req, res) => {
+  const indexPath = path.join(PLAYER_DIST_DIR, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    res.status(503).send('Player bundle not built yet. Run "npm run build" in packages/player.');
+    return;
+  }
+  res.sendFile(indexPath);
+});
+
+// Share URLs intentionally serve the same player bundle as /player. The
+// player reads the token from the query string and fetches only the public,
+// last-published document from /api/share-links/:token.
+app.get('/share/:token', (req, res) => {
   const indexPath = path.join(PLAYER_DIST_DIR, 'index.html');
   if (!fs.existsSync(indexPath)) {
     res.status(503).send('Player bundle not built yet. Run "npm run build" in packages/player.');

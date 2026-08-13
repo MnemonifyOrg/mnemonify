@@ -270,15 +270,53 @@ router.patch('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandle
   fields.push(`updated_at = now()`);
 
   values.push(req.params.id, req.auth.organisationId);
+
+  // Publishing creates an immutable published snapshot. Anonymous share
+  // links read this table, so editing after publish can never leak the live
+  // draft and republishing naturally advances the version they serve.
+  if (status === 'published') {
+    const client = await pool.connect();
+    let result;
+    try {
+      await client.query('BEGIN');
+      result = await client.query(
+        `UPDATE courses SET ${fields.join(', ')} WHERE id = $${i++} AND organisation_id = $${i} RETURNING *`,
+        values,
+      );
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+      await client.query(
+        `INSERT INTO course_versions
+           (course_id, organisation_id, version_number, publish_mode, course_json,
+            published_by, published_at, kind, created_by, created_at, asset_manifest)
+         VALUES ($1, $2,
+           (SELECT COALESCE(MAX(version_number), 0) + 1 FROM course_versions WHERE course_id = $1),
+           'push_all', $3, $4, now(), 'published', $4, now(), COALESCE($3::jsonb->'assets', '[]'::jsonb))`,
+        [req.params.id, req.auth.organisationId, result.rows[0].course_json, req.auth.userId],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    if (status === 'published') queueCoursePdfs(req.params.id);
+    res.json(result.rows[0]);
+    return;
+  }
+
   const result = await pool.query(
     `UPDATE courses SET ${fields.join(', ')} WHERE id = $${i++} AND organisation_id = $${i} RETURNING *`,
-    values
+    values,
   );
   if (result.rows.length === 0) {
     res.status(404).json({ error: 'Course not found' });
     return;
   }
-  if (status === 'published') queueCoursePdfs(req.params.id);
   res.json(result.rows[0]);
 }));
 

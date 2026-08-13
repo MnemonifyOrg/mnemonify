@@ -1762,6 +1762,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             drawer={activeRailItem || contextualDrawer?.kind}
             contextId={contextualDrawer?.id}
             courseId={course.id}
+            canManageShareLinks={canEdit}
+            published={course.status === 'published'}
             meta={json.meta}
             page={page}
             pages={json.pages}

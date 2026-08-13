@@ -19,6 +19,7 @@ import StyledSelect from './StyledSelect.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import SettingsSection from './SettingsSection.jsx';
 import CommentsPanel from './CommentsPanel.jsx';
+import ShareLinksPanel from './ShareLinksPanel.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -35,9 +36,10 @@ function setRichTextField(meta, key, text, onChangeMeta) {
   onChangeMeta({ ...meta, [key]: { rich_text: [{ t: 'text', v: text }] } });
 }
 
-function CourseSettings({ meta, onChangeMeta }) {
+function CourseSettings({ meta, onChangeMeta, courseId, canManageShareLinks, published }) {
   return (
-    <SettingsSection title="Course settings">
+    <>
+      <SettingsSection title="Course settings">
 
       <label>Title</label>
       <input className="input" value={meta.title || ''} onChange={(e) => onChangeMeta({ ...meta, title: e.target.value })} />
@@ -125,7 +127,9 @@ function CourseSettings({ meta, onChangeMeta }) {
         Show Back button
       </label>
       <p className="settings-panel__hint">Adds a Back button on every page after the first page.</p>
-    </SettingsSection>
+      </SettingsSection>
+      <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
+    </>
   );
 }
 
@@ -414,6 +418,8 @@ export default function DrawerSettingsContent({
   drawer,
   contextId,
   courseId,
+  canManageShareLinks,
+  published,
   meta,
   page,
   pages,
@@ -464,7 +470,7 @@ export default function DrawerSettingsContent({
 }) {
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
 
-  if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />;
+  if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} courseId={courseId} canManageShareLinks={canManageShareLinks} published={published} />;
   if (drawer === 'player') {
     return (
       <PlayerSettingsPanel

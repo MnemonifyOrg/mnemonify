@@ -14,6 +14,25 @@ body {
   justify-content: center;
 }
 
+.player--share-unavailable {
+  min-height: 100vh;
+  align-items: center;
+}
+.player--share-unavailable .player__page {
+  max-width: 680px;
+  min-height: 240px;
+  justify-content: center;
+  text-align: center;
+}
+.player--share-unavailable h1 {
+  color: var(--color-dark);
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+}
+.player--share-unavailable p {
+  color: var(--color-text-secondary);
+}
+
 .player__page {
   width: 100%;
   max-width: var(--player-max-width);

@@ -63,6 +63,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   const [questionBankDraws, setQuestionBankDraws] = useState({});
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
+  const [shareError, setShareError] = useState(null);
   const [glossaryTerms, setGlossaryTerms] = useState([]);
   const [currentPageId, setCurrentPageId] = useState(null);
   // Runtime learner state (ARCHITECTURE.md 5.1/5.6) -- never stored in the
@@ -176,12 +177,29 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
+      const pathShareToken = window.location.pathname.startsWith('/share/')
+        ? decodeURIComponent(window.location.pathname.slice('/share/'.length).split('/')[0])
+        : null;
+      const shareToken = params.get('shareToken') || pathShareToken;
       const isPrint = params.get('print') === '1';
       const printPageId = params.get('page_id');
       let learnerId = null;
 
       try {
-        if (isPreview) {
+        if (shareToken) {
+          const response = await fetch(`${window.location.origin}/api/share-links/${encodeURIComponent(shareToken)}`);
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            setShareError(payload.error || 'This link is no longer available.');
+            return;
+          }
+          loadedCourse = payload;
+          restoredVariables = initialVariables(loadedCourse);
+          restoredPageId = loadedCourse.pages[0].page_id;
+          restoredScoreState = createScoreState(loadedCourse);
+          restoredInteractionStates = {};
+          restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] }) : [];
+        } else if (isPreview) {
           // Editor preview context (ARCHITECTURE.md 5.6): loads the current
           // saved state straight from the API, not the published content
           // endpoint, and never touches SCORM -- this isn't a real learner
@@ -220,6 +238,10 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
           }
         }
       } catch (err) {
+        if (shareToken) {
+          setShareError('This link is no longer available.');
+          return;
+        }
         // Never leave the learner/author stuck on "Loading course..." because
         // SCORM communication or a preview fetch failed -- fall back to the
         // bundled course so the player still works.
@@ -270,7 +292,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
       if (cancelled) return;
       await configureAnalytics({
-        courseId: isPreview ? null : loadedCourse.meta.course_id,
+        courseId: isPreview || shareToken ? null : loadedCourse.meta.course_id,
         courseVersion: params.get('versionId'),
         learnerId,
       });
@@ -599,6 +621,17 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
   function handleToggleDrawer() {
     setNavDrawerOpen((open) => !open);
+  }
+
+  if (shareError) {
+    return (
+      <div className="player player--share-unavailable">
+        <main className="player__page" role="alert">
+          <h1>Share link unavailable</h1>
+          <p>{shareError}</p>
+        </main>
+      </div>
+    );
   }
 
   if (!course || !currentPageId) {

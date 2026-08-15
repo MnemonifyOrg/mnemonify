@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolveAssetUrl } from '../lib/assetUrl.js';
 
 // Phase 4.6 Step 9: the "Review all" screen reached from Step 8's grouped
 // "N images missing alt text" Course Health finding. Operates directly on
@@ -38,7 +39,7 @@ export default function BulkAltTextReview({ assets, onUpdateCourseAsset, onClose
                 key={item.asset_id}
                 className={done ? 'alt-text-review__row alt-text-review__row--done' : 'alt-text-review__row'}
               >
-                <img className="alt-text-review__thumb" src={`/${asset.src}`} alt="" />
+                <img className="alt-text-review__thumb" src={resolveAssetUrl(asset)} alt="" />
                 <div className="alt-text-review__caption">
                   <span className="alt-text-review__field-label">Caption</span>
                   <span className="alt-text-review__caption-text">{asset.caption?.trim() || '(none)'}</span>

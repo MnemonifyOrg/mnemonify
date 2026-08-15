@@ -1,11 +1,9 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import puppeteer from 'puppeteer';
 import pool from '../db.js';
 import { upsertGeneratedResource } from '../routes/resources.js';
+import { getStorage } from './storage.js';
 
-const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
 const jobs = new Set();
 
 function safeName(value) {
@@ -46,10 +44,9 @@ async function mergePdfs(buffers) {
 }
 
 async function savePdf(organisationId, courseId, filename, label, kind, buffer) {
-  const dir = path.join(UPLOADS_DIR, courseId, 'resources');
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, filename), buffer);
-  return upsertGeneratedResource({ organisationId, courseId, filename, filePath: `${courseId}/resources/${filename}`, label, sizeBytes: buffer.length, resourceKind: kind });
+  const filePath = `${courseId}/resources/${filename}`;
+  await getStorage().upload(filePath, buffer, 'application/pdf');
+  return upsertGeneratedResource({ organisationId, courseId, filename, filePath, label, sizeBytes: buffer.length, resourceKind: kind });
 }
 
 export async function generateCoursePdfs(courseId, { worksheet = false } = {}) {

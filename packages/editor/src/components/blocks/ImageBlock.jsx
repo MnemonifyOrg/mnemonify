@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import api from '../../lib/api.js';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 
 // Percentage of the block's available container width -- kept in sync
 // with packages/player/src/blocks/ImageBlock.jsx's own copy so the
@@ -34,7 +35,7 @@ export default function ImageBlockEditor({ block, assets, onChange, courseId, on
       const assetEntry = {
         asset_id: uploaded.asset_id,
         kind: 'image',
-        src: `uploads/${uploaded.file_path}`,
+        src: uploaded.url || `uploads/${uploaded.file_path}`,
         alt: '',
         caption: '',
       };
@@ -61,7 +62,7 @@ export default function ImageBlockEditor({ block, assets, onChange, courseId, on
   return (
     <div className="image-block-editor">
       <div className="image-block-editor__preview" style={{ alignItems: ALIGN_ITEMS[alignment] }}>
-        <img src={`/${asset.src}`} alt={asset.alt} style={{ width: `${pct}%`, maxWidth: '100%' }} />
+        <img src={resolveAssetUrl(asset)} alt={asset.alt} style={{ width: `${pct}%`, maxWidth: '100%' }} />
       </div>
       <button className="btn-text" onClick={() => fileInputRef.current?.click()}>
         Replace image

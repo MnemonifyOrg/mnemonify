@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import EditableRichField from './EditableRichField.jsx';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
 import { genHotspotRegionId } from '../../lib/idGen.js';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 
-function assetSrc(asset) { return asset?.src?.startsWith('/') || asset?.src?.startsWith('http') ? asset.src : asset?.src ? `/${asset.src}` : ''; }
+function assetSrc(asset) { return resolveAssetUrl(asset); }
 
 export default function HotspotBlockEditor({ block, onChange, assets, courseId, onAddCourseAssets }) {
   const [pickerOpen, setPickerOpen] = useState(false);

@@ -8,7 +8,7 @@ function toCourseResource(resource) {
   return {
     resource_id: resource.resource_id,
     filename: resource.filename,
-    file_path: resource.file_path,
+    file_path: resource.url || resource.file_path,
     ...(resource.label ? { label: resource.label } : {}),
     size_bytes: Number(resource.size_bytes || 0),
     uploaded_at: resource.uploaded_at || resource.created_at || new Date(0).toISOString(),

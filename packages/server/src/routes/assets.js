@@ -1,20 +1,27 @@
 import express from 'express';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
-import fs from 'node:fs';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
 import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { queueTranscription } from '../lib/captionPipeline.js';
+import { getStorage } from '../lib/storage.js';
 
 const router = express.Router();
 router.use(requireAuth);
-const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB per file (images, via bulk upload -- unchanged, P1-17)
 const MAX_ZIP_BYTES = 500 * 1024 * 1024; // 500MB per ZIP
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']);
+const IMAGE_MIME_BY_EXTENSION = new Map([
+  ['.gif', 'image/gif'],
+  ['.jpeg', 'image/jpeg'],
+  ['.jpg', 'image/jpeg'],
+  ['.png', 'image/png'],
+  ['.svg', 'image/svg+xml'],
+  ['.webp', 'image/webp'],
+]);
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']);
 // Phase 4 Part 3: minimal video/audio blocks. The single-file /assets/upload
 // endpoint (used by ImageBlock/VideoBlock/AudioBlock's own upload zones, not
@@ -37,18 +44,18 @@ function detectKind(mimetype) {
   return null;
 }
 
-function courseUploadsDir(courseId) {
-  return path.join(UPLOADS_DIR, courseId);
+function imageContentType(filename) {
+  return IMAGE_MIME_BY_EXTENSION.get(path.extname(filename).toLowerCase()) || 'application/octet-stream';
 }
 
 // Guards against overwriting an existing file with the same name by
 // suffixing a short id when a collision would occur.
-function uniqueFilename(dir, originalName) {
+async function uniqueFilename(storage, prefix, originalName) {
   const ext = path.extname(originalName);
   const base = path.basename(originalName, ext);
   let candidate = originalName;
   let attempt = 0;
-  while (fs.existsSync(path.join(dir, candidate))) {
+  while (await storage.exists(`${prefix}/${candidate}`)) {
     attempt += 1;
     candidate = `${base}-${uuidv4().slice(0, 8)}${ext}`;
     if (attempt > 5) break;
@@ -65,6 +72,10 @@ async function insertAsset({ organisationId, courseId, kind, filename, filePath,
     [organisationId, courseId, assetId, kind, filename, filePath, alt || '', caption || '']
   );
   return result.rows[0];
+}
+
+function assetResponse(asset, storage) {
+  return storage.isRemote ? { ...asset, url: storage.getUrl(asset.file_path) } : asset;
 }
 
 const singleUpload = multer({
@@ -98,24 +109,24 @@ router.post('/assets/upload', requireRole(ROLES.OWNER, ROLES.EDITOR), singleUplo
       return;
     }
 
-    const dir = courseUploadsDir(course_id);
-    fs.mkdirSync(dir, { recursive: true });
-    const filename = uniqueFilename(dir, req.file.originalname);
-    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    const storage = getStorage();
+    const filename = await uniqueFilename(storage, course_id, req.file.originalname);
+    const filePath = `${course_id}/${filename}`;
+    await storage.upload(filePath, req.file.buffer, req.file.mimetype);
 
     const asset = await insertAsset({
       organisationId: req.auth.organisationId,
       courseId: course_id,
       kind,
       filename,
-      filePath: `${course_id}/${filename}`,
+      filePath,
       alt,
       caption,
     });
     if (kind === 'video' || kind === 'audio') {
       await queueTranscription(asset);
     }
-    res.status(201).json(asset);
+    res.status(201).json(assetResponse(asset, storage));
   } catch (err) {
     console.error('[assets] upload failed:', err);
     res.status(500).json({ error: 'Upload failed. Please try again.' });
@@ -134,8 +145,7 @@ router.post('/assets/bulk', requireRole(ROLES.OWNER, ROLES.EDITOR), bulkUpload.f
     return;
   }
 
-  const dir = courseUploadsDir(courseId);
-  fs.mkdirSync(dir, { recursive: true });
+  const storage = getStorage();
   const created = [];
   const skipped = [];
 
@@ -153,11 +163,13 @@ router.post('/assets/bulk', requireRole(ROLES.OWNER, ROLES.EDITOR), bulkUpload.f
         skipped.push({ filename: entry.entryName, reason: 'exceeds 10MB per-file limit' });
         continue;
       }
-      const filename = uniqueFilename(dir, path.basename(entry.entryName));
-      fs.writeFileSync(path.join(dir, filename), data);
-      created.push(
-        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
-      );
+      const filename = await uniqueFilename(storage, courseId, path.basename(entry.entryName));
+      const filePath = `${courseId}/${filename}`;
+      await storage.upload(filePath, data, imageContentType(filename));
+      created.push(assetResponse(
+        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath }),
+        storage,
+      ));
     }
   }
 
@@ -167,11 +179,13 @@ router.post('/assets/bulk', requireRole(ROLES.OWNER, ROLES.EDITOR), bulkUpload.f
         skipped.push({ filename: file.originalname, reason: `unsupported file type: ${file.mimetype}` });
         continue;
       }
-      const filename = uniqueFilename(dir, file.originalname);
-      fs.writeFileSync(path.join(dir, filename), file.buffer);
-      created.push(
-        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath: `${courseId}/${filename}` })
-      );
+      const filename = await uniqueFilename(storage, courseId, file.originalname);
+      const filePath = `${courseId}/${filename}`;
+      await storage.upload(filePath, file.buffer, file.mimetype);
+      created.push(assetResponse(
+        await insertAsset({ organisationId: req.auth.organisationId, courseId, kind: 'image', filename, filePath }),
+        storage,
+      ));
     }
   }
 
@@ -191,10 +205,12 @@ router.get('/assets/:courseId', asyncHandler(async (req, res) => {
       WHERE a.course_id = $1 AND a.organisation_id = $2 ORDER BY a.created_at ASC`,
     [req.params.courseId, req.auth.organisationId]
   );
-  res.json(result.rows.map((asset) => ({
-    ...asset,
-    file_exists: fs.existsSync(path.join(UPLOADS_DIR, asset.file_path)),
+  const storage = getStorage();
+  const assets = await Promise.all(result.rows.map(async (asset) => ({
+    ...assetResponse(asset, storage),
+    file_exists: await storage.exists(asset.file_path),
   })));
+  res.json(assets);
 }));
 
 router.patch('/assets/:assetId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
@@ -236,10 +252,7 @@ router.delete('/assets/:assetId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncH
     return;
   }
   const asset = result.rows[0];
-  const filePath = path.join(UPLOADS_DIR, asset.file_path);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
+  await getStorage().delete(asset.file_path);
   await pool.query(`DELETE FROM captions WHERE organisation_id = $1 AND asset_id = $2`, [req.auth.organisationId, asset.asset_id]);
   await pool.query(`DELETE FROM assets WHERE id = $1`, [asset.id]);
   res.status(204).end();

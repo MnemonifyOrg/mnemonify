@@ -6,6 +6,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { MigrationError } from '@mnemonify/schema/migrations/index.js';
 import { migrateCourseForPersistence } from '../lib/courseMigration.js';
 import { queueCoursePdfs } from '../lib/pdfPipeline.js';
+import { normalizeCourseStoragePaths, resolveCourseStorageUrls } from '../lib/storage.js';
 import {
   createNamedSnapshot,
   restoreCourseFromSnapshot,
@@ -90,7 +91,7 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
     return;
   }
   const row = await loadAndMigrateCourseRow(result.rows[0]);
-  res.json(row);
+  res.json({ ...row, course_json: resolveCourseStorageUrls(row.course_json) });
 }));
 
 router.get('/courses/:id/versions', asyncHandler(async (req, res) => {
@@ -219,7 +220,7 @@ router.post('/courses/:id/versions/:versionId/restore', requireRole(ROLES.OWNER,
     );
     await client.query('COMMIT');
     res.json({
-      course: courseUpdate.rows[0],
+      course: { ...courseUpdate.rows[0], course_json: resolveCourseStorageUrls(courseUpdate.rows[0].course_json) },
       version: versionForResponse({ ...versionResult.rows[0], author: req.auth.name }),
     });
   } catch (error) {
@@ -232,13 +233,14 @@ router.post('/courses/:id/versions/:versionId/restore', requireRole(ROLES.OWNER,
 
 router.post('/courses', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
   const { title, course_json } = req.body;
+  const persistedCourseJson = normalizeCourseStoragePaths(course_json || {});
   const result = await pool.query(
     `INSERT INTO courses (organisation_id, title, course_json, created_by)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [req.auth.organisationId, title || 'Untitled Course', course_json || {}, req.auth.userId]
+    [req.auth.organisationId, title || 'Untitled Course', persistedCourseJson, req.auth.userId]
   );
-  res.status(201).json(result.rows[0]);
+  res.status(201).json({ ...result.rows[0], course_json: resolveCourseStorageUrls(result.rows[0].course_json) });
 }));
 
 // PATCH /courses/:id is the autosave endpoint -- hit every 5 seconds during
@@ -259,7 +261,7 @@ router.patch('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandle
   if (course_json !== undefined) {
     // Autosave is also a course-open/write boundary. Migrate here as well as
     // on load so a stale pre-v7 editor payload cannot overwrite stable IDs.
-    const migrationResult = migrateCourseForPersistence(course_json, req.params.id);
+    const migrationResult = migrateCourseForPersistence(normalizeCourseStoragePaths(course_json), req.params.id);
     fields.push(`course_json = $${i++}`);
     values.push(migrationResult.document);
   }
@@ -305,7 +307,7 @@ router.patch('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandle
       client.release();
     }
     if (status === 'published') queueCoursePdfs(req.params.id);
-    res.json(result.rows[0]);
+    res.json({ ...result.rows[0], course_json: resolveCourseStorageUrls(result.rows[0].course_json) });
     return;
   }
 
@@ -317,7 +319,7 @@ router.patch('/courses/:id', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandle
     res.status(404).json({ error: 'Course not found' });
     return;
   }
-  res.json(result.rows[0]);
+  res.json({ ...result.rows[0], course_json: resolveCourseStorageUrls(result.rows[0].course_json) });
 }));
 
 router.post('/courses/:id/publish-artifacts', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
@@ -366,7 +368,7 @@ router.post('/courses/:id/duplicate', requireRole(ROLES.OWNER, ROLES.EDITOR), as
      RETURNING *`,
     [req.auth.organisationId, `${source.title} (Copy)`, source.course_json, req.auth.userId]
   );
-  res.status(201).json(result.rows[0]);
+  res.status(201).json({ ...result.rows[0], course_json: resolveCourseStorageUrls(result.rows[0].course_json) });
 }));
 
 router.post('/courses/:id/save-as-template', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
@@ -389,7 +391,7 @@ router.post('/courses/:id/save-as-template', requireRole(ROLES.OWNER, ROLES.EDIT
      RETURNING *`,
     [req.auth.organisationId, templateTitle, template_scope || 'personal', templatizedJson, req.auth.userId]
   );
-  res.status(201).json(result.rows[0]);
+  res.status(201).json({ ...result.rows[0], course_json: resolveCourseStorageUrls(result.rows[0].course_json) });
 }));
 
 export default router;

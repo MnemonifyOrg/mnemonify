@@ -1,16 +1,15 @@
 import express from 'express';
 import multer from 'multer';
-import fs from 'node:fs';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
 import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { validateFileSignature } from '../lib/fileSignature.js';
+import { getStorage } from '../lib/storage.js';
 
 const router = express.Router();
 router.use(requireAuth);
-const UPLOADS_DIR = path.resolve(import.meta.dirname, '..', '..', 'uploads');
 const MAX_RESOURCE_BYTES = 50 * 1024 * 1024; // 50MB per file (Step 2, this session)
 
 // Allowed course-resource file types. Kind is derived from the file's own
@@ -36,26 +35,26 @@ function detectResourceKind(originalname) {
   return RESOURCE_KIND_BY_EXT[ext] || null;
 }
 
-function resourceUploadsDir(courseId) {
-  return path.join(UPLOADS_DIR, courseId, 'resources');
-}
-
 // Guards against overwriting an existing file with the same name by
 // suffixing a short id when a collision would occur -- same pattern as
 // routes/assets.js's own uniqueFilename, duplicated locally rather than
 // imported since assets.js doesn't export it and this is a small enough
 // helper that a shared-module extraction isn't worth the coupling.
-function uniqueFilename(dir, originalName) {
+async function uniqueFilename(storage, prefix, originalName) {
   const ext = path.extname(originalName);
   const base = path.basename(originalName, ext);
   let candidate = originalName;
   let attempt = 0;
-  while (fs.existsSync(path.join(dir, candidate))) {
+  while (await storage.exists(`${prefix}/${candidate}`)) {
     attempt += 1;
     candidate = `${base}-${uuidv4().slice(0, 8)}${ext}`;
     if (attempt > 5) break;
   }
   return candidate;
+}
+
+function resourceResponse(resource, storage) {
+  return storage.isRemote ? { ...resource, url: storage.getUrl(resource.file_path) } : resource;
 }
 
 async function insertResource({ organisationId, courseId, filename, filePath, label, sizeBytes }) {
@@ -107,11 +106,12 @@ export async function listCourseResources(courseId, organisationId) {
      ORDER BY r.created_at ASC`,
     [courseId, organisationId]
   );
-  return result.rows.map((row) => ({
-    ...row,
+  const storage = getStorage();
+  return Promise.all(result.rows.map(async (row) => ({
+    ...resourceResponse(row, storage),
     size_bytes: Number(row.size_bytes),
-    file_exists: fs.existsSync(path.join(UPLOADS_DIR, row.file_path)),
-  }));
+    file_exists: await storage.exists(row.file_path),
+  })));
 }
 
 router.get('/courses/:courseId/resources', asyncHandler(async (req, res) => {
@@ -151,20 +151,21 @@ router.post('/resources/upload', requireRole(ROLES.OWNER, ROLES.EDITOR), singleU
       return;
     }
 
-    const dir = resourceUploadsDir(course_id);
-    fs.mkdirSync(dir, { recursive: true });
-    const filename = uniqueFilename(dir, req.file.originalname);
-    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    const storage = getStorage();
+    const resourcePrefix = `${course_id}/resources`;
+    const filename = await uniqueFilename(storage, resourcePrefix, req.file.originalname);
+    const filePath = `${resourcePrefix}/${filename}`;
+    await storage.upload(filePath, req.file.buffer, req.file.mimetype);
 
     const resource = await insertResource({
       organisationId: req.auth.organisationId,
       courseId: course_id,
       filename,
-      filePath: `${course_id}/resources/${filename}`,
+      filePath,
       label: label || req.file.originalname,
       sizeBytes: req.file.size,
     });
-    res.status(201).json(resource);
+    res.status(201).json(resourceResponse(resource, storage));
   } catch (err) {
     console.error('[resources] upload failed:', err);
     res.status(500).json({ error: 'Upload failed. Please try again.' });
@@ -203,10 +204,7 @@ router.delete('/resources/:resourceId', requireRole(ROLES.OWNER, ROLES.EDITOR), 
     return;
   }
   const resource = result.rows[0];
-  const filePath = path.join(UPLOADS_DIR, resource.file_path);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
+  await getStorage().delete(resource.file_path);
   await pool.query(`DELETE FROM resources WHERE resource_id = $1`, [resource.resource_id]);
   res.status(204).end();
 }));

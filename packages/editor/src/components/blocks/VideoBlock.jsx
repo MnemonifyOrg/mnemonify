@@ -1,6 +1,7 @@
 import { useMediaUpload } from './useMediaUpload.js';
 import TimelineTriggersSection from '../TimelineTriggersSection.jsx';
 import CaptionEditor from '../CaptionEditor.jsx';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 
 export default function VideoBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
@@ -24,7 +25,7 @@ export default function VideoBlockEditor({ block, assets, onChange, courseId, on
 
   return (
     <div className="video-block-editor">
-      <video className="media-block-editor__preview" src={`/${asset.src}`} controls />
+      <video className="media-block-editor__preview" src={resolveAssetUrl(asset)} controls />
       <button className="btn-text" onClick={() => fileInputRef.current?.click()}>
         Replace video
       </button>

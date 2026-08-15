@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../lib/api.js';
 import { genAssetId } from '../lib/idGen.js';
+import { resolveAssetUrl } from '../lib/assetUrl.js';
 
 // Reconciles two asset layers: the DB `assets` table (upload tracking,
 // queried here) and course_json.assets (what the player actually reads).
@@ -57,7 +58,7 @@ export default function MediaLibraryPanel({
     const newCourseAssets = result.created.map((dbAsset) => ({
       asset_id: genAssetId(),
       kind: 'image',
-      src: `uploads/${dbAsset.file_path}`,
+      src: dbAsset.url || `uploads/${dbAsset.file_path}`,
       alt: '',
       caption: '',
       __dbAssetId: dbAsset.asset_id, // local-only correlation, stripped implicitly since player ignores unknown keys
@@ -164,7 +165,7 @@ export default function MediaLibraryPanel({
                       onChange={() => toggleSelected(dbAsset.asset_id)}
                     />
                   )}
-                  <img src={`/uploads/${dbAsset.file_path}`} alt={ca?.alt || ''} />
+                  <img src={resolveAssetUrl(dbAsset.url || `uploads/${dbAsset.file_path}`)} alt={ca?.alt || ''} />
                   <p className="media-library-item__filename">{dbAsset.filename}</p>
                   <input
                     className={needsAlt ? 'input media-library-item__field media-library-item__field--needs-alt' : 'input media-library-item__field'}

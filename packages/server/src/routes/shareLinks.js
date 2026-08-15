@@ -4,6 +4,7 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { requireRole, ROLES } from '../lib/auth.js';
 import { listCourseResources } from './resources.js';
 import { mergeCourseResources } from '../lib/courseResources.js';
+import { resolveCourseStorageUrls } from '../lib/storage.js';
 import {
   SHARE_LINK_NOT_PUBLISHED_MESSAGE,
   SHARE_LINK_UNAVAILABLE_MESSAGE,
@@ -68,7 +69,7 @@ router.get('/share-links/:token', asyncHandler(async (req, res) => {
     return;
   }
   const resources = await listCourseResources(row.course_id, row.organisation_id);
-  res.json(mergeCourseResources(stripEditorOnlyCourseData(row.course_json), resources));
+  res.json(mergeCourseResources(resolveCourseStorageUrls(stripEditorOnlyCourseData(row.course_json)), resources));
 }));
 
 router.get('/courses/:courseId/share-links', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {

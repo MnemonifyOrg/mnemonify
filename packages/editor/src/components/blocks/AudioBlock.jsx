@@ -1,5 +1,6 @@
 import { useMediaUpload } from './useMediaUpload.js';
 import CaptionEditor from '../CaptionEditor.jsx';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 
 export default function AudioBlockEditor({ block, assets, onChange, courseId, onAddCourseAsset }) {
   const asset = (assets || []).find((a) => a.asset_id === block.content.asset_id);
@@ -23,7 +24,7 @@ export default function AudioBlockEditor({ block, assets, onChange, courseId, on
 
   return (
     <div className="audio-block-editor">
-      <audio className="media-block-editor__preview media-block-editor__preview--audio" src={`/${asset.src}`} controls />
+      <audio className="media-block-editor__preview media-block-editor__preview--audio" src={resolveAssetUrl(asset)} controls />
       <button className="btn-text" onClick={() => fileInputRef.current?.click()}>
         Replace audio
       </button>

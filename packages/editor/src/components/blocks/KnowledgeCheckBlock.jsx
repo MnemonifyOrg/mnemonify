@@ -4,6 +4,7 @@ import EditableRichField from './EditableRichField.jsx';
 import RichTextToolbar from '../RichTextToolbar.jsx';
 import { genFeedbackId, genOptionId } from '../../lib/idGen.js';
 import { insertVariableAtSelection } from '../../lib/richText.js';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 import ObjectiveMultiSelect from '../ObjectiveMultiSelect.jsx';
 import { getCorrectOptionIds } from '@mnemonify/schema/knowledge-check.js';
 import { updateKnowledgeCheckCorrectOptions, updateKnowledgeCheckSelectionMode } from '../../lib/knowledgeCheck.js';
@@ -118,7 +119,7 @@ function KcImageField({ assetId, assets, label, onPick, onRemove }) {
   const asset = (assets || []).find((a) => a.asset_id === assetId);
   return (
     <div className="kc-image-field">
-      {asset && <img className="kc-image-field__thumb" src={`/${asset.src}`} alt={asset.alt || ''} />}
+      {asset && <img className="kc-image-field__thumb" src={resolveAssetUrl(asset)} alt={asset.alt || ''} />}
       <button type="button" className="btn-text" onClick={onPick}>
         {asset ? `Change ${label}` : `Add ${label}`}
       </button>

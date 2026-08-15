@@ -3,6 +3,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import MediaLibraryPanel from '../MediaLibraryPanel.jsx';
+import { resolveAssetUrl } from '../../lib/assetUrl.js';
 
 function CarouselThumb({ assetId, asset, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: assetId });
@@ -12,7 +13,7 @@ function CarouselThumb({ assetId, asset, onRemove }) {
       <span className="carousel-block-editor__thumb-handle" title="Drag to reorder" {...attributes} {...listeners}>
         ⠿
       </span>
-      {asset ? <img src={`/${asset.src}`} alt={asset.alt || ''} /> : <div className="carousel-block-editor__thumb-missing">Missing</div>}
+      {asset ? <img src={resolveAssetUrl(asset)} alt={asset.alt || ''} /> : <div className="carousel-block-editor__thumb-missing">Missing</div>}
       <button className="btn-text" onClick={() => onRemove(assetId)}>
         ✕
       </button>

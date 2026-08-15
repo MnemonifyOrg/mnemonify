@@ -20,6 +20,7 @@ import shareLinksRouter from './routes/shareLinks.js';
 import pool from './db.js';
 import { authContext } from './lib/auth.js';
 import { asyncHandler } from './lib/asyncHandler.js';
+import { resolveCourseStorageUrls } from './lib/storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // See db.js for why this must be an explicit path rather than relying on
@@ -124,7 +125,7 @@ app.get('/content/:courseId', asyncHandler(async (req, res) => {
   }
   const row = await loadAndMigrateCourseRow(result.rows[0]);
   const resources = await listCourseResources(courseId, row.organisation_id);
-  res.json(mergeCourseResources(row.course_json, resources));
+  res.json(mergeCourseResources(resolveCourseStorageUrls(row.course_json), resources));
 }));
 
 app.use('/assets', express.static(PLAYER_ASSETS_DIR));

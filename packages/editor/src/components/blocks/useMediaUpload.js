@@ -24,7 +24,7 @@ export function useMediaUpload({ block, onChange, courseId, onAddCourseAsset, ki
       const assetEntry = {
         asset_id: uploaded.asset_id,
         kind,
-        src: `uploads/${uploaded.file_path}`,
+        src: uploaded.url || `uploads/${uploaded.file_path}`,
         alt: file.name,
         caption: '',
         ...(kind === 'video' ? { caption_status: 'generating', caption_review_status: 'draft' } : {}),

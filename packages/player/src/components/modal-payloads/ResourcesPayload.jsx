@@ -36,7 +36,7 @@ export default function ResourcesPayload({ payload }) {
             </div>
             <a
               className="modal-payload__resource-download"
-              href={`/uploads/${resource.file_path}`}
+              href={resource.file_path?.startsWith('/') || resource.file_path?.startsWith('http') ? resource.file_path : `/uploads/${resource.file_path}`}
               download={resource.label || resource.filename}
             >
               Download

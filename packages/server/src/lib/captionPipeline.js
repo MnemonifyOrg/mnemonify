@@ -1,13 +1,14 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pool from '../db.js';
 import { DEV_ORG_ID } from './devUser.js';
+import { getStorage } from './storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_DIR = path.resolve(__dirname, '../..');
-const UPLOADS_DIR = path.join(SERVER_DIR, 'uploads');
 const PYTHON_BIN = process.env.WHISPER_PYTHON || path.join(SERVER_DIR, '.venv', 'bin', 'python3');
 const TRANSCRIBE_SCRIPT = path.join(__dirname, 'transcribe.py');
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'tiny';
@@ -78,10 +79,14 @@ async function saveFailure(asset, error) {
 }
 
 export async function transcribeAsset(asset) {
-  const inputPath = path.join(UPLOADS_DIR, asset.file_path);
-  const workDir = await fs.mkdtemp(path.join(UPLOADS_DIR, '.caption-'));
+  // The source media is provider-backed; only this per-job working copy and
+  // ffmpeg output are temporary local files and are removed in finally.
+  const source = await getStorage().download(asset.file_path);
+  const workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mnemonify-caption-'));
+  const inputPath = path.join(workDir, path.basename(asset.file_path));
   const audioPath = path.join(workDir, 'audio.wav');
   try {
+    await fs.writeFile(inputPath, source);
     await extractAudio(inputPath, audioPath);
     const raw = await runProcess(PYTHON_BIN, [TRANSCRIBE_SCRIPT, audioPath, WHISPER_MODEL]);
     const result = JSON.parse(raw.trim());

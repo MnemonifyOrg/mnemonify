@@ -255,6 +255,44 @@ if that dist doesn't exist yet:
 npm run build --workspace=packages/player
 ```
 
+## 8. Cloudflare R2 storage (Deploy-A)
+
+The server uses local disk by default, so the existing local setup above is
+complete with no storage configuration. R2 becomes active only when all four
+credential variables below are set; `R2_PUBLIC_URL` is additionally required
+so the application can construct browser-facing object URLs:
+
+```text
+R2_ACCOUNT_ID=<Cloudflare account id>
+R2_ACCESS_KEY_ID=<R2 access key id>
+R2_SECRET_ACCESS_KEY=<R2 secret access key>
+R2_BUCKET_NAME=mnemonify-dev
+R2_PUBLIC_URL=https://<public-r2-domain>
+```
+
+`R2_PUBLIC_URL` is the public bucket URL or Cloudflare-fronted custom domain,
+without a trailing slash. This implementation uses that public URL directly
+for player/editor asset and resource links; it does not generate signed URLs.
+The R2 S3-compatible endpoint is derived from `R2_ACCOUNT_ID`. If the four
+credentials are absent, uploads, deletes, existence checks, PDF artifacts,
+and local development continue to use `packages/server/uploads/` exactly as
+before. A partial R2 credential set fails clearly instead of silently writing
+to the wrong backend.
+
+To migrate the existing local upload tree (currently approximately 339 MB)
+to the configured R2 bucket, run this one-time command from the repository
+root:
+
+```bash
+npm run migrate:storage --workspace=packages/server
+```
+
+The command recursively uploads every file under
+`packages/server/uploads/`, preserves its relative object key, performs a
+post-upload existence check for every file, and exits non-zero on any failed
+verification. It requires the R2 variables above and is intentionally manual;
+it does not delete local files.
+
 ## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM

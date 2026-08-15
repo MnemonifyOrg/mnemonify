@@ -1627,3 +1627,52 @@ Add this section to ARCHITECTURE.md, with a summary/reference in REQUIREMENTS.md
 - Only Owner/Editor roles (matching the publish permission) can create or revoke links; enforced server-side
 - Anonymous viewers cannot access comments or any other authenticated-only data through the share link
 - Manual verification: Sebastin creates a share link, opens it in a logged-out/incognito browser session and confirms it works; revokes it and confirms it stops working; confirms a Reviewer-role account cannot create/revoke links (tested via real server requests, consistent with the verification rigor used in 6a/6b)
+
+# Deploy-A: Cloudflare R2 Storage Integration
+
+Add this section to ARCHITECTURE.md. Commit before requesting a build prompt.
+
+## Problem
+
+All uploaded assets (images, videos, audio), course resources (PDFs, Word, Excel, PowerPoint, ZIP, text files), and generated artifacts (publish-time PDFs) are currently written to local disk at `packages/server/uploads/`. This works in local development but is incompatible with the planned production hosting (Render), which uses ephemeral containers — anything on local disk is lost on every restart or redeploy. This must be fixed before any production deployment.
+
+## Decisions
+
+- Storage provider: Cloudflare R2 (S3-compatible API).
+- Local disk storage is KEPT as the default for local development — do not force every developer to have R2 credentials just to run the app locally. Storage backend is selected via environment variable/configuration, defaulting to local disk when R2 credentials are absent.
+- Existing relative-path conventions in course JSON/database (e.g. `"uploads/<courseId>/<filename>"`) should be preserved as the logical identifier where possible — the storage abstraction should resolve these to either a local file path or an R2 object key depending on the active backend, rather than requiring a schema/data-model change to every existing course.
+
+## Part 1: Storage abstraction layer
+
+- Build a single storage interface (e.g. `upload(key, buffer/stream)`, `getUrl(key)`, `delete(key)`, `exists(key)`) with two implementations: local disk (current behavior, unchanged) and R2 (new).
+- All current call sites that read/write to `packages/server/uploads/` directly — asset uploads (`assets.js`), resource uploads (`resources.js`), the PDF pipeline (`pdfPipeline.js`), and the caption pipeline's temp file handling (`captionPipeline.js`) — should go through this abstraction instead of calling `fs` directly.
+- R2 credentials (Account ID, Access Key ID, Secret Access Key, bucket name) are read from environment variables. Document the exact variable names used in `.env.example` and HANDOFF.md.
+
+## Part 2: URL generation
+
+- When R2 is the active backend, asset/resource URLs served to the player and editor should resolve to R2 (either R2's public bucket URL, or a Cloudflare-fronted custom domain if one is set up — implementer's choice for this pass, note which was built).
+- When local disk is the active backend (dev default), URL generation remains exactly as it is today (`/uploads/...` same-origin paths) — no change to local dev behavior.
+- Existing `CONTENT_BASE_URL` environment variable (already present per `.env.example`) should be leveraged/extended for this rather than inventing a separate URL-construction mechanism, if it fits.
+
+## Part 3: PDF and caption pipelines
+
+- The PDF generation pipeline should write its output through the storage abstraction (R2 in production, local disk in dev) rather than always writing to local disk.
+- The caption pipeline's temporary ffmpeg working files (audio extraction, etc.) can remain on local/ephemeral disk during processing regardless of backend — these are genuinely temporary and cleaned up after each job; only the SOURCE video/audio file (read from storage) and the FINAL caption/transcript content (already stored in Postgres text columns, not files) matter for persistence. Confirm this understanding is correct during implementation and flag if it's not.
+
+## Part 4: Migration of existing local files
+
+- The ~339MB of files currently in local `packages/server/uploads/` need a path to reach R2 for anything currently in the local database that will be used going forward (e.g. test courses used for ongoing verification). Provide a one-time migration script/command that uploads existing local files to R2 and confirms each one, rather than requiring Sebastin to manually re-upload everything. This does not need to be automatic/triggered — a documented manual command is sufficient.
+
+## Out of scope for this pass
+
+- CDN/custom domain fronting for R2 beyond whatever is simplest to get working correctly (advanced caching/CDN tuning is a future optimization, not required now)
+- Multi-region or redundant storage configuration
+- Automatic cleanup/lifecycle policies for old/unused assets (a future Course Analyzer-adjacent concern, not this pass)
+
+## Acceptance criteria
+
+- With R2 credentials configured, uploading an image/video/resource writes it to the R2 bucket, not local disk
+- With no R2 credentials configured (local dev default), behavior is completely unchanged from today
+- Generated PDFs and the existing PDF-serving fix (commit 1239c751) continue to work correctly with R2 as the backend
+- The migration script successfully uploads existing local files to R2 and they become correctly servable
+- Manual verification: Sebastin runs the app with real R2 credentials, uploads a new image/video to a test course, confirms the file actually appears in the Cloudflare R2 dashboard, and confirms it renders correctly in both editor preview and a real player session — and separately confirms local dev (no R2 credentials) still works exactly as before

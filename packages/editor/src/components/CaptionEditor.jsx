@@ -20,14 +20,16 @@ function cuesToVtt(cues) {
   return `WEBVTT\n\n${cues.map((cue, index) => `${index + 1}\n${cue.start} --> ${cue.end}\n${cue.text}`).join('\n\n')}\n`;
 }
 
-function statusLabel(row, missingLabel) {
+function statusLabel(row, missingLabel, automaticTranscriptionEnabled) {
   if (!row) return missingLabel;
+  if (!automaticTranscriptionEnabled && (row.status === 'manual_required' || !row.content)) return 'Manual input needed';
   if (row.status === 'generating') return 'Generating…';
   if (row.status === 'failed') return 'Generation failed';
   return row.review_status === 'reviewed' ? 'Reviewed' : 'Draft ready';
 }
 
 export default function CaptionEditor({ asset, onUpdateCourseAsset, audioOnly = false }) {
+  const automaticTranscriptionEnabled = asset.automatic_transcription_enabled !== false;
   const [rows, setRows] = useState([]);
   const [cues, setCues] = useState([]);
   const [transcript, setTranscript] = useState('');
@@ -147,9 +149,14 @@ export default function CaptionEditor({ asset, onUpdateCourseAsset, audioOnly = 
   return (
     <div className="caption-editor">
       <div className="caption-editor__status-row">
-        {!audioOnly && <strong>Captions: {statusLabel(caption, 'Not generated')}</strong>}
-        <span>Transcript: {transcriptRow?.status === 'ready' ? 'Ready' : statusLabel(transcriptRow, 'Not generated')}</span>
+        {!audioOnly && <strong>Captions: {statusLabel(caption, 'Not generated', automaticTranscriptionEnabled)}</strong>}
+        <span>Transcript: {transcriptRow?.status === 'ready' && transcriptRow.content ? 'Ready' : statusLabel(transcriptRow, 'Not generated', automaticTranscriptionEnabled)}</span>
       </div>
+      {!automaticTranscriptionEnabled && (
+        <p className="settings-panel__hint">
+          Automatic transcription is unavailable in this deployment. {audioOnly ? 'Enter a transcript manually below.' : 'Upload a .vtt or .srt file below, then enter a transcript manually if needed.'}
+        </p>
+      )}
       {!audioOnly && caption?.error_message && <p className="image-block-editor__error">{caption.error_message}</p>}
       {error && <p className="image-block-editor__error">{error}</p>}
       {!audioOnly && caption?.status === 'ready' && (
@@ -175,7 +182,7 @@ export default function CaptionEditor({ asset, onUpdateCourseAsset, audioOnly = 
           <input ref={fileInputRef} type="file" accept=".vtt,.srt,text/vtt,application/x-subrip" hidden onChange={uploadManual} />
         </label>
       )}
-      {transcriptRow?.status === 'ready' && (
+      {(!automaticTranscriptionEnabled || ['ready', 'manual_required'].includes(transcriptRow?.status)) && transcriptRow && (
         <>
           <label className="caption-editor__transcript-label" htmlFor={`transcript-${asset.asset_id}`}>Transcript</label>
           <textarea id={`transcript-${asset.asset_id}`} className="input" rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />

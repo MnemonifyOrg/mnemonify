@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
 import { requireAuth, requireRole, ROLES } from '../lib/auth.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
-import { queueTranscription } from '../lib/captionPipeline.js';
+import { isWhisperEnabled, queueTranscription } from '../lib/captionPipeline.js';
 import { getStorage } from '../lib/storage.js';
 
 const router = express.Router();
@@ -75,7 +75,10 @@ async function insertAsset({ organisationId, courseId, kind, filename, filePath,
 }
 
 function assetResponse(asset, storage) {
-  return storage.isRemote ? { ...asset, url: storage.getUrl(asset.file_path) } : asset;
+  return {
+    ...(storage.isRemote ? { ...asset, url: storage.getUrl(asset.file_path) } : asset),
+    automatic_transcription_enabled: isWhisperEnabled(),
+  };
 }
 
 const singleUpload = multer({

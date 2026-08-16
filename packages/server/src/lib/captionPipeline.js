@@ -12,6 +12,18 @@ const SERVER_DIR = path.resolve(__dirname, '../..');
 const PYTHON_BIN = process.env.WHISPER_PYTHON || path.join(SERVER_DIR, '.venv', 'bin', 'python3');
 const TRANSCRIBE_SCRIPT = path.join(__dirname, 'transcribe.py');
 const WHISPER_MODEL = process.env.WHISPER_MODEL || 'tiny';
+const MANUAL_REQUIRED_MESSAGE = 'Automatic transcription is disabled for this deployment. Upload captions or enter a transcript manually.';
+
+// Keep existing local setups working when the flag is absent, while making
+// the production default safe for hosts that do not have Whisper installed.
+// Production deployments should still set WHISPER_ENABLED=false explicitly
+// so the intended mode is visible in their environment configuration.
+export function isWhisperEnabled(env = process.env) {
+  if (env.WHISPER_ENABLED !== undefined && env.WHISPER_ENABLED !== '') {
+    return /^(1|true|yes|on)$/i.test(env.WHISPER_ENABLED);
+  }
+  return env.NODE_ENV !== 'production';
+}
 
 function timestamp(seconds) {
   const totalMs = Math.max(0, Math.round(Number(seconds || 0) * 1000));
@@ -48,17 +60,34 @@ async function extractAudio(inputPath, outputPath) {
 }
 
 async function createGeneratingRows(asset) {
+  const organisationId = asset.organisation_id || DEV_ORG_ID;
   await pool.query(
     `INSERT INTO captions (organisation_id, course_id, asset_id, kind, source, status)
      VALUES ($1, $2, $3, 'caption', 'whisper', 'generating'),
             ($1, $2, $3, 'transcript', 'whisper', 'generating')
      ON CONFLICT (organisation_id, course_id, asset_id, kind)
      DO UPDATE SET source = 'whisper', status = 'generating', error_message = '', updated_at = now()`,
-    [DEV_ORG_ID, asset.course_id, asset.asset_id]
+    [organisationId, asset.course_id, asset.asset_id]
+  );
+}
+
+async function createManualRows(asset) {
+  const organisationId = asset.organisation_id || DEV_ORG_ID;
+  await pool.query(
+    `INSERT INTO captions (organisation_id, course_id, asset_id, kind, source, status, error_message)
+     VALUES ($1, $2, $3, 'caption', 'manual', 'manual_required', $4),
+            ($1, $2, $3, 'transcript', 'manual', 'manual_required', $4)
+     ON CONFLICT (organisation_id, course_id, asset_id, kind)
+     DO UPDATE SET source = CASE WHEN captions.content = '' THEN 'manual' ELSE captions.source END,
+                   status = CASE WHEN captions.content = '' THEN 'manual_required' ELSE captions.status END,
+                   error_message = CASE WHEN captions.content = '' THEN $4 ELSE captions.error_message END,
+                   updated_at = now()`,
+    [organisationId, asset.course_id, asset.asset_id, MANUAL_REQUIRED_MESSAGE]
   );
 }
 
 async function saveSuccess(asset, result) {
+  const organisationId = asset.organisation_id || DEV_ORG_ID;
   const vtt = segmentsToVtt(result.segments);
   await pool.query(
     `UPDATE captions
@@ -66,15 +95,16 @@ async function saveSuccess(asset, result) {
             source = 'whisper', status = 'ready', review_status = 'draft',
             error_message = '', generated_at = now(), updated_at = now()
       WHERE organisation_id = $3 AND course_id = $4 AND asset_id = $5`,
-    [vtt, result.text, DEV_ORG_ID, asset.course_id, asset.asset_id]
+    [vtt, result.text, organisationId, asset.course_id, asset.asset_id]
   );
 }
 
 async function saveFailure(asset, error) {
+  const organisationId = asset.organisation_id || DEV_ORG_ID;
   await pool.query(
     `UPDATE captions SET status = 'failed', error_message = $1, updated_at = now()
       WHERE organisation_id = $2 AND course_id = $3 AND asset_id = $4`,
-    [error.message || String(error), DEV_ORG_ID, asset.course_id, asset.asset_id]
+    [error.message || String(error), organisationId, asset.course_id, asset.asset_id]
   );
 }
 
@@ -105,8 +135,14 @@ export async function transcribeAsset(asset) {
 }
 
 export async function queueTranscription(asset) {
+  if (!isWhisperEnabled()) {
+    await createManualRows(asset);
+    console.log(`[captions] automatic transcription disabled for ${asset.asset_id}; manual captions/transcript upload remains available`);
+    return false;
+  }
   await createGeneratingRows(asset);
   // Deliberately do not await this from the upload route: ffmpeg/model load
   // can take minutes on CPU, while the upload response should remain fast.
   void transcribeAsset(asset);
+  return true;
 }

@@ -1035,7 +1035,7 @@ Server-side PDF generation using Puppeteer (headless Chromium). Chosen over pdfk
 
 ### 13.1 Captions
 
-On video upload, server sends audio track to Whisper (runs server-side, no external API cost). Returns draft WebVTT saved to captions table with source: whisper and review_status: draft. Author reviews in caption editor. Author can upload own WebVTT or SRT to override (source: manual). Captions delivered to player as a text track on the video element. Learner toggles CC button. Caption styling respects OS-level preferences.
+On video upload, server sends audio track to Whisper (runs server-side, no external API cost) when `WHISPER_ENABLED` permits it. Production deployments without the Whisper runtime set `WHISPER_ENABLED=false`; those uploads create a manual-required caption/transcript state instead of starting a job, and the editor presents VTT/SRT upload plus manual transcript entry. Returns draft WebVTT saved to captions table with source: whisper and review_status: draft when automatic generation is enabled. Author reviews in caption editor. Author can upload own WebVTT or SRT to override (source: manual). Captions delivered to player as a text track on the video element. Learner toggles CC button. Caption styling respects OS-level preferences.
 
 ### 13.2 Transcripts
 
@@ -1105,7 +1105,7 @@ Dynamic is the strategic differentiator and the default. Traditional ZIP exists 
 4. If push to all: no version assignments updated; all future launches resolve to new version
 5. If lock existing: for every learner_id that has an existing version_assignment for this course, their assignment is not changed; new learners get the new version
 6. Server generates PDF artifact if enabled
-7. Server triggers caption generation for any new video assets
+7. Server triggers caption generation for any new video assets when `WHISPER_ENABLED` is on; otherwise marks them manual-required
 8. Thin launcher zip (already in Ethos) does not need to be replaced
 
 ### 15.2 Content server URL

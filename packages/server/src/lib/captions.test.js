@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { segmentsToVtt } from './captionPipeline.js';
+import { isWhisperEnabled, segmentsToVtt } from './captionPipeline.js';
 import { srtToVtt } from '../routes/captions.js';
 
 test('converts Whisper segments to WebVTT', () => {
@@ -15,4 +15,11 @@ test('converts SRT timestamps to WebVTT timestamps', () => {
   assert.match(vtt, /^WEBVTT/);
   assert.match(vtt, /00:00:01\.500 --> 00:00:03\.000/);
   assert.match(vtt, /Hello/);
+});
+
+test('Whisper is disabled by default in production but preserves local behavior', () => {
+  assert.equal(isWhisperEnabled({ NODE_ENV: 'production' }), false);
+  assert.equal(isWhisperEnabled({ NODE_ENV: 'development' }), true);
+  assert.equal(isWhisperEnabled({ NODE_ENV: 'production', WHISPER_ENABLED: 'false' }), false);
+  assert.equal(isWhisperEnabled({ NODE_ENV: 'production', WHISPER_ENABLED: 'true' }), true);
 });

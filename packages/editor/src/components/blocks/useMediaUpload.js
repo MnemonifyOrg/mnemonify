@@ -20,6 +20,7 @@ export function useMediaUpload({ block, onChange, courseId, onAddCourseAsset, ki
       formData.append('file', file);
       formData.append('course_id', courseId);
       const uploaded = await api.uploadAsset(formData);
+      const automaticTranscriptionEnabled = uploaded.automatic_transcription_enabled !== false;
 
       const assetEntry = {
         asset_id: uploaded.asset_id,
@@ -27,8 +28,12 @@ export function useMediaUpload({ block, onChange, courseId, onAddCourseAsset, ki
         src: uploaded.url || `uploads/${uploaded.file_path}`,
         alt: file.name,
         caption: '',
-        ...(kind === 'video' ? { caption_status: 'generating', caption_review_status: 'draft' } : {}),
-        transcript_status: 'generating',
+        automatic_transcription_enabled: automaticTranscriptionEnabled,
+        ...(kind === 'video' ? {
+          caption_status: automaticTranscriptionEnabled ? 'generating' : 'manual_required',
+          caption_review_status: 'draft',
+        } : {}),
+        transcript_status: automaticTranscriptionEnabled ? 'generating' : 'manual_required',
       };
       onAddCourseAsset(assetEntry);
       onChange({ ...block, content: { ...block.content, asset_id: assetEntry.asset_id } });

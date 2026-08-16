@@ -122,7 +122,32 @@ router.post('/assets/:assetId/captions/upload', requireRole(ROLES.OWNER, ROLES.E
     [content, req.auth.organisationId, req.params.assetId]
   );
   if (result.rows.length === 0) {
-    res.status(404).json({ error: 'Caption record not found for this asset.' });
+    // Older media uploaded before the Whisper feature flag may not have
+    // caption rows yet. Create the manual caption row on demand so the
+    // independent VTT/SRT path remains available for those assets too.
+    const assetResult = await pool.query(
+      `SELECT course_id FROM assets WHERE organisation_id = $1 AND asset_id = $2`,
+      [req.auth.organisationId, req.params.assetId]
+    );
+    if (assetResult.rows.length === 0) {
+      res.status(404).json({ error: 'Asset not found.' });
+      return;
+    }
+    const created = await pool.query(
+      `INSERT INTO captions
+         (organisation_id, course_id, asset_id, kind, content, source, status, review_status, generated_at, updated_at)
+       VALUES ($1, $2, $3, 'caption', $4, 'manual', 'ready', 'draft', now(), now())
+       RETURNING *`,
+      [req.auth.organisationId, assetResult.rows[0].course_id, req.params.assetId, content]
+    );
+    await pool.query(
+      `INSERT INTO captions
+         (organisation_id, course_id, asset_id, kind, source, status, error_message)
+       VALUES ($1, $2, $3, 'transcript', 'manual', 'manual_required', 'Enter a transcript manually when ready.')
+       ON CONFLICT (organisation_id, course_id, asset_id, kind) DO NOTHING`,
+      [req.auth.organisationId, assetResult.rows[0].course_id, req.params.assetId]
+    );
+    res.json(created.rows[0]);
     return;
   }
   res.json(result.rows[0]);

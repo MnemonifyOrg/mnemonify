@@ -515,7 +515,7 @@
         },
         "caption_status": {
           "type": "string",
-          "enum": ["generating", "ready", "failed"]
+          "enum": ["generating", "ready", "failed", "manual_required"]
         },
         "caption_review_status": {
           "type": "string",
@@ -523,7 +523,10 @@
         },
         "transcript_status": {
           "type": "string",
-          "enum": ["generating", "ready", "failed"]
+          "enum": ["generating", "ready", "failed", "manual_required"]
+        },
+        "automatic_transcription_enabled": {
+          "type": "boolean"
         }
       }
     },

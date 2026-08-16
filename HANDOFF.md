@@ -212,8 +212,8 @@ createdb mnemonify_dev
 npm run migrate --workspace=packages/server
 ```
 Migrations run in order from `packages/server/src/migrations/*.sql`
-(currently 001–014, including `013_phase6a_accounts.sql` and the invitation
-follow-up `014_allow_multiple_invitations.sql`); `migrate.js` runs
+(currently 001–017, including the Phase 6 migrations and
+`017_manual_caption_required.sql`); `migrate.js` runs
 each file straight through on every invocation — there is no migration ledger,
 down-migration, or rollback mechanism. Run the same command after a fresh
 clone or whenever a new numbered migration is added. Phase 6a's migration
@@ -330,14 +330,41 @@ invites are the only plausible short burst, so Resend's free-tier limit of
 100 emails/day should be kept in mind until production rate limiting or
 throttling is added.
 
+## 10. Automatic Whisper transcription (disabled for this deployment)
+
+Automatic server-side Whisper transcription is controlled by
+`WHISPER_ENABLED`. Render should set:
+
+```text
+WHISPER_ENABLED=false
+```
+
+When it is false, or when it is absent in `NODE_ENV=production`, video/audio
+uploads do not start the local `openai-whisper` plus ffmpeg job. The editor
+shows that automatic transcription is unavailable and keeps the working
+manual path visible: upload a `.vtt` or `.srt` caption file, and enter or edit
+the transcript in the transcript field. Caption/transcript content continues
+to be stored in PostgreSQL, independently of Whisper. Existing ready captions
+and transcripts remain available.
+
+For local development, an absent `WHISPER_ENABLED` preserves the prior
+behavior (the server attempts the configured local Whisper environment); set
+`WHISPER_ENABLED=true` explicitly when needed. Re-enabling this in production
+requires installing and sizing the Whisper/ffmpeg runtime, or moving the
+long-running transcription job to a separate worker service so the Render
+free web process is not burdened by model memory and CPU use. The temporary
+source download and ffmpeg working files are still cleaned up per job; only
+the final caption/transcript text persists in PostgreSQL.
+
 ## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM
 integration (2), full editor + templates + media (3), player chrome +
 usability fixes + Phase 4.5 foundations + Phase 4.6 UX polish (4).
 Interactive video (Phase 5 sub-area 1) is complete and live-verified;
-captions/transcripts (sub-area 2) are implemented with local Whisper and
-live-verified through the desktop browser; PDF publish artifacts (sub-area
+captions/transcripts (sub-area 2) are implemented with local Whisper when
+enabled, with a manual VTT/SRT and transcript-entry path when it is disabled,
+and live-verified through the desktop browser; PDF publish artifacts (sub-area
 3) are implemented with headless Puppeteer and still need a desktop-browser
 author/player pass for the final UI/resource-modal acceptance check. See
 REQUIREMENTS.md's phase table (row "5") for the full scope and acceptance

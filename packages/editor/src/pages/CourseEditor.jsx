@@ -316,6 +316,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                   ...(dbAsset.caption_status ? { caption_status: dbAsset.caption_status } : {}),
                   ...(dbAsset.caption_review_status ? { caption_review_status: dbAsset.caption_review_status } : {}),
                   ...(dbAsset.transcript_status ? { transcript_status: dbAsset.transcript_status } : {}),
+                  ...(dbAsset.automatic_transcription_enabled !== undefined
+                    ? { automatic_transcription_enabled: dbAsset.automatic_transcription_enabled }
+                    : {}),
                 };
               }),
             },

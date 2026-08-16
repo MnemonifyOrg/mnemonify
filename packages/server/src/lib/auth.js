@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
 import pool from '../db.js';
 import { DEV_ORG_ID, DEV_USER_ID } from './devUser.js';
+import { sendEmail } from './email.js';
 
 export const ROLES = Object.freeze({
   OWNER: 'owner',
@@ -259,27 +259,8 @@ export async function clearLoginFailures(identity) {
   await pool.query('DELETE FROM auth_login_attempts WHERE identity = $1', [identity]);
 }
 
-let smtpTransport;
-function getSmtpTransport() {
-  if (!process.env.SMTP_HOST) return null;
-  smtpTransport ||= nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
-  });
-  return smtpTransport;
-}
-
 export async function sendAuthEmail({ recipient, subject, text }) {
-  const transport = getSmtpTransport();
-  if (transport) {
-    await transport.sendMail({ from: process.env.SMTP_FROM || 'no-reply@mnemonify.org', to: recipient, subject, text });
-    return { delivered: true };
-  }
-  await pool.query('INSERT INTO auth_email_outbox (recipient, subject, body) VALUES ($1, $2, $3)', [recipient, subject, text]);
-  console.info(`[auth] SMTP is not configured; token email queued for ${recipient}:\n${text}`);
-  return { delivered: false };
+  return sendEmail({ to: recipient, subject, text });
 }
 
 export function authUrl(req, path, token) {

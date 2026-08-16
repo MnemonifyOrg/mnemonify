@@ -293,6 +293,34 @@ post-upload existence check for every file, and exits non-zero on any failed
 verification. It requires the R2 variables above and is intentionally manual;
 it does not delete local files.
 
+## 9. Resend production email (Deploy-B)
+
+The three Phase 6a token-email flows — signup verification, organization
+invitation, and password reset — use the email abstraction in
+`packages/server/src/lib/email.js`. Resend is selected only when
+`RESEND_API_KEY` is set. Configure the verified `mail.mnemonify.org` sending
+domain with:
+
+```text
+RESEND_API_KEY=<Resend API key>
+RESEND_FROM=noreply@mail.mnemonify.org
+```
+
+This pass chose the `noreply` local part. `RESEND_FROM` must be a sender on a
+verified Resend domain. The implementation calls Resend's HTTPS API directly
+at `https://api.resend.com/emails` and sends plain-text messages; no Resend
+SDK dependency is required. A non-2xx response or network failure is logged
+prominently and returned as an email-delivery error instead of appearing to
+succeed.
+
+When `RESEND_API_KEY` is absent, local development is unchanged: configured
+SMTP is still used, otherwise the message is inserted into
+`auth_email_outbox` and the link is logged/returned by the existing
+development-only flow. There is currently no bulk-email operation; repeated
+invites are the only plausible short burst, so Resend's free-tier limit of
+100 emails/day should be kept in mind until production rate limiting or
+throttling is added.
+
 ## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM

@@ -3,6 +3,12 @@ import pool from '../db.js';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const DEFAULT_SMTP_FROM = 'no-reply@mnemonify.org';
+const DEFAULT_RESEND_FROM_NAME = 'Mnemonify';
+
+function formatResendFrom(value, name) {
+  if (value.includes('<')) return value;
+  return `${name} <${value}>`;
+}
 
 function createResendError(message, status, cause) {
   const error = new Error(message, cause ? { cause } : undefined);
@@ -24,7 +30,7 @@ async function readResponseBody(response) {
 
 function createResendSender({ env, fetchImpl, logger }) {
   return {
-    async sendEmail({ to, subject, text }) {
+    async sendEmail({ to, subject, text, html }) {
       if (!env.RESEND_FROM) {
         throw createResendError('Email delivery is not configured: RESEND_FROM is missing.', 500);
       }
@@ -41,10 +47,11 @@ function createResendSender({ env, fetchImpl, logger }) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: env.RESEND_FROM,
+            from: formatResendFrom(env.RESEND_FROM, env.RESEND_FROM_NAME || DEFAULT_RESEND_FROM_NAME),
             to,
             subject,
             text,
+            ...(html ? { html } : {}),
           }),
         });
       } catch (cause) {
@@ -85,10 +92,16 @@ function createLocalSender({ env, poolClient, logger, smtpTransportFactory }) {
   }
 
   return {
-    async sendEmail({ to, subject, text }) {
+    async sendEmail({ to, subject, text, html }) {
       const transport = getSmtpTransport();
       if (transport) {
-        await transport.sendMail({ from: env.SMTP_FROM || DEFAULT_SMTP_FROM, to, subject, text });
+        await transport.sendMail({
+          from: env.SMTP_FROM || DEFAULT_SMTP_FROM,
+          to,
+          subject,
+          text,
+          ...(html ? { html } : {}),
+        });
         return { delivered: true };
       }
       await poolClient.query('INSERT INTO auth_email_outbox (recipient, subject, body) VALUES ($1, $2, $3)', [to, subject, text]);
@@ -120,6 +133,6 @@ export function resetEmailSenderForTests() {
   emailSender = undefined;
 }
 
-export function sendEmail({ to, subject, text }) {
-  return getEmailSender().sendEmail({ to, subject, text });
+export function sendEmail({ to, subject, text, html }) {
+  return getEmailSender().sendEmail({ to, subject, text, html });
 }

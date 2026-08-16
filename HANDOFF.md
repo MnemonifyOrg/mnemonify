@@ -304,14 +304,23 @@ domain with:
 ```text
 RESEND_API_KEY=<Resend API key>
 RESEND_FROM=noreply@mail.mnemonify.org
+RESEND_FROM_NAME=Mnemonify
 ```
 
-This pass chose the `noreply` local part. `RESEND_FROM` must be a sender on a
-verified Resend domain. The implementation calls Resend's HTTPS API directly
-at `https://api.resend.com/emails` and sends plain-text messages; no Resend
-SDK dependency is required. A non-2xx response or network failure is logged
-prominently and returned as an email-delivery error instead of appearing to
-succeed.
+This pass chose the `noreply` local part and the human-readable `Mnemonify`
+display name. `RESEND_FROM` must be a sender on a verified Resend domain.
+The implementation calls Resend's HTTPS API directly at
+`https://api.resend.com/emails` and sends multipart messages with both
+functional plain text and simple HTML. No Resend SDK dependency is required.
+A non-2xx response or network failure is logged prominently and returned as
+an email-delivery error instead of appearing to succeed.
+
+Set `APP_BASE_URL` to the public application origin in staging/production (for
+example, `https://app.mnemonify.org`) so generated verification, invitation,
+and password-reset links use the deployed app URL. If it is unset, local
+development keeps its existing `http://localhost:3000` fallback; Resend
+Insights correctly flags those localhost URLs as mismatched when testing from
+the local server, but that is not a production-domain deliverability result.
 
 When `RESEND_API_KEY` is absent, local development is unchanged: configured
 SMTP is still used, otherwise the message is inserted into

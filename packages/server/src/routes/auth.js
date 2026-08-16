@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import pool from '../db.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
+import { invitationEmail, passwordResetEmail, verificationEmail } from '../lib/emailTemplates.js';
 import {
   AUTH_TOKEN_TTLS,
   ROLES,
@@ -130,11 +131,7 @@ router.post('/auth/signup', asyncHandler(async (req, res) => {
 
   const token = await issueAuthToken({ userId: user.id, organisationId, kind: 'email_verification', ttlMs: AUTH_TOKEN_TTLS.emailVerification });
   const verificationUrl = appAuthUrl(req, '/verify-email', token);
-  await sendAuthEmail({
-    recipient: email,
-    subject: 'Verify your Mnemonify account',
-    text: `Verify your account by opening this link: ${verificationUrl}`,
-  });
+  await sendAuthEmail({ recipient: email, ...verificationEmail({ verificationUrl, name }) });
   res.status(201).json({
     user: publicUser(user),
     verification_required: true,
@@ -206,12 +203,12 @@ router.post('/auth/logout', asyncHandler(async (req, res) => {
 
 router.post('/auth/password-reset/request', asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.body?.email);
-  const result = await pool.query('SELECT id, email FROM users WHERE lower(email) = $1', [email]);
+  const result = await pool.query('SELECT id, email, name FROM users WHERE lower(email) = $1', [email]);
   let resetUrl;
   if (result.rows.length) {
     const token = await issueAuthToken({ userId: result.rows[0].id, kind: 'password_reset', ttlMs: AUTH_TOKEN_TTLS.passwordReset });
     resetUrl = appAuthUrl(req, '/reset-password', token);
-    await sendAuthEmail({ recipient: result.rows[0].email, subject: 'Reset your Mnemonify password', text: `Reset your password by opening this link: ${resetUrl}` });
+    await sendAuthEmail({ recipient: result.rows[0].email, ...passwordResetEmail({ resetUrl, name: result.rows[0].name }) });
   }
   // Deliberately generic in production to avoid account enumeration. Local
   // development exposes the link so the flow is testable without SMTP.
@@ -307,7 +304,7 @@ router.post('/organizations/:organisationId/invitations', requireRole(ROLES.OWNE
     [req.auth.organisationId, email, role, req.auth.userId, hashToken(token)]
   );
   const invitationUrl = appAuthUrl(req, '/signup', token).replace('?token=', '?invite_token=');
-  await sendAuthEmail({ recipient: email, subject: 'You are invited to Mnemonify', text: `Create your account and join the organization: ${invitationUrl}` });
+  await sendAuthEmail({ recipient: email, ...invitationEmail({ invitationUrl }) });
   res.status(201).json({ direct: false, ...(process.env.NODE_ENV !== 'production' ? { invitation_url: invitationUrl } : {}) });
 }));
 

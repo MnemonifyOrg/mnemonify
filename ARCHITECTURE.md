@@ -1704,7 +1704,7 @@ Route each of these through the new sending abstraction, replacing their current
 - Organization invitation link
 - Password reset link
 
-Each email should have reasonably clear, plain subject lines and body content (a simple plain-text or minimal-HTML template is sufficient — this does not need branded HTML email design work in this pass, note if you think that's worth a fast-follow but don't build it now).
+Each email should have reasonably clear, plain subject lines and body content (a simple multipart plain-text and minimal-HTML template is sufficient — this does not need branded HTML email design work in this pass, note if you think that's worth a fast-follow but don't build it now).
 
 ## Part 3: Error handling
 

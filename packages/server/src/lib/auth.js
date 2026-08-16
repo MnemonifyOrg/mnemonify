@@ -259,8 +259,8 @@ export async function clearLoginFailures(identity) {
   await pool.query('DELETE FROM auth_login_attempts WHERE identity = $1', [identity]);
 }
 
-export async function sendAuthEmail({ recipient, subject, text }) {
-  return sendEmail({ to: recipient, subject, text });
+export async function sendAuthEmail({ recipient, subject, text, html }) {
+  return sendEmail({ to: recipient, subject, text, html });
 }
 
 export function authUrl(req, path, token) {

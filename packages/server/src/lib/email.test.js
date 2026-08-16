@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createEmailSender } from './email.js';
+import { invitationEmail, passwordResetEmail, verificationEmail } from './emailTemplates.js';
+
+test('transactional email templates include context, safe-ignore guidance, and multipart content', () => {
+  const verification = verificationEmail({ verificationUrl: 'https://app.example.test/verify?token=abc&next=1', name: 'Alex <Tester>' });
+  const invitation = invitationEmail({ invitationUrl: 'https://app.example.test/signup?invite_token=abc' });
+  const reset = passwordResetEmail({ resetUrl: 'https://app.example.test/reset-password?token=abc', name: 'Alex' });
+
+  for (const email of [verification, invitation, reset]) {
+    assert.match(email.text, /https:\/\/app\.example\.test/);
+    assert.match(email.html, /<a href=/);
+    assert.match(email.html, /Mnemonify/);
+    assert.match(email.text, /ignore this email/);
+  }
+  assert.match(verification.html, /Alex &lt;Tester&gt;/);
+  assert.match(reset.text, /No changes will be made to your account/);
+});
 
 test('local fallback keeps the existing outbox and console behavior when Resend is not configured', async () => {
   const queries = [];
@@ -54,14 +70,14 @@ test('legacy SMTP behavior remains available when SMTP_HOST is configured withou
 test('Resend sender posts the plain-text email and returns the provider id', async () => {
   const requests = [];
   const sender = createEmailSender({
-    env: { RESEND_API_KEY: 're_test_key', RESEND_FROM: 'noreply@mail.mnemonify.org' },
+    env: { RESEND_API_KEY: 're_test_key', RESEND_FROM: 'noreply@mail.mnemonify.org', RESEND_FROM_NAME: 'Mnemonify' },
     fetchImpl: async (...args) => {
       requests.push(args);
       return { ok: true, status: 200, json: async () => ({ id: 'email-123' }) };
     },
   });
 
-  const result = await sender.sendEmail({ to: 'person@example.com', subject: 'Reset', text: 'Open /reset' });
+  const result = await sender.sendEmail({ to: 'person@example.com', subject: 'Reset', text: 'Open /reset', html: '<p>Open <a href="/reset">the reset page</a>.</p>' });
 
   assert.deepEqual(result, { delivered: true, provider: 'resend', id: 'email-123' });
   assert.equal(requests.length, 1);
@@ -73,10 +89,11 @@ test('Resend sender posts the plain-text email and returns the provider id', asy
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'noreply@mail.mnemonify.org',
+      from: 'Mnemonify <noreply@mail.mnemonify.org>',
       to: 'person@example.com',
       subject: 'Reset',
       text: 'Open /reset',
+      html: '<p>Open <a href="/reset">the reset page</a>.</p>',
     }),
   });
 });

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "include": [
+    "/api",
+    "/api/*",
+    "/uploads",
+    "/uploads/*",
+    "/player",
+    "/player/*",
+    "/player-assets/*",
+    "/share",
+    "/share/*",
+    "/content",
+    "/content/*"
+  ],
+  "exclude": []
+}

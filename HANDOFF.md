@@ -356,6 +356,57 @@ free web process is not burdened by model memory and CPU use. The temporary
 source download and ffmpeg working files are still cleaned up per job; only
 the final caption/transcript text persists in PostgreSQL.
 
+## 11. Cloudflare Pages editor proxy
+
+The editor is deployed as a static Vite app on Cloudflare Pages, while the
+Node backend and player remain on Render. The repository includes a Pages
+Function at `functions/[[path]].js` plus the generated-output routing manifest
+at `packages/editor/public/_routes.json`. Pages Functions use file-based
+dynamic routing, and `_routes.json` limits Function invocations to the proxy
+paths rather than invoking a Function for every editor static asset.
+
+Configure the Pages project with the repository root as its root directory:
+
+```text
+Build command: npm ci --include=dev && npm run build --workspace=packages/editor
+Build output directory: packages/editor/dist
+```
+
+Set this Pages runtime variable for both Production and Preview deployments:
+
+```text
+RENDER_BACKEND_URL=https://<your-render-backend-domain>
+```
+
+Use the Render origin only (no path suffix or trailing route). The Function
+forwards `/api`, `/uploads`, `/player`, `/share`, and `/content`, preserving
+method, request body, headers, query strings, and the `Set-Cookie` response.
+The editor's existing relative API calls therefore remain same-origin from the
+browser. `CourseEditor.jsx`'s relative `/player?courseId=...&preview=true`
+iframe also goes through this Function, so no editor API-client or preview URL
+change is required.
+
+The player bundle needs one extra internal proxy path: Render serves its
+compiled player files at `/assets/*`, but Cloudflare Pages uses `/assets/*`
+for the editor's own Vite bundle. The Function rewrites player HTML and
+course-JSON asset references to `/player-assets/*`, then maps that path back
+to Render's `/assets/*`. This keeps the editor bundle and the player bundle
+from colliding while retaining one browser origin.
+
+Render must still build the player before starting the server:
+
+```bash
+npm run build --workspace=packages/player
+```
+
+For generated share URLs, set the Render variables `CONTENT_BASE_URL` and
+`APP_BASE_URL` to the public Pages origin. That makes copied share links and
+email links open on Pages, where `/share/*` is proxied back to Render. Direct
+requests to the Render origin should not be used for the editor after this
+proxy is enabled; no CORS setting is needed for the normal proxied browser
+traffic. Keep `CORS_ORIGIN` configured if other direct cross-origin clients
+will call Render separately.
+
 ## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM

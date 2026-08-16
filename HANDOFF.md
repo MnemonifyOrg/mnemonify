@@ -407,6 +407,89 @@ proxy is enabled; no CORS setting is needed for the normal proxied browser
 traffic. Keep `CORS_ORIGIN` configured if other direct cross-origin clients
 will call Render separately.
 
+## 12. Cloudflare Workers editor deployment (Workers with static assets)
+
+New Cloudflare accounts may only offer Workers with static assets rather than
+the classic Pages project flow. The repository now includes a Workers entry
+point at `worker/index.js` and the root `wrangler.toml`. The Pages Function and
+`packages/editor/public/_routes.json` from section 11 remain in place for a
+future Pages deployment; use the Worker configuration below for the current
+Workers dashboard flow.
+
+The exact `wrangler.toml` is:
+
+```toml
+name = "mnemonify-editor"
+main = "worker/index.js"
+compatibility_date = "2026-08-16"
+
+[assets]
+directory = "./packages/editor/dist"
+binding = "ASSETS"
+run_worker_first = [
+  "/api",
+  "/api/*",
+  "/uploads",
+  "/uploads/*",
+  "/player",
+  "/player/*",
+  "/player-assets",
+  "/player-assets/*",
+  "/share",
+  "/share/*",
+  "/content",
+  "/content/*",
+]
+```
+
+From the repository root, configure Workers Builds with:
+
+```text
+Root directory: /
+Build command: npm ci --include=dev && npm run build --workspace=packages/editor
+Deploy command: npx wrangler deploy
+Non-production branch deploy command: npx wrangler versions upload
+```
+
+The editor build is uploaded from `packages/editor/dist`. The Worker runs
+first only for the backend/player paths listed above; it forwards those paths
+to `RENDER_BACKEND_URL`, preserving request methods, bodies, cookies, headers,
+query strings, redirects, and upstream `Set-Cookie` headers. All other
+requests are served by the `ASSETS` binding. The relative player preview URL
+from `CourseEditor.jsx` (`/player?courseId=...&preview=true`) therefore enters
+the same Worker route and continues to work without changing the editor.
+
+Set `RENDER_BACKEND_URL` as a **runtime** variable or secret in the Worker,
+not as a value committed to `wrangler.toml`:
+
+```text
+Workers & Pages -> mnemonify-editor -> Settings -> Variables and Secrets
+RENDER_BACKEND_URL=https://<your-render-backend-domain>
+```
+
+Use the Render origin only, without a route suffix. A non-sensitive value may
+be a plain text variable; using a secret is also acceptable. Add it separately
+for production and preview environments when they point at different Render
+services. Build variables configured under Workers Builds are not runtime
+bindings, so `RENDER_BACKEND_URL` must be added under the Worker's runtime
+Variables and Secrets section.
+
+For the GitHub-connected **Create application -> Import a repository** flow,
+Cloudflare Workers Builds will use the Wrangler configuration in the selected
+repository root when `npx wrangler deploy` runs, including the Worker entry
+point and static-assets directory. The dashboard still needs the repository,
+branch, root directory, build command, deploy commands, and runtime variable
+configured as above; `wrangler.toml` does not create the GitHub connection or
+populate the dashboard runtime variable by itself. The Worker name in the
+dashboard should match `mnemonify-editor` (or the deploy configuration must
+explicitly select the intended environment).
+
+The `/player-assets/*` route is intentionally included in the Worker config:
+Render's player bundle uses `/assets/*`, while the editor owns `/assets/*` in
+its static output. The Worker rewrites player HTML and course JSON asset
+references to `/player-assets/*`, then maps that private browser path back to
+Render's `/assets/*`. This keeps the editor and player on one browser origin.
+
 ## 6. Where the project stands
 
 Phases 1 through 4.6 are complete: core schema/player/editor (1), SCORM

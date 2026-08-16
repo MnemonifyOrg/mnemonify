@@ -1676,3 +1676,50 @@ All uploaded assets (images, videos, audio), course resources (PDFs, Word, Excel
 - Generated PDFs and the existing PDF-serving fix (commit 1239c751) continue to work correctly with R2 as the backend
 - The migration script successfully uploads existing local files to R2 and they become correctly servable
 - Manual verification: Sebastin runs the app with real R2 credentials, uploads a new image/video to a test course, confirms the file actually appears in the Cloudflare R2 dashboard, and confirms it renders correctly in both editor preview and a real player session — and separately confirms local dev (no R2 credentials) still works exactly as before
+
+# Deploy-B: Production Email via Resend
+
+Add this section to ARCHITECTURE.md. Commit before requesting a build prompt. Depends on Phase 6a (accounts, invitations, email verification, password reset) being complete — this replaces the local-dev console-logging fallback with real email delivery.
+
+## Problem
+
+Phase 6a built the full email-dependent flows (signup verification, invitations, password reset) but only ever delivers them via a local-dev fallback that logs the link to the server console / returns it in the API response for the UI to display. This works for local development but cannot work in production — real users need actual emails delivered to their inbox.
+
+## Decisions
+
+- Email provider: Resend, using their HTTP API (not raw SMTP).
+- Sending domain: `mail.mnemonify.org`, already verified in Resend (DKIM, SPF, sending-MX confirmed; inbound receiving deliberately disabled since the app only sends, never receives).
+- Local development behavior is UNCHANGED — the existing console-log/API-response fallback remains the default when no Resend API key is configured, exactly like R2's local-disk fallback pattern in Deploy-A.
+
+## Part 1: Email sending abstraction
+
+- Build a single email-sending interface (e.g. `sendEmail({to, subject, body/template, ...})`) with two implementations: the existing local-dev fallback (log/return the content, unchanged) and a real Resend implementation (new).
+- Selection between the two is via environment variable (presence of a Resend API key), consistent with the pattern established for storage in Deploy-A.
+- Resend API key and the "from" address (e.g. `noreply@mail.mnemonify.org` or similar — implementer's choice of local part, note which was chosen) are read from environment variables. Document the exact variable names in `.env.example` and HANDOFF.md.
+
+## Part 2: Email flows to convert
+
+Route each of these through the new sending abstraction, replacing their current local-dev-only delivery:
+- Signup email verification link
+- Organization invitation link
+- Password reset link
+
+Each email should have reasonably clear, plain subject lines and body content (a simple plain-text or minimal-HTML template is sufficient — this does not need branded HTML email design work in this pass, note if you think that's worth a fast-follow but don't build it now).
+
+## Part 3: Error handling
+
+- If Resend's API call fails (network issue, invalid key, rate limit, etc.), the underlying action (signup, invite, password reset request) should NOT silently appear to succeed to the user while secretly failing to deliver — surface a clear error, or at minimum log it prominently server-side so failures are noticeable rather than silent.
+- Respect Resend's rate limits (100/day on the free tier) — this should be more than sufficient for pilot-scale usage, but note in your summary if you see any flow that could plausibly send many emails in a short burst (e.g. bulk operations) that might need throttling awareness later.
+
+## Out of scope for this pass
+
+- Branded/designed HTML email templates (plain and functional is sufficient for now)
+- Any additional email types beyond the three listed (e.g. comment notifications, which were already explicitly deferred in Phase 6b)
+- Email delivery analytics/tracking beyond what Resend provides by default
+
+## Acceptance criteria
+
+- With a real Resend API key configured, signup verification, invitation, and password reset emails are actually delivered to a real inbox
+- With no Resend API key configured (local dev default), behavior is completely unchanged from today
+- A failed send is surfaced/logged clearly, not silently swallowed
+- Manual verification: Sebastin signs up a real test account (or invites a real email address he can check) with Resend configured, and confirms an actual email arrives in the inbox with a working link — for all three flows (verification, invitation, password reset)

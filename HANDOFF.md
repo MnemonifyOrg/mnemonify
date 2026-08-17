@@ -437,6 +437,7 @@ compatibility_date = "2026-08-16"
 
 [assets]
 directory = "../packages/editor/dist"
+not_found_handling = "single-page-application"
 binding = "ASSETS"
 run_worker_first = [
   "/api",

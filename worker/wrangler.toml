@@ -1,9 +1,9 @@
 name = "mnemonify-editor"
-main = "worker/index.js"
+main = "index.js"
 compatibility_date = "2026-08-16"
 
 [assets]
-directory = "./packages/editor/dist"
+directory = "../packages/editor/dist"
 binding = "ASSETS"
 run_worker_first = [
   "/api",

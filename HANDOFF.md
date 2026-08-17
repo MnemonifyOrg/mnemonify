@@ -411,20 +411,20 @@ will call Render separately.
 
 New Cloudflare accounts may only offer Workers with static assets rather than
 the classic Pages project flow. The repository now includes a Workers entry
-point at `worker/index.js` and the root `wrangler.toml`. The Pages Function and
+point at `worker/index.js` and `worker/wrangler.toml`. The Pages Function and
 `packages/editor/public/_routes.json` from section 11 remain in place for a
 future Pages deployment; use the Worker configuration below for the current
 Workers dashboard flow.
 
-The exact `wrangler.toml` is:
+The exact `worker/wrangler.toml` is:
 
 ```toml
 name = "mnemonify-editor"
-main = "worker/index.js"
+main = "index.js"
 compatibility_date = "2026-08-16"
 
 [assets]
-directory = "./packages/editor/dist"
+directory = "../packages/editor/dist"
 binding = "ASSETS"
 run_worker_first = [
   "/api",
@@ -445,13 +445,16 @@ run_worker_first = [
 From the repository root, configure Workers Builds with:
 
 ```text
-Root directory: /
-Build command: npm ci --include=dev && npm run build --workspace=packages/editor
+Root directory: /worker/
+Build command: npm ci --include=dev --prefix .. && npm --prefix .. run build --workspace=@mnemonify/editor
 Deploy command: npx wrangler deploy
 Non-production branch deploy command: npx wrangler versions upload
 ```
 
-The editor build is uploaded from `packages/editor/dist`. The Worker runs
+Commands are run from the `/worker` root directory. `--prefix ..` points npm
+back to the repository root so it can install the monorepo lockfile and run
+the `@mnemonify/editor` workspace build. The editor build is uploaded from
+`packages/editor/dist`. The Worker runs
 first only for the backend/player paths listed above; it forwards those paths
 to `RENDER_BACKEND_URL`, preserving request methods, bodies, cookies, headers,
 query strings, redirects, and upstream `Set-Cookie` headers. All other
@@ -475,10 +478,11 @@ bindings, so `RENDER_BACKEND_URL` must be added under the Worker's runtime
 Variables and Secrets section.
 
 For the GitHub-connected **Create application -> Import a repository** flow,
-Cloudflare Workers Builds will use the Wrangler configuration in the selected
-repository root when `npx wrangler deploy` runs, including the Worker entry
-point and static-assets directory. The dashboard still needs the repository,
-branch, root directory, build command, deploy commands, and runtime variable
+Cloudflare Workers Builds will use `worker/wrangler.toml` because the selected
+repository root is `/worker`; `npx wrangler deploy` therefore finds the Worker
+entry point and static-assets directory without running application detection
+at the npm workspace root. The dashboard still needs the repository, branch,
+root directory, build command, deploy commands, and runtime variable
 configured as above; `wrangler.toml` does not create the GitHub connection or
 populate the dashboard runtime variable by itself. The Worker name in the
 dashboard should match `mnemonify-editor` (or the deploy configuration must

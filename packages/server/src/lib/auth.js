@@ -160,7 +160,8 @@ export async function authContext(req, res, next) {
     // Existing local/editor/test flows intentionally remain usable without a
     // login prompt. This fallback is disabled in production and can be
     // disabled locally with DEV_AUTH_BYPASS=false. It resolves to the seeded
-    // owner membership created by migration 013, not a privileged magic role.
+    // owner membership created by the explicit local seed:dev step, not a
+    // privileged magic role.
     if (process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS !== 'false') {
       req.auth = {
         userId: DEV_USER_ID,

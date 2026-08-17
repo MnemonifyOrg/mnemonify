@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node src/index.js",
     "migrate": "node src/migrate.js",
+    "seed:dev": "node src/seedDev.js",
     "migrate:storage": "node scripts/migrate-local-storage.js",
     "test": "node --test src/lib/*.test.js"
   },

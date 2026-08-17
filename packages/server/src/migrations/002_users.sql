@@ -7,8 +7,3 @@ CREATE TABLE IF NOT EXISTS users (
   onboarding_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
-INSERT INTO users (id, organisation_id, email, name, role) VALUES
-  ('00000000-0000-0000-0000-000000000002',
-   '00000000-0000-0000-0000-000000000001',
-   'dev@mnemonify.org', 'Dev User', 'admin')
-  ON CONFLICT DO NOTHING;

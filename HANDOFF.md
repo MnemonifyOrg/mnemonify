@@ -210,6 +210,7 @@ PostgreSQL (local, one-time):
 ```
 createdb mnemonify_dev
 npm run migrate --workspace=packages/server
+NODE_ENV=development npm run seed:dev --workspace=packages/server
 ```
 Migrations run in order from `packages/server/src/migrations/*.sql`
 (currently 001–017, including the Phase 6 migrations and
@@ -218,8 +219,16 @@ each file straight through on every invocation — there is no migration ledger,
 down-migration, or rollback mechanism. Run the same command after a fresh
 clone or whenever a new numbered migration is added. Phase 6a's migration
 creates the PostgreSQL session, token, invitation, login-rate-limit, and
-email-outbox tables, backfills organization memberships, and seeds the local
-owner account `dev@mnemonify.org` with password `dev-password`.
+email-outbox tables and backfills memberships for users that already exist.
+The separate `NODE_ENV=development npm run seed:dev --workspace=packages/server`
+step creates or refreshes the local-only owner account
+`dev@mnemonify.org` with password `dev-password`. It refuses to run with
+`NODE_ENV=production` (and with other non-development environment names).
+
+Migrations must never seed environment-specific credentials. Keep development
+accounts, passwords, tokens, and similar fixtures in explicitly invoked local
+seed scripts with a loud production guard; production and staging migrations
+must be safe to run without creating known credentials.
 
 After migration, a quick local auth smoke test is:
 ```

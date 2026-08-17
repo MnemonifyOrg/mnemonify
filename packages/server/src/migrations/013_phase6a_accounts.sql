@@ -34,13 +34,6 @@ FROM users u
 WHERE u.organisation_id IS NOT NULL
 ON CONFLICT (organisation_id, user_id) DO NOTHING;
 
--- The seeded development identity remains usable after auth is enabled.
-UPDATE users
-SET password_hash = COALESCE(password_hash, '$2b$12$Fb9mMY.GbFDLTuygrwYIn.riUVcgjUDVegnXhztk6JcVv8MkV.OdS'),
-    email_verified_at = COALESCE(email_verified_at, now()),
-    role = 'owner'
-WHERE id = '00000000-0000-0000-0000-000000000002';
-
 CREATE TABLE IF NOT EXISTS auth_sessions (
   session_hash TEXT PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

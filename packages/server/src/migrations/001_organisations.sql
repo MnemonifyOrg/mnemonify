@@ -3,6 +3,3 @@ CREATE TABLE IF NOT EXISTS organisations (
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
-INSERT INTO organisations (id, name) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Default Organisation')
-  ON CONFLICT DO NOTHING;

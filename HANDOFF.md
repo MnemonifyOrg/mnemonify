@@ -414,7 +414,10 @@ the classic Pages project flow. The repository now includes a Workers entry
 point at `worker/index.js` and `worker/wrangler.toml`. The Pages Function and
 `packages/editor/public/_routes.json` from section 11 remain in place for a
 future Pages deployment; use the Worker configuration below for the current
-Workers dashboard flow.
+deployment. Workers Builds dashboard settings are retained for reference, but
+the current staging deployment uses the direct Wrangler CLI procedure below
+because the dashboard build currently reports that the repository root cannot
+be found for this monorepo.
 
 The exact `worker/wrangler.toml` is:
 
@@ -442,7 +445,7 @@ run_worker_first = [
 ]
 ```
 
-From the repository root, configure Workers Builds with:
+If Workers Builds is used in the future, configure it with:
 
 ```text
 Root directory: /worker/
@@ -487,6 +490,45 @@ configured as above; `wrangler.toml` does not create the GitHub connection or
 populate the dashboard runtime variable by itself. The Worker name in the
 dashboard should match `mnemonify-editor` (or the deploy configuration must
 explicitly select the intended environment).
+
+### Current deployment method: direct Wrangler CLI
+
+Deploy the editor Worker manually from the repository root and then the
+`worker/` directory. This bypasses the current Workers Builds monorepo
+detection failure:
+
+```bash
+# From the repository root
+npm ci --include=dev
+npm run build --workspace=@mnemonify/editor
+
+# From worker/
+cd worker
+export CLOUDFLARE_API_TOKEN='•••'  # provide via a shell/CI secret; never commit it
+npx wrangler deploy
+printf '%s' 'https://mnemonify-staging.onrender.com' \
+  | npx wrangler secret put RENDER_BACKEND_URL
+npx wrangler secret list
+unset CLOUDFLARE_API_TOKEN
+```
+
+`CLOUDFLARE_API_TOKEN` is Wrangler's standard non-interactive authentication
+variable and must have permission to edit Workers for the account. The
+`RENDER_BACKEND_URL` value is stored as an encrypted Worker secret rather than
+in `wrangler.toml`; `worker/index.js` reads it as `env.RENDER_BACKEND_URL`.
+Run the `secret put` command again when switching between staging and
+production backend URLs. `secret list` should show the name without exposing
+the value. The deployed staging Worker URL is:
+
+```text
+https://mnemonify-editor.kodakuthum.workers.dev
+```
+
+The dashboard's current "root directory not found" failure is outside the
+Worker code and is why this manual process is the deployment source of truth
+for now. If a future dashboard integration is retried, use `/worker/` as the
+repository root and the workspace-aware commands above; otherwise use a CI
+job that runs these same commands with the API token stored as a CI secret.
 
 The `/player-assets/*` route is intentionally included in the Worker config:
 Render's player bundle uses `/assets/*`, while the editor owns `/assets/*` in

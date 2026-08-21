@@ -1723,3 +1723,56 @@ Each email should have reasonably clear, plain subject lines and body content (a
 - With no Resend API key configured (local dev default), behavior is completely unchanged from today
 - A failed send is surfaced/logged clearly, not silently swallowed
 - Manual verification: Sebastin signs up a real test account (or invites a real email address he can check) with Resend configured, and confirms an actual email arrives in the inbox with a working link — for all three flows (verification, invitation, password reset)
+
+# Self-Contained SCORM Package Export
+
+Add this section to ARCHITECTURE.md, with a summary/reference in REQUIREMENTS.md. Commit before requesting a build prompt.
+
+## Problem
+
+The existing launcher tool (packages/launcher) produces a "dynamic launcher" SCORM package: a small zip containing imsmanifest.xml, a thin index.html, and the SCORM 2004 communication bridge — but the actual course content stays live on the Mnemonify server, fetched at runtime via /content/:courseId. This means the package only works while the Mnemonify server is reachable; it is not truly portable.
+
+Sebastin needs a genuinely self-contained SCORM package: everything (player, course content, all assets, captions) bundled inside the zip, with zero runtime dependency on any Mnemonify server, suitable for upload to SCORM Cloud, CAP's LMS (Ethos), or any standard SCORM 2004 3rd Edition compliant LMS.
+
+## Decisions
+
+- Target: SCORM 2004 3rd Edition (already the project's stated standard).
+- The package must work with NO network dependency on Mnemonify's own infrastructure once uploaded to a third-party LMS. It may still depend on genuinely external third-party services the course author has chosen to embed (see "Known inherent limitations" below) — that is a property of the embedded content itself, not something packaging can or should fix.
+- The package is generated for a specific PUBLISHED version of a course (addressing the existing gap where VERSION_ID exists in the launcher's config but isn't actually used to resolve a specific snapshot) — publishing a new version and re-exporting produces a new, independent package; the export is a point-in-time snapshot, not a live link.
+
+## Part 1: Course data embedding
+
+- The player currently fetches course_json via a live network call to /content/:courseId at startup. For the self-contained package, course_json (the specific published version being exported) must be embedded directly, not fetched at runtime.
+- Recommended approach: inline the course_json data as a JavaScript object literal directly in the packaged index.html (e.g. `window.__MNEMONIFY_COURSE_DATA__ = {...}`), rather than as a separate file the player fetches via XHR/fetch — this avoids potential issues with how strict some LMS environments are about in-package file access, and matches common practice among established SCORM-exporting tools.
+- The player needs a code change to support this "embedded data" mode: check for this embedded global data source first, and only fall back to the live /content/:courseId fetch when it's absent (preserving all existing live-hosting behavior, including everything tested throughout this deployment work, completely unchanged).
+
+## Part 2: Asset bundling
+
+- All assets (images, video, audio) and resources (PDFs, generated PDFs, etc.) referenced by the course being exported must be downloaded from R2 (or local disk in local dev) and included in the package, with their paths rewritten to relative local paths that resolve correctly within the unzipped package structure.
+- Captions/transcripts (currently stored as text content in Postgres, not files) must be written out as actual static files (e.g. .vtt) within the package, since there's no live database to query from inside a SCORM package.
+- Reuse patterns already established in the PDF pipeline (buffer generation, storage abstraction) where they fit, per the existing investigation's finding that this is a reasonable pattern to follow.
+
+## Part 3: Known inherent limitations (out of scope to "fix", but must be clearly communicated to the author)
+
+- Embedded external content the author has chosen to include — the DigitalScope WSI viewer embed, SurveyMonkey evaluation embeds, or any other iframe/embed pointing to a third-party URL — will still require that third-party service to be reachable at runtime, regardless of how self-contained the Mnemonify-authored portion of the package is. This is a property of the embedded content, not a packaging gap.
+- The export flow should clearly surface this to the author before/during export (e.g. "This course contains N external embeds that will still require internet access to [DigitalScope/SurveyMonkey/etc.] even in the exported package") rather than implying full offline capability where it doesn't apply.
+
+## Part 4: Manifest, SCORM bridge, and version resolution
+
+- Reuse and extend the existing manifest generation (packages/launcher/manifest.js) and the existing SCORM 2004 communication code (packages/player/src/lms/scorm2004.js) — do not rewrite working SCORM-compliance logic from scratch.
+- Fix the version-resolution gap identified in the prior investigation: the export must resolve and bundle the actual specific published version requested, not rely on a VERSION_ID that isn't currently wired through.
+
+## Part 5: Export trigger and delivery
+
+- Add an authenticated Owner/Editor-only "Download SCORM Package" action in the Course drawer (or wherever fits the existing UI pattern best), consistent with the permission model already established (Owner/Editor per the publish permission, Reviewer cannot export).
+- Requires the course to have a published version — if unpublished, show a clear message rather than a broken/empty export.
+- Force-save current edits before triggering export is NOT required (per the existing publish flow, which already requires an explicit publish step before this kind of export makes sense) — exporting operates on the last published version, consistent with how the anonymous share links (Phase 6c) also work off the last-published version, for consistency.
+- Given package size could be substantial for video-heavy courses, generate the package as a background job (return a "generating" state, then a download link when ready) rather than a synchronous request that could time out — reuse whatever async/background-job pattern already exists in the codebase if one does (check the PDF pipeline and caption pipeline for existing patterns), or note if a new one is needed.
+
+## Acceptance criteria
+
+- A published course can be exported as a single zip file containing: the player bundle, the specific published version's course data (embedded, not fetched), all referenced assets/resources (bundled as local files with rewritten paths), captions/transcripts as static files, a correct imsmanifest.xml, and the SCORM 2004 communication bridge
+- The exported zip, uploaded to SCORM Cloud with no network connection to any Mnemonify server, launches and functions correctly: navigation, scoring, variable interpolation, and completion reporting all work
+- External embeds (if any) are clearly flagged to the author as still requiring third-party connectivity
+- Only Owner/Editor roles can trigger export; enforced server-side
+- Manual verification: Sebastin builds a real test course (ideally reusing course f9dc55f6 or a similar test course already used throughout this project), exports it, and uploads the resulting zip directly to SCORM Cloud with his own local network completely disconnected from Mnemonify's server (or Mnemonify's server temporarily stopped) to prove genuine independence — completing a full run-through including scored questions and confirming SCORM Cloud reports the score/completion correctly

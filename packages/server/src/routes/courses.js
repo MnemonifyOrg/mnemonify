@@ -13,6 +13,12 @@ import {
   versionForResponse,
   validateVersionName,
 } from '../lib/courseVersions.js';
+import {
+  downloadScormExport,
+  getScormExportJob,
+  scormExportResponse,
+  startScormExport,
+} from '../lib/scormExport.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -327,6 +333,56 @@ router.post('/courses/:id/publish-artifacts', requireRole(ROLES.OWNER, ROLES.EDI
   if (!course.rows.length) { res.status(404).json({ error: 'Course not found' }); return; }
   const queued = queueCoursePdfs(req.params.id);
   res.status(202).json({ queued });
+}));
+
+router.post('/courses/:id/scorm-export', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const result = await startScormExport({ courseId: req.params.id, organisationId: req.auth.organisationId });
+  if (result.notPublished) {
+    res.status(409).json({ error: 'Publish this course before downloading a SCORM package.' });
+    return;
+  }
+  res.status(202).json(result);
+}));
+
+router.get('/courses/:id/scorm-export/:jobId', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const job = getScormExportJob({
+    courseId: req.params.id,
+    organisationId: req.auth.organisationId,
+    jobId: req.params.jobId,
+  });
+  if (!job) {
+    res.status(404).json({ error: 'SCORM export job not found.' });
+    return;
+  }
+  res.json(scormExportResponse(job));
+}));
+
+router.get('/courses/:id/scorm-export/:jobId/download', requireRole(ROLES.OWNER, ROLES.EDITOR), asyncHandler(async (req, res) => {
+  const job = getScormExportJob({
+    courseId: req.params.id,
+    organisationId: req.auth.organisationId,
+    jobId: req.params.jobId,
+  });
+  if (!job) {
+    res.status(404).json({ error: 'SCORM export job not found.' });
+    return;
+  }
+  if (job.status === 'generating') {
+    res.status(202).json(scormExportResponse(job));
+    return;
+  }
+  if (job.status === 'failed') {
+    res.status(500).json({ error: job.error || 'SCORM package generation failed.' });
+    return;
+  }
+  const buffer = await downloadScormExport(job);
+  if (!buffer) {
+    res.status(404).json({ error: 'SCORM package is no longer available.' });
+    return;
+  }
+  res.type('application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${job.filename}"`);
+  res.send(buffer);
 }));
 
 // The current editor has no separate review-publish endpoint yet; keep the

@@ -15,7 +15,7 @@ export function renderLauncherConfig({ contentServerUrl, courseId, versionId, co
   return `${JSON.stringify({ contentServerUrl, courseId, versionId, courseTitle }, null, 2)}\n`;
 }
 
-export function buildManifest({ courseId, versionId, courseTitle }) {
+export function buildManifest({ courseId, versionId, courseTitle, files } = {}) {
   const identifier = escapeXml(`mnemonify_${courseId}_v${versionId}`);
   const title = escapeXml(courseTitle);
   return `<?xml version="1.0" standalone="no" ?>
@@ -44,9 +44,7 @@ export function buildManifest({ courseId, versionId, courseTitle }) {
   </organizations>
   <resources>
     <resource identifier="mnemonify_resource" type="webcontent" adlcp:scormType="sco" href="index.html">
-      <file href="index.html"/>
-      <file href="scorm-api.js"/>
-      <file href="config.json"/>
+      ${(files || ['index.html', 'scorm-api.js', 'config.json']).map((file) => `<file href="${escapeXml(file)}"/>`).join('\n      ')}
     </resource>
   </resources>
 </manifest>

@@ -1,5 +1,6 @@
 import { useMediaBlock } from './useMediaBlock.js';
 import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
+import { resolveCaptionUrl, resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 // Minimal video block (Phase 4 Part 3 -- ARCHITECTURE.md Section 6). Native
 // Native HTML5 controls and native caption track; captions/transcripts are
@@ -17,7 +18,7 @@ export default function VideoBlock({ block, assets, onTrigger, onTimeReached, pr
     );
   }
 
-  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const resolvedSrc = resolvePlayerUrl(asset.src);
   const autoplay = !!block.content.autoplay;
 
   return (
@@ -39,7 +40,7 @@ export default function VideoBlock({ block, assets, onTrigger, onTimeReached, pr
         onSeeked={handleSeeked}
         onEnded={handleEnded}
       >
-        {caption && <track kind="captions" src={`/api/assets/${asset.asset_id}/captions/caption.vtt`} srcLang="en" label="English" />}
+        {caption && <track kind="captions" src={resolveCaptionUrl(asset.asset_id)} srcLang="en" label="English" />}
       </video>
       {autoplay && muted && (
         <button type="button" className="block-video__unmute" onClick={unmute}>

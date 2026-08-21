@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 // Player rendering for the carousel block (P1-8) -- previously
 // unimplemented (see DECISIONS.md 2026-07-12: "Carousel player rendering
@@ -21,10 +22,10 @@ export default function CarouselBlock({ block, assets, onOpenModal, onTrigger, p
   }
 
   const current = images[index];
-  const resolvedSrc = current.src.startsWith('/') || current.src.startsWith('http') ? current.src : `/${current.src}`;
+  const resolvedSrc = resolvePlayerUrl(current.src);
   const hasMultiple = images.length > 1;
 
-  if (printMode) return <div className="block block-carousel block-carousel--print">{images.map((image) => <figure key={image.asset_id}><img src={image.src.startsWith('/') || image.src.startsWith('http') ? image.src : `/${image.src}`} alt={image.alt || ''} />{image.caption && <figcaption>{image.caption}</figcaption>}</figure>)}</div>;
+  if (printMode) return <div className="block block-carousel block-carousel--print">{images.map((image) => <figure key={image.asset_id}><img src={resolvePlayerUrl(image.src)} alt={image.alt || ''} />{image.caption && <figcaption>{image.caption}</figcaption>}</figure>)}</div>;
 
   function goTo(newIndex) {
     setIndex(((newIndex % images.length) + images.length) % images.length);

@@ -20,6 +20,7 @@ import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import SettingsSection from './SettingsSection.jsx';
 import CommentsPanel from './CommentsPanel.jsx';
 import ShareLinksPanel from './ShareLinksPanel.jsx';
+import ScormExportPanel from './ScormExportPanel.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -129,6 +130,7 @@ function CourseSettings({ meta, onChangeMeta, courseId, canManageShareLinks, pub
       <p className="settings-panel__hint">Adds a Back button on every page after the first page.</p>
       </SettingsSection>
       <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
+      <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
     </>
   );
 }

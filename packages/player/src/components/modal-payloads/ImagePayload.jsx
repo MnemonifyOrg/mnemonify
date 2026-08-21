@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useImageZoom, computeMaxZoom, MIN_ZOOM, DEFAULT_MAX_ZOOM } from '../../lib/imageZoom.js';
+import { resolvePlayerUrl } from '../../lib/runtimeUrl.js';
 
 // payload: { type: 'image', asset, images?: [asset...], index?: number }
 // `images`/`index` are only present when opened from a carousel; a
@@ -48,7 +49,7 @@ export default function ImagePayload({ payload }) {
   }
 
   if (!asset) return null;
-  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const resolvedSrc = resolvePlayerUrl(asset.src);
   const zoomPct = Math.round(zoom.scale * 100);
 
   return (

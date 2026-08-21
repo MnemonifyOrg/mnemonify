@@ -11,6 +11,13 @@ function formatFileSize(bytes) {
   return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
+function resourceUrl(resource) {
+  const value = resource?.file_path;
+  if (!value) return '';
+  if (value.startsWith('/') || value.startsWith('http')) return value;
+  return globalThis.window?.__MNEMONIFY_EMBEDDED__ === true ? `./${value.replace(/^\.\/+/, '')}` : `/uploads/${value}`;
+}
+
 // Manual attachments and generated publish artifacts share this modal. Each resource downloads via a real
 // <a download> so the browser saves the file to disk rather than
 // navigating the player tab away from the course, per the in-player
@@ -36,7 +43,7 @@ export default function ResourcesPayload({ payload }) {
             </div>
             <a
               className="modal-payload__resource-download"
-              href={resource.file_path?.startsWith('/') || resource.file_path?.startsWith('http') ? resource.file_path : `/uploads/${resource.file_path}`}
+              href={resourceUrl(resource)}
               download={resource.label || resource.filename}
             >
               Download

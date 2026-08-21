@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMediaBlock } from './useMediaBlock.js';
 import { TranscriptPanel, useCaptions } from './useCaptions.jsx';
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 // Native HTML5 controls plus the Phase 5 transcript panel. Existing media
 // manager behavior remains shared with VideoBlock.
@@ -40,7 +41,7 @@ export default function AudioBlock({ block, assets, onTrigger, printMode }) {
     );
   }
 
-  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const resolvedSrc = resolvePlayerUrl(asset.src);
   const autoplay = !!block.content.autoplay;
 
   return (

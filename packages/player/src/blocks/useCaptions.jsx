@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { embeddedCaptionEntry, isEmbeddedPackage, resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 export function useCaptions(assetId) {
   const [captionData, setCaptionData] = useState({ caption: null, transcript: null });
@@ -9,8 +10,19 @@ export function useCaptions(assetId) {
     if (!assetId) return () => { active = false; };
     window.__MNEMONIFY_CAPTIONS_PENDING__ = (window.__MNEMONIFY_CAPTIONS_PENDING__ || 0) + 1;
     const finish = () => { window.__MNEMONIFY_CAPTIONS_PENDING__ = Math.max(0, (window.__MNEMONIFY_CAPTIONS_PENDING__ || 1) - 1); };
-    fetch(`/api/assets/${assetId}/captions`)
-      .then((response) => (response.ok ? response.json() : []))
+    const embedded = embeddedCaptionEntry(assetId);
+    const request = embedded
+      ? Promise.all([
+        embedded.caption ? fetch(resolvePlayerUrl(embedded.caption)).then((response) => (response.ok ? response.text() : null)) : Promise.resolve(null),
+        embedded.transcript ? fetch(resolvePlayerUrl(embedded.transcript)).then((response) => (response.ok ? response.text() : null)) : Promise.resolve(null),
+      ]).then(([caption, transcript]) => [
+        ...(caption ? [{ kind: 'caption', status: 'ready', content: caption }] : []),
+        ...(transcript ? [{ kind: 'transcript', status: 'ready', content: transcript }] : []),
+      ])
+      : isEmbeddedPackage()
+        ? Promise.resolve([])
+        : fetch(`/api/assets/${assetId}/captions`).then((response) => (response.ok ? response.json() : []));
+    request
       .then((rows) => {
         if (!active) return;
         setCaptionData({

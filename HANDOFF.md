@@ -204,6 +204,30 @@ real deployed domain (mnemonify.org, per the roadmap), the entire ngrok
 interstitial workaround disappears on its own — it only exists because
 local dev is being tunneled. A real deployed URL has no interstitial.
 
+### 4.1 Self-contained SCORM package export
+
+The Course drawer's **Download SCORM package** action is Owner/Editor-only
+and exports the latest published `course_versions` row. The server queues the
+work in an in-process background job, stores the resulting ZIP through the
+configured local/R2 storage backend, and exposes a status endpoint followed by
+an authenticated download endpoint. Build the player before running the
+server in an environment that will export packages:
+
+```
+npm run build --workspace=@mnemonify/player
+```
+
+The generated package contains the player bundle, an inline published course
+JSON snapshot, relative local asset/resource paths, caption/transcript files,
+`imsmanifest.xml`, and the existing `scorm-api.js` bridge. It does not fetch
+from Mnemonify at runtime, so the SCORM Cloud verification should continue
+working with the Mnemonify server disconnected. The LMS must still provide the
+SCORM 2004 API, and any author-created external iframe embeds (for example,
+DigitalScope or SurveyMonkey) remain internet dependencies; the export UI and
+ZIP include a warning listing those dependencies. A process restart discards
+in-progress export job status, so retry the export if the server restarts
+before download.
+
 ## 5. Dev environment setup
 
 PostgreSQL (local, one-time):

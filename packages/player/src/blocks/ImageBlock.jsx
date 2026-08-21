@@ -3,6 +3,7 @@
 // correctly with the no-freeform-canvas rule. See DECISIONS.md.
 const WIDTH_PRESET_PCT = { small: 25, medium: 50, large: 75, full: 100 };
 const ALIGN_ITEMS = { left: 'flex-start', center: 'center', right: 'flex-end' };
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 export default function ImageBlock({ block, assets, onOpenModal, onTrigger }) {
   const asset = assets.find((a) => a.asset_id === block.content.asset_id);
@@ -16,7 +17,7 @@ export default function ImageBlock({ block, assets, onOpenModal, onTrigger }) {
       </figure>
     );
   }
-  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const resolvedSrc = resolvePlayerUrl(asset.src);
   const widthPreset = block.content.width_preset || 'medium';
   const isFull = widthPreset === 'full';
   const alignment = isFull ? 'center' : block.content.alignment || 'center';

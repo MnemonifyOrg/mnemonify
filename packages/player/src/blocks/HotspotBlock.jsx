@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 function plainText(label) { return (label?.rich_text?.[0]?.v || label?.text || '').replace(/<[^>]+>/g, '').trim() || 'Hotspot information'; }
-function assetSrc(asset) { return asset?.src?.startsWith('/') || asset?.src?.startsWith('http') ? asset.src : asset?.src ? `/${asset.src}` : ''; }
+function assetSrc(asset) { return resolvePlayerUrl(asset?.src); }
 
 export default function HotspotBlock({ block, assets, onOpenModal, onTrigger }) {
   const image = assets?.find((asset) => asset.asset_id === block.content.image_asset_id);

@@ -165,15 +165,16 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
       scorm2004.startTimer();
 
       let scormAvailable = false;
-      let loadedCourse = bundledCourse;
-      let restoredVariables = initialVariables(bundledCourse);
-      let restoredPageId = bundledCourse.pages[0].page_id;
+      const embeddedCourse = window.__MNEMONIFY_COURSE_DATA__ || null;
+      let loadedCourse = embeddedCourse || bundledCourse;
+      let restoredVariables = initialVariables(loadedCourse);
+      let restoredPageId = loadedCourse.pages[0].page_id;
       let restoredCompletedPageIds = [];
-      let restoredScoreState = createScoreState(bundledCourse);
+      let restoredScoreState = createScoreState(loadedCourse);
       let restoredInteractionStates = {};
       let restoredQuestionBankDraws = {};
       let restoredInteractionStatePayload = {};
-      let restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] }) : [];
+      let restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] }) : [];
 
       const params = new URLSearchParams(window.location.search);
       const isPreview = params.get('preview') === 'true';
@@ -218,7 +219,28 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
           scormAvailable = await scorm2004.initialize();
           if (cancelled) return;
 
-          if (scormAvailable) {
+          if (embeddedCourse) {
+            // Self-contained SCORM packages carry the immutable published
+            // snapshot in their root index.html. Never reach back to the
+            // Mnemonify content endpoint for this mode; live editor preview,
+            // published web courses, and share links still use their existing
+            // branches above.
+            loadedCourse = embeddedCourse;
+            restoredVariables = initialVariables(loadedCourse);
+            restoredPageId = loadedCourse.pages[0].page_id;
+            restoredScoreState = createScoreState(loadedCourse);
+            restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] }) : [];
+            if (scormAvailable) {
+              const suspend = await scorm2004.getSuspendData();
+              learnerId = await scorm2004.getLearnerId();
+              restoredVariables = suspend.variables || restoredVariables;
+              restoredPageId = suspend.pageId || restoredPageId;
+              restoredCompletedPageIds = suspend.completedPageIds || [];
+              restoredScoreState = createScoreState(loadedCourse, suspend.scoreState);
+              restoredInteractionStatePayload = suspend.interactionStates || {};
+              restoredQuestionBankDraws = suspend.questionBankDraws || {};
+            }
+          } else if (scormAvailable) {
             const courseId = params.get('courseId') || 'sample';
             const contentServerUrl = window.location.origin;
             const response = await fetch(`${contentServerUrl}/content/${courseId}`);
@@ -247,15 +269,15 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
         // bundled course so the player still works.
         console.error('[player] Boot failed, falling back to bundled course:', err);
         scormAvailable = false;
-        loadedCourse = bundledCourse;
-        restoredVariables = initialVariables(bundledCourse);
-        restoredPageId = bundledCourse.pages[0].page_id;
+        loadedCourse = embeddedCourse || bundledCourse;
+        restoredVariables = initialVariables(loadedCourse);
+        restoredPageId = loadedCourse.pages[0].page_id;
         restoredCompletedPageIds = [];
-        restoredScoreState = createScoreState(bundledCourse);
+        restoredScoreState = createScoreState(loadedCourse);
         restoredInteractionStates = {};
         restoredQuestionBankDraws = {};
         restoredInteractionStatePayload = {};
-        restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: bundledCourse.glossary_terms || [] }) : [];
+        restoredGlossaryTerms = featureFlags.glossary ? effectiveGlossaryTerms({ courseTerms: loadedCourse.glossary_terms || [] }) : [];
       }
 
       // Published documents store linked usages without duplicate content.
@@ -292,7 +314,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
       if (cancelled) return;
       await configureAnalytics({
-        courseId: isPreview || shareToken ? null : loadedCourse.meta.course_id,
+        courseId: isPreview || shareToken || embeddedCourse ? null : loadedCourse.meta.course_id,
         courseVersion: params.get('versionId'),
         learnerId,
       });

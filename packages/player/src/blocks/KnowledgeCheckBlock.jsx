@@ -6,6 +6,7 @@ import {
   isKnowledgeCheckAnswerCorrect,
   normalizeSelectedOptionIds,
 } from '@mnemonify/schema/knowledge-check.js';
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 // Click-to-zoom like a standalone image block (Modal.jsx / imageZoom.js),
 // but never as part of a set -- no images/index passed, so the lightbox
@@ -15,7 +16,7 @@ import {
 function KcImage({ assetId, assets, onOpenModal }) {
   const asset = (assets || []).find((a) => a.asset_id === assetId);
   if (!asset) return null;
-  const resolvedSrc = asset.src.startsWith('/') || asset.src.startsWith('http') ? asset.src : `/${asset.src}`;
+  const resolvedSrc = resolvePlayerUrl(asset.src);
   return (
     <button
       type="button"

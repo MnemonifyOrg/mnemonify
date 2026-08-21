@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import RichText from './RichText.jsx';
+import { resolvePlayerUrl } from '../lib/runtimeUrl.js';
 
 function CardSide({ side, assets, variables }) {
   const image = assets?.find((asset) => asset.asset_id === side?.image_id);
-  return <div className="flashcards__side"><RichText value={side?.rich_text || side?.text || ''} variables={variables} />{image && <img src={image.src.startsWith('/') || image.src.startsWith('http') ? image.src : `/${image.src}`} alt={image.alt || ''} />}</div>;
+  return <div className="flashcards__side"><RichText value={side?.rich_text || side?.text || ''} variables={variables} />{image && <img src={resolvePlayerUrl(image.src)} alt={image.alt || ''} />}</div>;
 }
 
 export default function FlashcardsBlock({ block, assets, variables }) {

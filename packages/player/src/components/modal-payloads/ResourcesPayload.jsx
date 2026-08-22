@@ -1,3 +1,5 @@
+import { isEmbeddedPackage } from '../../lib/runtimeUrl.js';
+
 function formatFileSize(bytes) {
   if (bytes === null || bytes === undefined) return '';
   if (bytes < 1024) return `${bytes} B`;
@@ -15,7 +17,7 @@ function resourceUrl(resource) {
   const value = resource?.file_path;
   if (!value) return '';
   if (value.startsWith('/') || value.startsWith('http')) return value;
-  return globalThis.window?.__MNEMONIFY_EMBEDDED__ === true ? `./${value.replace(/^\.\/+/, '')}` : `/uploads/${value}`;
+  return isEmbeddedPackage() ? `./${value.replace(/^\.\/+/, '')}` : `/uploads/${value}`;
 }
 
 // Manual attachments and generated publish artifacts share this modal. Each resource downloads via a real

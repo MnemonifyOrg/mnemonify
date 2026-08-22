@@ -92,7 +92,7 @@ export function rewriteCourseForPackage(courseJson, { assets = [], resources = [
 }
 
 function renderPackageIndex(playerIndex, courseJson, captionManifest) {
-  const embeddedScript = `<script src="scorm-api.js"></script><script>window.__MNEMONIFY_EMBEDDED__=true;window.__MNEMONIFY_COURSE_DATA__=${scriptJson(courseJson)};window.__MNEMONIFY_EMBEDDED_CAPTIONS__=${scriptJson(captionManifest)};</script>`;
+  const embeddedScript = `<script src="scorm-api.js"></script><script type="application/json" id="mnemonify-course-data">${scriptJson(courseJson)}</script><script type="application/json" id="mnemonify-captions">${scriptJson(captionManifest)}</script>`;
   const localIndex = playerIndex
     .replaceAll('="/assets/', '="assets/')
     .replaceAll('="/brand/', '="brand/')

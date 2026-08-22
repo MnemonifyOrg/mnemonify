@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveCaptionUrl, resolvePlayerUrl } from './runtimeUrl.js';
+import { readEmbeddedJson, resolveCaptionUrl, resolvePlayerUrl } from './runtimeUrl.js';
 
 afterEach(() => {
   delete globalThis.window;
+  delete globalThis.document;
 });
 
 describe('player runtime URLs', () => {
@@ -19,5 +20,15 @@ describe('player runtime URLs', () => {
     };
     expect(resolvePlayerUrl('course-assets/ast_1/image.png')).toBe('./course-assets/ast_1/image.png');
     expect(resolveCaptionUrl('ast_1')).toBe('./captions/ast_1.vtt');
+  });
+
+  it('can read a JSON script block without executing an inline assignment', () => {
+    globalThis.window = {};
+    globalThis.document = {
+      getElementById: (id) => id === 'mnemonify-course-data'
+        ? { textContent: '{"content":"<b>bold</b>"}' }
+        : null,
+    };
+    expect(readEmbeddedJson('__MNEMONIFY_COURSE_DATA__', 'mnemonify-course-data')).toEqual({ content: '<b>bold</b>' });
   });
 });

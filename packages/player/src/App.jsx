@@ -23,6 +23,7 @@ import { effectiveGlossaryTerms } from '@mnemonify/schema/glossary.js';
 import { GlossaryContext } from './blocks/RichText.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import { shouldRenderPageTitle } from './engine/pageTitle.js';
+import { readEmbeddedJson } from './lib/runtimeUrl.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -165,7 +166,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
       scorm2004.startTimer();
 
       let scormAvailable = false;
-      const embeddedCourse = window.__MNEMONIFY_COURSE_DATA__ || null;
+      const embeddedCourse = readEmbeddedJson('__MNEMONIFY_COURSE_DATA__', 'mnemonify-course-data');
       let loadedCourse = embeddedCourse || bundledCourse;
       let restoredVariables = initialVariables(loadedCourse);
       let restoredPageId = loadedCourse.pages[0].page_id;

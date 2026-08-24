@@ -361,9 +361,11 @@
 .editor-icon-rail__label {
   width: 92px;
   overflow: visible;
-  font-size: 9px;
-  line-height: 1.1;
+  font-size: var(--font-size-helper);
+  font-weight: 600;
+  line-height: 1.2;
   text-align: center;
+  color: var(--text-secondary);
   white-space: normal;
 }
 .editor-icon-drawer__backdrop,

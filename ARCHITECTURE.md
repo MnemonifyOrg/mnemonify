@@ -1780,3 +1780,56 @@ Sebastin needs a genuinely self-contained SCORM package: everything (player, cou
 ## UX Redesign — Phase 0 Baseline
 
 See UX_REDESIGN_INVENTORY.md for the current UI surface inventory, and UX_Redesign_Acceptance_Checklist.md for the acceptance criteria this redesign is measured against. Both are the Phase 0 deliverable for the editor UX redesign, tracked on the ux-redesign branch.
+
+# UX Redesign Phase 2: Editor Shell and Information Architecture
+
+Add this section to ARCHITECTURE.md on the ux-redesign branch. Commit before requesting a build prompt. Depends on Phase 0 (baseline inventory + acceptance checklist) and Phase 1 (quick wins) being complete.
+
+## Scope
+
+This is the core "calm canvas + contextual inspector" restructuring. It changes navigation and layout — the first UX phase to do so. Per the acceptance checklist, this phase must satisfy: a user can locate any course/player setting on the first or second guess (not by scanning every drawer), and advanced concepts stay reachable but don't compete for attention during basic authoring.
+
+## Target layout
+
+- **Left:** course outline (existing page/module list — unchanged from current behavior, already reasonably solid per Phase 1C/1D work)
+- **Center:** authoring canvas (unchanged block editing, unchanged existing selection/hover-toolbar behavior)
+- **Right:** contextual inspector, shown ONLY when a page or block is selected — this replaces the current always-visible icon rail as the primary right-side element
+- **Top:** course title, save status, Preview, Publish (largely as-is)
+
+## Critical behavior to PRESERVE from earlier work — do not regress
+
+- Selecting a block must NOT auto-open a settings drawer (this was a deliberate reversal made earlier in the project, logged in DECISIONS.md, because auto-opening stole focus from text editing). The contextual inspector for a selected block should follow the same opt-in pattern already established: the block's hover toolbar gear icon opens its settings. Do not reintroduce auto-open-on-select.
+- Selecting a page/module in the left outline MAY continue to auto-open its settings in the contextual inspector (this was the one place auto-open was kept, since it's a navigation action, not inline-editing interruption).
+- All existing settings functionality (everything currently in Course, Player, Variables, Question Banks, Objectives, Comments, Course Health drawers) must remain fully reachable and functional — this phase relocates and regroups these, it does not remove any capability.
+
+## New global navigation: Tools / Manage menu
+
+Replace the persistent icon rail with a clearly labeled menu (button/dropdown, e.g. "Tools" in the top bar) containing groups:
+
+- **Course** (course-level settings — title, accent, nav mode, etc.)
+- **Learner Experience** (Player settings — navigation, completion, contact/resources)
+- **Advanced Tools** (Variables, Objectives, Question Banks, Triggers if applicable, Glossary if flag-enabled)
+- **Review & Release** (Comments, Course Health, Version History if flag-enabled, Publish & Share — this last one is Phase 4's target, but its entry point can be established now even if its internal content isn't restructured until Phase 4)
+
+Clicking a group item opens that content in the contextual inspector panel (same visual surface used for block/page selection, just triggered differently) — one consistent panel mechanism, multiple ways to open it (select a block/page, or choose from Tools/Manage).
+
+## Migration approach
+
+- Reuse existing drawer content/components wherever possible — this is a shell/navigation change, not a rewrite of every settings panel's internals. Phase 4 will specifically restructure the Publish/Share-related content; other groups can be straightforward relocations for this phase.
+- Given CourseEditor.jsx's size (~1800 lines) and the main stylesheet's size (~3600 lines), extract and refactor incrementally — do not attempt this as one giant undifferentiated change. Break the actual implementation into logical steps (e.g.: build the new contextual inspector panel shell first, wire in the Tools/Manage menu second, migrate each drawer's content group by group third) and note your own internal sequencing in your summary so it can be followed/reviewed.
+- Feature flags already gate Version History and Glossary for v1 — respect this; their menu entries should only appear when those flags are on, consistent with existing behavior.
+
+## Out of scope for Phase 2
+
+- Block picker restructuring (Phase 3)
+- Publish & Share hub's internal content restructuring (Phase 4) — only the entry point/grouping needs to exist now
+- Visual polish beyond what's needed to make the new shell coherent (Phase 5, though some overlap is fine and expected)
+
+## Acceptance criteria
+
+- No persistent icon rail remains as the primary navigation pattern
+- A contextual inspector appears when a block or page/module is selected, following the existing opt-in (block) vs. auto-open (page/module) behavior already established
+- A Tools/Manage menu provides access to Course, Learner Experience, Advanced Tools, and Review & Release groups
+- Every setting/capability that existed before this phase remains fully reachable and functional
+- Feature-flagged items (Version History, Glossary) correctly respect their flags
+- Manual verification: Sebastin builds/edits a real test course using ONLY the new navigation, confirms he can find every setting he needs without confusion, and confirms nothing that worked before is now broken or missing

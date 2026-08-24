@@ -1833,3 +1833,33 @@ Clicking a group item opens that content in the contextual inspector panel (same
 - Every setting/capability that existed before this phase remains fully reachable and functional
 - Feature-flagged items (Version History, Glossary) correctly respect their flags
 - Manual verification: Sebastin builds/edits a real test course using ONLY the new navigation, confirms he can find every setting he needs without confusion, and confirms nothing that worked before is now broken or missing
+
+# UX Redesign Phase 3: Simpler Content Creation (Block Picker)
+
+Add this section to ARCHITECTURE.md on the ux-redesign branch. Commit before requesting a build prompt. Depends on Phase 2 (editor shell) being complete.
+
+## Problem
+
+The current "Add Block" popup (built in commit ceeedcd2, with search and categorized icons) is functional but shows every block type at once, organized by category. Per the acceptance checklist, a first-time author should be able to add a block without scanning the entire catalog — right now, someone wanting to add basic text has to visually parse the same list as someone who needs an Image Hotspot or a Question Bank.
+
+## Requirements
+
+- Add a **"Start here"** group at the very top of the popup, shown before any category, containing a small set of the most common/beginner-friendly block types: Text, Image, Video, Knowledge Check, and a basic Layout option (e.g. Two Column). This is the first thing a new author sees.
+- Keep the existing categorized groups below "Start here" for everything else (all current categories and block types remain, nothing is removed).
+- Keep the existing search functionality (from ceeedcd2) — typing still filters across all blocks regardless of category, including "Start here" duplicates (a block in "Start here" should also appear under its normal category when searching, or the search should just work as it already does across the full set — implementer's choice, note which).
+- Add a short one-line description under each block type's name (e.g. "Text — Add a paragraph of text" or similar), so unfamiliar block types are self-explanatory rather than requiring the author to already know what they do.
+- Keep the existing inline SVG icons per block type (from ceeedcd2) — this phase adds descriptions and the "Start here" grouping, it doesn't redesign the icon system.
+- The existing block picker performance and interaction (autofocus search, Enter to insert top match, empty-category hiding while filtering) must continue working exactly as it does today.
+
+## Out of scope for this phase
+
+- Recently-used or favorited blocks (noted as a possible future enhancement per the original audit, not required now)
+- Any change to how a block behaves once inserted, or to the block registry itself
+- Changes to the contextual inspector/settings for any block type (that's Phase 2's territory, already done)
+
+## Acceptance criteria
+
+- A first-time author opens Add Block and sees a small "Start here" set of common blocks before anything else, with descriptions
+- All existing block types remain reachable via their categories and via search — nothing is removed or hidden
+- Existing search/autofocus/Enter-to-insert behavior is unaffected
+- Manual verification: Sebastin opens the Add Block popup fresh and confirms the "Start here" group is immediately useful and clear, that descriptions actually help for at least one or two less-obvious block types (e.g. Reflection, Hotspot), and that search still works exactly as before

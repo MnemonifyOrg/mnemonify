@@ -103,7 +103,7 @@ function CategorySection({ category, label, findings, onNavigateToFinding, onOpe
   );
 }
 
-// The existing Course Health icon-rail drawer renders the analyzer output.
+// The contextual inspector renders the analyzer output.
 // Findings are grouped by the three 4.5c categories, while repeated rules
 // collapse into expandable rows so a course with many images remains usable.
 export default function CourseHealthPanel({ findings = [], onNavigateToFinding, onOpenAltTextReview }) {

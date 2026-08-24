@@ -2,5 +2,4 @@
    brand.css -- this file only holds values brand.css has no concept of. */
 :root {
   --panel-left-width: 240px;
-  --editor-rail-width: 104px;
 }

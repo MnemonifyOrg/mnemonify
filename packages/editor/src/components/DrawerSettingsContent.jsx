@@ -21,6 +21,7 @@ import SettingsSection from './SettingsSection.jsx';
 import CommentsPanel from './CommentsPanel.jsx';
 import ShareLinksPanel from './ShareLinksPanel.jsx';
 import ScormExportPanel from './ScormExportPanel.jsx';
+import VersionHistoryModal from './VersionHistoryModal.jsx';
 
 function richTextFieldValue(field) {
   return field?.rich_text?.[0]?.v || '';
@@ -128,6 +129,18 @@ function CourseSettings({ meta, onChangeMeta, courseId, canManageShareLinks, pub
         Show Back button
       </label>
       <p className="settings-panel__hint">Adds a Back button on every page after the first page.</p>
+      </SettingsSection>
+      <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
+      <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
+    </>
+  );
+}
+
+function PublishShareEntry({ courseId, canManageShareLinks, published }) {
+  return (
+    <>
+      <SettingsSection title="Publish & share">
+        <p className="settings-panel__hint">Publish is available from the top bar. Share links and SCORM export use the latest published version.</p>
       </SettingsSection>
       <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
       <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
@@ -455,6 +468,12 @@ export default function DrawerSettingsContent({
   onCreateGlossary,
   onPublishGlossaryTerm,
   onApplyGlossarySuggestion,
+  versions,
+  versionHistoryLoading,
+  versionHistoryError,
+  onSaveVersion,
+  onRestoreVersion,
+  onCloseVersionHistory,
   comments,
   commentAnchor,
   defaultCommentAnchor,
@@ -473,6 +492,9 @@ export default function DrawerSettingsContent({
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
 
   if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} courseId={courseId} canManageShareLinks={canManageShareLinks} published={published} />;
+  if (drawer === 'publish-share') {
+    return <PublishShareEntry courseId={courseId} canManageShareLinks={canManageShareLinks} published={published} />;
+  }
   if (drawer === 'player') {
     return (
       <PlayerSettingsPanel
@@ -555,6 +577,19 @@ export default function DrawerSettingsContent({
         onEdit={onEditComment}
         onDelete={onDeleteComment}
         onNavigate={onNavigateToComment}
+      />
+    );
+  }
+  if (drawer === 'version-history' && featureFlags.versionHistory) {
+    return (
+      <VersionHistoryModal
+        embedded
+        versions={versions}
+        loading={versionHistoryLoading}
+        error={versionHistoryError}
+        onSave={onSaveVersion}
+        onRestore={onRestoreVersion}
+        onClose={onCloseVersionHistory}
       />
     );
   }

@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { VersionHistoryButton } from './FeatureFlaggedControls.jsx';
 import EditorDrawerShell from './EditorDrawerShell.jsx';
+import { visibleToolGroups } from '../lib/editorDrawer.js';
 import QuestionBankManagerPanel from './QuestionBankManagerPanel.jsx';
 import LinkedEntityPrompt from './LinkedEntityPrompt.jsx';
 
@@ -27,14 +28,17 @@ describe('v1 feature-flagged editor surfaces', () => {
     expect(renderToStaticMarkup(<VersionHistoryButton onClick={() => {}} featureFlags={allFeatures} />)).toContain('Version History');
   });
 
-  it('hides and restores the Glossary and Version History rail items', () => {
-    const props = { onRailItemClick: () => {}, onCloseDrawer: () => {} };
-    const off = renderToStaticMarkup(<EditorDrawerShell {...props} featureFlags={noFeatures} />);
-    const on = renderToStaticMarkup(<EditorDrawerShell {...props} featureFlags={allFeatures} />);
-    expect(off).not.toContain('aria-label="Glossary"');
-    expect(off).not.toContain('aria-label="Version History"');
-    expect(on).toContain('aria-label="Glossary"');
-    expect(on).toContain('aria-label="Version History"');
+  it('hides and restores the Glossary and Version History Tools entries', () => {
+    const labels = (flags) => visibleToolGroups(flags).flatMap((group) => group.items.map((item) => item.label));
+    expect(labels(noFeatures)).not.toContain('Glossary');
+    expect(labels(noFeatures)).not.toContain('Version History');
+    expect(labels(allFeatures)).toContain('Glossary');
+    expect(labels(allFeatures)).toContain('Version History');
+
+    const inspector = renderToStaticMarkup(
+      <EditorDrawerShell activeTool="glossary" featureFlags={allFeatures} onCloseDrawer={() => {}} />,
+    );
+    expect(inspector).toContain('aria-label="Glossary"');
   });
 
   it('hides and restores bank transfer and linked-question controls', () => {

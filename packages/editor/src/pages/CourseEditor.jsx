@@ -22,9 +22,9 @@ import MediaLibraryPanel from '../components/MediaLibraryPanel.jsx';
 import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
+import ToolsMenu from '../components/ToolsMenu.jsx';
 import EditorDrawerShell from '../components/EditorDrawerShell.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
-import VersionHistoryModal from '../components/VersionHistoryModal.jsx';
 import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
 import { getDependents } from '@mnemonify/schema/dependency-index.js';
 import { analyzeCourse, getBlockingFindings } from '@mnemonify/schema/analyzer/index.js';
@@ -42,7 +42,6 @@ import {
 } from '@mnemonify/schema/linked-entities.js';
 import { importNativeQuestionBank } from '@mnemonify/schema/question-bank-transfer.js';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
-import { toggleRailDrawer } from '../lib/editorDrawer.js';
 import { installEmbedFocusGuard } from '../lib/embedFocusGuard.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import '../styles/courseEditor.css';
@@ -125,7 +124,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [activePageId, setActivePageId] = useState(null);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [showBlockSettingsHint, setShowBlockSettingsHint] = useState(false);
-  const [activeRailItem, setActiveRailItem] = useState(null);
+  const [activeTool, setActiveTool] = useState(null);
   const [contextualDrawer, setContextualDrawer] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
   const [editingTitle, setEditingTitle] = useState(false);
@@ -143,7 +142,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [pendingLinkedDelete, setPendingLinkedDelete] = useState(null);
   const [libraryGlossaries, setLibraryGlossaries] = useState([]);
   const [libraryGlossaryTerms, setLibraryGlossaryTerms] = useState([]);
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [courseVersions, setCourseVersions] = useState([]);
   const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
   const [versionHistoryError, setVersionHistoryError] = useState(null);
@@ -198,36 +196,32 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   }, []);
 
   function handleCloseDrawer() {
-    setActiveRailItem(null);
+    setActiveTool(null);
     setContextualDrawer(null);
     setCommentAnchor(null);
   }
 
-  function handleRailItemClick(itemId) {
-    const opening = activeRailItem !== itemId;
+  function handleToolClick(itemId) {
     if (itemId === 'comments') {
-      if (opening) {
-        const current = courseRef.current?.course_json;
-        const currentPage = current?.pages?.find((candidate) => candidate.page_id === activePageId);
-        const selected = currentPage?.blocks?.find((block) => block.block_id === selectedBlockId);
-        setCommentAnchor(selected
-          ? { blockId: selected.block_id, pageId: activePageId, fallbackLabel: selected.label || `${selected.type} block` }
-          : (currentPage ? { pageId: currentPage.page_id, fallbackLabel: currentPage.title || 'Untitled page' } : null));
-      } else {
-        setCommentAnchor(null);
-      }
-    } else if (itemId !== 'comments') {
+      const current = courseRef.current?.course_json;
+      const currentPage = current?.pages?.find((candidate) => candidate.page_id === activePageId);
+      const selected = currentPage?.blocks?.find((block) => block.block_id === selectedBlockId);
+      setCommentAnchor(selected
+        ? { blockId: selected.block_id, pageId: activePageId, fallbackLabel: selected.label || `${selected.type} block` }
+        : (currentPage ? { pageId: currentPage.page_id, fallbackLabel: currentPage.title || 'Untitled page' } : null));
+    } else {
       setCommentAnchor(null);
     }
-    setActiveRailItem((current) => toggleRailDrawer(current, itemId));
+    setActiveTool(itemId);
     setContextualDrawer(null);
     setSelectedBlockId(null);
+    if (itemId === 'version-history') openVersionHistory();
   }
 
   function handleSelectBlock(blockId) {
     setCommentAnchor(null);
     setSelectedBlockId(blockId);
-    setActiveRailItem(null);
+    setActiveTool(null);
     setContextualDrawer(null);
     if (blockId && showBlockSettingsHint) dismissBlockSettingsHint();
     else if (blockId) maybeShowBlockSettingsHint();
@@ -238,7 +232,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setCommentAnchor(null);
     dismissBlockSettingsHint();
     setSelectedBlockId(blockId);
-    setActiveRailItem(null);
+    setActiveTool(null);
     setContextualDrawer(blockId ? { kind: 'block', id: blockId } : null);
   }
 
@@ -247,6 +241,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     dismissBlockSettingsHint();
     setSelectedBlockId(null);
     setContextualDrawer(null);
+    setActiveTool(null);
   }
 
   const courseRef = useRef(null);
@@ -434,7 +429,9 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
 
   async function openVersionHistory() {
     if (!featureFlags.versionHistory) return;
-    setShowVersionHistory(true);
+    setActiveTool('version-history');
+    setContextualDrawer(null);
+    setSelectedBlockId(null);
     const saved = await saveNow();
     if (!saved) {
       setVersionHistoryError(new Error('The current course could not be saved. Version history was not opened.'));
@@ -459,7 +456,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setCourse(result.course);
     setActivePageId(result.course.course_json.pages?.[0]?.page_id || null);
     clearContextualSelection();
-    setActiveRailItem(null);
+    setActiveTool(null);
     undoStackRef.current = [];
     redoStackRef.current = [];
     setCanUndo(false);
@@ -513,8 +510,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     const errorFindings = getBlockingFindings(freshFindings);
     if (errorFindings.length > 0) {
       clearContextualSelection();
-      setActiveRailItem(null);
-      setActiveRailItem('course-health');
+      setActiveTool('course-health');
       setPublishNotice({
         type: 'error',
         message: `Cannot publish: ${errorFindings.length} error${errorFindings.length === 1 ? '' : 's'} must be fixed first.`,
@@ -806,7 +802,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // SET_VAR/ADJUST_VAR action has no variables to offer yet (Step 4).
   function openVariableManager() {
     clearContextualSelection();
-    setActiveRailItem('variables');
+    setActiveTool('variables');
   }
 
   // Course Health "click a finding, go to what it's about" (Phase 4.5c
@@ -821,12 +817,12 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   function handleNavigateToFinding(finding) {
     if (finding.entityType === 'variable') {
       clearContextualSelection();
-      setActiveRailItem('variables');
+      setActiveTool('variables');
       return;
     }
     if (finding.entityType === 'question_bank') {
       clearContextualSelection();
-      setActiveRailItem('question-banks');
+      setActiveTool('question-banks');
       return;
     }
     if (finding.entityType === 'asset') {
@@ -836,19 +832,19 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     }
     if (finding.entityType === 'resource') {
       clearContextualSelection();
-      setActiveRailItem('player');
+      setActiveTool('player');
       return;
     }
     if (finding.entityType === 'module') {
       setSelectedBlockId(null);
-      setActiveRailItem(null);
+      setActiveTool(null);
       setActivePageId((courseRef.current?.course_json?.pages || []).find((page) => page.page_id === finding.location?.page_id)?.page_id || activePageId);
       setContextualDrawer({ kind: 'module', id: finding.entityId });
       return;
     }
     if (finding.entityType === 'course') {
       clearContextualSelection();
-      setActiveRailItem('course');
+      setActiveTool('course');
       return;
     }
     if (finding.location?.page_id) {
@@ -868,7 +864,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       }, 0);
     } else if (finding.location?.page_id) {
       setSelectedBlockId(null);
-      setActiveRailItem(null);
+      setActiveTool(null);
       setContextualDrawer({ kind: 'page', id: finding.location.page_id });
     } else {
       clearContextualSelection();
@@ -967,7 +963,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     dismissBlockSettingsHint();
     setActivePageId(pageId);
     clearContextualSelection();
-    setActiveRailItem(null);
+    setActiveTool(null);
     setContextualDrawer({ kind: 'page', id: pageId });
   }
 
@@ -1035,12 +1031,12 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setCommentAnchor({ blockId, pageId: activePageId, fallbackLabel: block?.label || `${block?.type || 'Block'} block` });
     setSelectedBlockId(null);
     setContextualDrawer(null);
-    setActiveRailItem('comments');
+    setActiveTool('comments');
   }
 
   function handleNavigateToComment(comment) {
     setCommentAnchor(null);
-    setActiveRailItem(null);
+    setActiveTool(null);
     if (comment.page_id) setActivePageId(comment.page_id);
     if (comment.block_id) {
       handleSelectBlock(comment.block_id);
@@ -1058,7 +1054,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   function handleSelectGroup(groupId) {
     dismissBlockSettingsHint();
     setSelectedBlockId(null);
-    setActiveRailItem(null);
+    setActiveTool(null);
     setContextualDrawer({ kind: 'module', id: groupId });
   }
 
@@ -1297,7 +1293,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       { forceSnapshot: true }
     );
     clearContextualSelection();
-    setActiveRailItem(null);
+    setActiveTool(null);
   }
 
   function handleCopyBlockToPage(blockId, targetPageId) {
@@ -1516,6 +1512,8 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           Preview
         </button>
 
+        <ToolsMenu featureFlags={featureFlags} canEdit={canEdit} onSelect={handleToolClick} />
+
         <button
           type="button"
           className={focusMode ? 'btn-text course-editor__icon-button course-editor__icon-button--active' : 'btn-text course-editor__icon-button'}
@@ -1536,7 +1534,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             { label: 'Image Library', onClick: () => setShowMediaLibrary(true) },
             canEdit && { label: 'Save as Template', onClick: () => setShowSaveTemplate(true) },
             canEdit && { label: 'Export Worksheet', onClick: handleExportWorksheet },
-            canEdit && featureFlags.versionHistory && { label: 'Version History', onClick: openVersionHistory },
             course.is_template && {
               label: showExportSaving ? 'Saving before export...' : 'Export Word',
               onClick: handleExportWord,
@@ -1557,8 +1554,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             }
             onClick={() => {
               clearContextualSelection();
-              setActiveRailItem(null);
-              setActiveRailItem('course-health');
+              setActiveTool('course-health');
             }}
             title="Open Course Health"
           >
@@ -1583,17 +1579,6 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       )}
 
       {showTour && <OnboardingTour onComplete={handleTourComplete} />}
-
-      {featureFlags.versionHistory && showVersionHistory && (
-        <VersionHistoryModal
-          versions={courseVersions}
-          loading={versionHistoryLoading}
-          error={versionHistoryError}
-          onSave={handleSaveVersion}
-          onRestore={handleRestoreVersion}
-          onClose={() => setShowVersionHistory(false)}
-        />
-      )}
 
       {showSaveTemplate && (
         <SaveAsTemplateModal courseTitle={json.meta?.title || course.title} courseId={course.id} onClose={() => setShowSaveTemplate(false)} />
@@ -1756,14 +1741,13 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       </div>
 
       <EditorDrawerShell
-        activeRailItem={activeRailItem}
+        activeTool={activeTool}
         contextualDrawer={contextualDrawer}
         featureFlags={featureFlags}
-        onRailItemClick={handleRailItemClick}
         onCloseDrawer={handleCloseDrawer}
         drawerContent={(
           <DrawerSettingsContent
-            drawer={activeRailItem || contextualDrawer?.kind}
+            drawer={activeTool || contextualDrawer?.kind}
             contextId={contextualDrawer?.id}
             courseId={course.id}
             canManageShareLinks={canEdit}
@@ -1814,6 +1798,12 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             onCreateGlossary={handleCreateGlossary}
             onPublishGlossaryTerm={handlePublishGlossaryTerm}
             onApplyGlossarySuggestion={handleApplyGlossarySuggestion}
+            versions={courseVersions}
+            versionHistoryLoading={versionHistoryLoading}
+            versionHistoryError={versionHistoryError}
+            onSaveVersion={handleSaveVersion}
+            onRestoreVersion={handleRestoreVersion}
+            onCloseVersionHistory={handleCloseDrawer}
             featureFlags={featureFlags}
           />
         )}

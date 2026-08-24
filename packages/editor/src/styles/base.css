@@ -14,7 +14,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 a {
@@ -156,6 +156,17 @@ a {
 }
 .modal-card h2 {
   margin-top: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-page-title);
+  line-height: 1.2;
+}
+.eyebrow {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-size-helper);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .modal-card--wide {
   width: min(720px, 92vw);

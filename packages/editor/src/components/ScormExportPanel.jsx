@@ -55,9 +55,9 @@ export default function ScormExportPanel({ courseId, canExport, published }) {
       {error && <p className="share-links-panel__error" role="alert">{error}</p>}
       {job?.warnings?.map((warning) => <p className="share-links-panel__notice" role="status" key={warning}>{warning}</p>)}
       {job?.status === 'ready' ? (
-        <a className="btn btn-primary" href={api.scormExportDownloadUrl(courseId, job.job_id)}>Download SCORM package</a>
+        <a className="btn btn-secondary" href={api.scormExportDownloadUrl(courseId, job.job_id)}>Download SCORM package</a>
       ) : (
-        <button type="button" className="btn btn-primary" onClick={startExport} disabled={!published || starting || job?.status === 'generating'}>
+        <button type="button" className="btn btn-secondary" onClick={startExport} disabled={!published || starting || job?.status === 'generating'}>
           {starting || job?.status === 'generating' ? 'Generating package…' : 'Download SCORM package'}
         </button>
       )}

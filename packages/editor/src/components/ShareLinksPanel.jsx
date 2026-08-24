@@ -146,7 +146,7 @@ export default function ShareLinksPanel({ courseId, canManage, published }) {
             onChange={(event) => setNewExpiration(event.target.value)}
             disabled={!published || saving}
           />
-          <button type="submit" className="btn btn-primary" disabled={!published || saving}>
+          <button type="submit" className="btn btn-secondary" disabled={!published || saving}>
             {saving ? 'Creating…' : 'Create link'}
           </button>
         </div>

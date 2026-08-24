@@ -191,7 +191,7 @@ export default function CommentsPanel({
           <button
             type="button"
             key={value}
-            className={filter === value ? 'btn btn-primary' : 'btn btn-secondary'}
+            className={filter === value ? 'btn btn-secondary comments-panel__filter comments-panel__filter--active' : 'btn btn-secondary comments-panel__filter'}
             aria-pressed={filter === value}
             onClick={() => setFilter(value)}
           >

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
 const CATEGORY_ORDER = [
-  ['reference', 'Reference'],
+  ['reference', 'Course setup'],
   ['accessibility', 'Accessibility'],
-  ['asset', 'Asset'],
+  ['asset', 'Content & files'],
 ];
 
 function groupByRule(items) {
@@ -113,15 +113,17 @@ export default function CourseHealthPanel({ findings = [], onNavigateToFinding, 
   return (
     <div className="settings-panel__section course-health">
       <p className="settings-panel__hint">
-        Deterministic checks for references, accessibility, and uploaded assets. Findings refresh as the course changes.
+        Checks that your course links, accessibility details, and uploaded files are ready to publish. Results update as you edit.
       </p>
 
       {findings.length === 0 ? (
         <p className="course-health__clean">✓ No issues found. This course is ready to publish.</p>
       ) : (
         <>
-          <p className="course-health__summary">
-            {errors.length} error{errors.length === 1 ? '' : 's'}, {warnings.length} warning{warnings.length === 1 ? '' : 's'}
+          <p className={errors.length > 0 ? 'course-health__summary course-health__summary--blocked' : 'course-health__summary course-health__summary--ready'}>
+            {errors.length > 0
+              ? `Publishing is paused until you fix ${errors.length} error${errors.length === 1 ? '' : 's'}. ${warnings.length > 0 ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'} also need your attention.` : ''}`
+              : `${warnings.length} warning${warnings.length === 1 ? '' : 's'} to review before publishing.`}
           </p>
           {CATEGORY_ORDER.map(([category, label]) => (
             <CategorySection

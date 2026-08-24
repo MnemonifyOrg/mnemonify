@@ -55,6 +55,47 @@ function plainText(value) {
   return '';
 }
 
+function humanizeField(field) {
+  const labels = {
+    name: 'a name',
+    title: 'a title',
+    label: 'a label',
+    text: 'text',
+    content: 'content',
+    block_id: 'a block identifier',
+    page_id: 'a page identifier',
+  };
+  return labels[field] || String(field || 'this field').replace(/_/g, ' ');
+}
+
+function schemaMessageForEducator(message) {
+  const required = message.match(/must have required property '([^']+)'/);
+  if (required) return `Add ${humanizeField(required[1])} to the affected content before publishing.`;
+
+  const path = message.match(/^\(([^)]+)\)/)?.[1];
+  if (message.includes('must be')) {
+    const subject = path && path !== 'root' ? 'the affected content' : 'this course';
+    return `Update ${subject} so it uses the expected format before publishing.`;
+  }
+  return 'One part of this course is not complete. Review the affected content before publishing.';
+}
+
+function entityLabel(entityType) {
+  return {
+    block: 'block',
+    page: 'page',
+    asset: 'uploaded file',
+    resource: 'resource',
+    question_bank: 'question bank',
+    variable: 'variable',
+    module: 'module',
+    ordering_item: 'ordering item',
+    accordion_item: 'accordion item',
+    tab_item: 'tab item',
+    answer_option: 'answer option',
+  }[entityType] || 'course item';
+}
+
 function assetMetadata(context, asset) {
   const metadata = context.assetMetadataById;
   if (!metadata) return asset;
@@ -109,7 +150,7 @@ export function ruleSchemaValidity(course) {
     'schema.invalid',
     'error',
     FINDING_CATEGORIES.reference,
-    `This course fails schema validation: ${message}`,
+    schemaMessageForEducator(message),
     'course',
     course?.meta?.course_id || 'course',
   ));
@@ -127,15 +168,22 @@ function brokenReferenceRuleId(edge) {
 }
 
 export function ruleBrokenReferences(course, context) {
-  return context.brokenReferences.map((edge) => finding(
-    brokenReferenceRuleId(edge),
-    'error',
-    FINDING_CATEGORIES.reference,
-    `${edge.label || edge.id || 'This content'} references a ${edge.targetType || 'resource'} that does not exist (${edge.targetId}).`,
-    edge.entityType || 'course',
-    edge.id || edge.targetId,
-    edge.pageId ? { page_id: edge.pageId, ...(edge.entityType === 'block' ? { block_id: edge.id } : {}) } : {},
-  ));
+  return context.brokenReferences.map((edge) => {
+    const subject = edge.label || `This ${entityLabel(edge.entityType)}`;
+    const target = edge.targetType === 'page' ? 'page' : edge.targetType === 'block' ? 'block' : edge.targetType === 'variable' ? 'variable' : 'file';
+    const action = target === 'file'
+      ? 'Re-select or upload the file before publishing.'
+      : `Choose an existing ${target} or remove this reference before publishing.`;
+    return finding(
+      brokenReferenceRuleId(edge),
+      'error',
+      FINDING_CATEGORIES.reference,
+      `${subject} points to a ${target} that is no longer available. ${action}`,
+      edge.entityType || 'course',
+      edge.id || edge.targetId,
+      edge.pageId ? { page_id: edge.pageId, ...(edge.entityType === 'block' ? { block_id: edge.id } : {}) } : {},
+    );
+  });
 }
 
 export function ruleOrphanedQuestionBank(course, context) {
@@ -145,7 +193,7 @@ export function ruleOrphanedQuestionBank(course, context) {
       'reference.orphaned_question_bank',
       'warning',
       FINDING_CATEGORIES.reference,
-      `Question bank "${bank.name || bank.bank_id}" is not used by any Question Bank block.`,
+      `Question bank "${bank.name || 'Untitled bank'}" is not used in this course. Add a Question Bank block that uses it or remove the bank.`,
       'question_bank',
       bank.bank_id,
     ));
@@ -222,7 +270,7 @@ export function ruleDuplicateStableIds(course) {
         'reference.duplicate_stable_id',
         'error',
         FINDING_CATEGORIES.reference,
-        `Stable ID "${entry.id}" is used by both ${previous.entityType} and ${entry.entityType}.`,
+        `Two course items share the same identity, so Mnemonify cannot tell them apart. Recreate one of the affected items (${entityLabel(entry.entityType)}) before publishing.`,
         entry.entityType,
         entry.entityId,
         entry.location,
@@ -245,7 +293,7 @@ export function ruleImageAltMissing(course) {
       'a11y.image_alt_missing',
       'warning',
       FINDING_CATEGORIES.accessibility,
-      `Image "${asset.filename || asset.asset_id}" is missing alt text.`,
+      `Add alt text to image "${asset.filename || 'this image'}" so learners using screen readers can understand it.`,
       'asset',
       asset.asset_id,
     ));
@@ -258,7 +306,7 @@ export function ruleVideoCaptionsMissing(course) {
       'a11y.video_captions_missing',
       'warning',
       FINDING_CATEGORIES.accessibility,
-      `Video "${asset.filename || asset.asset_id}" does not have captions ready.`,
+      `Add captions to video "${asset.filename || 'this video'}". Upload a VTT/SRT file or finish the caption review before publishing.`,
       'asset',
       asset.asset_id,
     ));
@@ -271,7 +319,7 @@ export function ruleVideoTranscriptMissing(course) {
       'accessibility.video_transcript_missing',
       'warning',
       FINDING_CATEGORIES.accessibility,
-      `Video "${asset.filename || asset.asset_id}" does not have a transcript ready.`,
+      `Add a transcript to video "${asset.filename || 'this video'}" so learners can read along or search the content.`,
       'asset',
       asset.asset_id,
     ));
@@ -284,7 +332,7 @@ export function ruleEmbedLabelMissing(course) {
       'accessibility.embed_label_missing',
       'warning',
       FINDING_CATEGORIES.accessibility,
-      `${blockLabel(block, page)} has no descriptive label for learners.`,
+      `Add a short descriptive label to ${blockLabel(block, page)} so learners know what the embedded content is.`,
       'block',
       block.block_id,
       blockLocation(page, block),
@@ -298,7 +346,7 @@ export function ruleHeadingTextMissing(course) {
       'accessibility.heading_text_missing',
       'warning',
       FINDING_CATEGORIES.accessibility,
-      `${blockLabel(block, page)} is empty.`,
+      `Add heading text to ${blockLabel(block, page)} or remove the empty heading.`,
       'block',
       block.block_id,
       blockLocation(page, block),
@@ -316,7 +364,7 @@ export function ruleAssetFileMissing(course, context) {
       'asset.uploaded_file_missing',
       'error',
       FINDING_CATEGORIES.asset,
-      `Asset "${asset.filename || asset.asset_id}" has no corresponding uploaded file.`,
+      `The uploaded file for "${asset.filename || 'this asset'}" is missing. Re-upload it or replace it before publishing.`,
       'asset',
       asset.asset_id,
       firstAssetLocation(asset.asset_id, context.dependencyIndex),
@@ -330,7 +378,7 @@ export function ruleResourceFileMissing(course, context) {
       'asset.resource_file_missing',
       'error',
       FINDING_CATEGORIES.asset,
-      `Resource "${resource.label || resource.filename || resource.resource_id}" cannot be found at its uploaded file path.`,
+      `The file for resource "${resource.label || resource.filename || 'this resource'}" is missing. Re-upload it or remove the resource before publishing.`,
       'resource',
       resource.resource_id,
     ));
@@ -352,7 +400,7 @@ export function ruleDuplicateAssetFilenames(course) {
         'asset.duplicate_filename',
         'warning',
         FINDING_CATEGORIES.asset,
-        `Asset filename "${asset.filename}" is used more than once and may be ambiguous.`,
+        `More than one uploaded file is named "${asset.filename}". Rename or replace one so authors and learners can tell them apart.`,
         'asset',
         asset.asset_id,
       ));
@@ -369,7 +417,7 @@ export function ruleLargeMediaAsset(course, context) {
       'asset.file_size_large',
       'warning',
       FINDING_CATEGORIES.asset,
-      `Asset "${asset.filename || asset.asset_id}" is larger than ${Math.round(MEDIA_SIZE_WARNING_BYTES / (1024 * 1024))} MB and may load slowly.`,
+      `"${asset.filename || 'This media file'}" is larger than ${Math.round(MEDIA_SIZE_WARNING_BYTES / (1024 * 1024))} MB and may load slowly. Compress or replace it if possible.`,
       'asset',
       asset.asset_id,
     ));
@@ -386,7 +434,7 @@ export function ruleQuestionBankDrawCount(course) {
         'asset.question_bank_draw_count_exceeded',
         'error',
         FINDING_CATEGORIES.asset,
-        `${blockLabel(block, page)} requests ${block.content.draw_count} questions, but its bank only contains ${available.length}.`,
+        `${blockLabel(block, page)} asks for ${block.content.draw_count} questions, but this bank has only ${available.length}. Lower the draw count or add more questions.`,
         'block',
         block.block_id,
         blockLocation(page, block),
@@ -401,7 +449,7 @@ export function ruleEmptyPages(course) {
       'asset.page_empty',
       'warning',
       FINDING_CATEGORIES.asset,
-      `Page "${page.title}" has no blocks.`,
+      `Page "${page.title || 'Untitled page'}" is empty. Add at least one block before publishing.`,
       'page',
       page.page_id,
       { page_id: page.page_id },
@@ -415,7 +463,7 @@ export function ruleEmptyCourseOrModule(course) {
       'asset.course_empty',
       'warning',
       FINDING_CATEGORIES.asset,
-      'This course has no pages.',
+      'This course has no pages. Add a page before publishing.',
       'course',
       course?.meta?.course_id || 'course',
     ));
@@ -426,7 +474,7 @@ export function ruleEmptyCourseOrModule(course) {
         'asset.module_empty',
         'warning',
         FINDING_CATEGORIES.asset,
-        `Module "${group.title}" has no pages assigned.`,
+        `Module "${group.title || 'Untitled module'}" has no pages. Add a page to it or remove the empty module.`,
         'module',
         group.group_id,
       ));

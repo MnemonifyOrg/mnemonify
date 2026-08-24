@@ -257,6 +257,7 @@ export default function BlockCanvas({
   onDuplicateBlock,
   onDeleteBlock,
   onAddBlock,
+  onInsertFromTemplate,
   onReorderBlocks,
   assets,
   courseId,
@@ -284,7 +285,37 @@ export default function BlockCanvas({
 
   return (
     <div className="block-canvas" onClick={() => onSelectBlock(null)}>
-      {page.blocks.length === 0 && <p className="block-canvas__empty">No blocks yet. Add your first one below.</p>}
+      {page.blocks.length === 0 && (
+        <section className="block-canvas__empty-state" aria-labelledby="empty-page-title">
+          <div className="block-canvas__empty-icon" aria-hidden="true">✦</div>
+          <h2 id="empty-page-title">Start building this page</h2>
+          <p>Add a block to begin, or choose a page template if you want a ready-made starting point.</p>
+          <div className="block-canvas__empty-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={(event) => {
+                event.stopPropagation();
+                setPickerInsertIndex(0);
+              }}
+            >
+              + Add your first block
+            </button>
+            {onInsertFromTemplate && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onInsertFromTemplate();
+                }}
+              >
+                Choose a page template
+              </button>
+            )}
+          </div>
+        </section>
+      )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={page.blocks.map((b) => b.block_id)} strategy={verticalListSortingStrategy}>
           <InsertionPoint index={0} onInsert={setPickerInsertIndex} />
@@ -322,16 +353,18 @@ export default function BlockCanvas({
           ))}
         </SortableContext>
       </DndContext>
-      <button
-        className="btn btn-primary block-canvas__add"
-        data-tour="add-block"
-        onClick={(e) => {
-          e.stopPropagation();
-          setPickerInsertIndex(page.blocks.length);
-        }}
-      >
-        + Add Block
-      </button>
+      {page.blocks.length > 0 && (
+        <button
+          className="btn btn-primary block-canvas__add"
+          data-tour="add-block"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPickerInsertIndex(page.blocks.length);
+          }}
+        >
+          + Add Block
+        </button>
+      )}
       {pickerInsertIndex !== null && (
         <BlockPickerModal
           onClose={() => setPickerInsertIndex(null)}

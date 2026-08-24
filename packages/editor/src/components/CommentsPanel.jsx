@@ -15,7 +15,7 @@ function CommentComposer({ label, value, onChange, onSubmit, submitLabel = 'Add 
       } catch {
         // The parent owns the visible error state; keep the form mounted.
       }
-    }}>
+    }} noValidate>
       <label htmlFor="comments-panel-composer">{label}</label>
       <textarea
         id="comments-panel-composer"
@@ -41,7 +41,7 @@ function ReplyComposer({ threadId, value, onChange, onSubmit, disabled }) {
       } catch {
         // The parent owns the visible error state; keep the form mounted.
       }
-    }}>
+    }} noValidate>
       <textarea
         className="input"
         rows={2}
@@ -71,7 +71,7 @@ function CommentBody({ comment, currentUserId, onEdit, onDelete }) {
           .catch(() => {
             // The parent owns the visible error state; keep the edit open.
           });
-      }}>
+      }} noValidate>
         <textarea className="input" rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={5000} />
         <div className="comments-panel__inline-actions">
           <button type="submit" className="btn btn-primary" disabled={!draft.trim()}>Save</button>

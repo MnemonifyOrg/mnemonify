@@ -108,6 +108,7 @@ test('duplicate stable IDs are defensive reference errors', () => {
   assert.equal(findings.length, 1);
   assert.equal(findings[0].entityId, 'blk_same');
   assert.equal(findings[0].severity, 'error');
+  assert.match(findings[0].message, /Two course items share the same identity/);
 });
 
 test('accordion, tab, and ordering items are classified once by their owning block type', () => {
@@ -160,7 +161,21 @@ test('a stable ID shared by different nested objects is still reported', () => {
 
   const findings = findingsFor(course, 'reference.duplicate_stable_id');
   assert.equal(findings.length, 1);
-  assert.match(findings[0].message, /accordion_item and ordering_item/);
+  assert.match(findings[0].message, /Recreate one of the affected items \(ordering item\)/);
+});
+
+test('course health messages explain the problem and the next action in plain language', () => {
+  const course = baseCourse({
+    assets: [{ asset_id: 'ast_missing', kind: 'image', filename: 'slide.png', src: 'uploads/missing.png', alt: '' }],
+    pages: [{ page_id: 'pg_empty', title: 'Case 1', blocks: [] }],
+  });
+  const findings = analyzeCourse(course, { uploadedAssetIds: [] });
+  const messages = findings.map((finding) => finding.message).join(' ');
+
+  assert.match(messages, /Add alt text to image/);
+  assert.match(messages, /Re-upload it or replace it/);
+  assert.match(messages, /Add at least one block before publishing/);
+  assert.doesNotMatch(messages, /schema validation|uploaded file path/);
 });
 
 test('basic accessibility rules cover image alt, video captions/transcript, embeds, and headings', () => {

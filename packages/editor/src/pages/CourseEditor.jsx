@@ -526,7 +526,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       const updated = await api.updateCourse(course.id, { status: 'published' });
       api.generatePublishArtifacts(course.id).catch((err) => console.error('[course-editor] PDF generation could not be queued:', err));
       setCourse((prev) => ({ ...prev, status: updated.status }));
-      const warningCount = freshFindings.length;
+      const warningCount = freshFindings.filter((finding) => finding.severity === 'warning').length;
       setPublishNotice({
         type: 'success',
         message: warningCount > 0 ? `Published with ${warningCount} warning${warningCount === 1 ? '' : 's'}.` : 'Published.',
@@ -1739,6 +1739,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
                 onDuplicateBlock={handleDuplicateBlock}
                 onDeleteBlock={handleDeleteBlock}
                 onAddBlock={handleAddBlock}
+                onInsertFromTemplate={() => setShowInsertFromTemplate(true)}
                 onReorderBlocks={handleReorderBlocks}
                 onMoveBlockToPage={handleMoveBlockToPage}
                 onCopyBlockToPage={handleCopyBlockToPage}

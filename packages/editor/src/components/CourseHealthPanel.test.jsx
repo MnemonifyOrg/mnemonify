@@ -33,7 +33,7 @@ describe('CourseHealthPanel', () => {
     expect(html).toContain('data-category="reference"');
     expect(html).toContain('data-category="accessibility"');
     expect(html).not.toContain('data-category="asset"');
-    expect(html).toContain('1 error, 1 warning');
+    expect(html).toContain('Publishing is paused until you fix 1 error.');
     expect(html).toContain('A block references a missing page.');
     expect(html).toContain('Image is missing alt text.');
   });

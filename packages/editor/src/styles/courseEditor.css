@@ -343,7 +343,7 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  width: 40px;
+  width: 92px;
   min-height: 44px;
   padding: var(--space-1) 0;
   border: 0;
@@ -359,13 +359,12 @@
   color: var(--accent);
 }
 .editor-icon-rail__label {
-  width: 40px;
-  overflow: hidden;
+  width: 92px;
+  overflow: visible;
   font-size: 9px;
   line-height: 1.1;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 .editor-icon-drawer__backdrop,
 .editor-drawer__backdrop {
@@ -989,6 +988,46 @@
   text-align: center;
   color: var(--color-text-secondary);
   padding: var(--space-6) 0;
+}
+.block-canvas__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 520px;
+  margin: 10vh auto 0;
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+}
+.block-canvas__empty-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: var(--space-4);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 22px;
+}
+.block-canvas__empty-state h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-section);
+}
+.block-canvas__empty-state p {
+  max-width: 410px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.block-canvas__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
 .block-canvas__add {
   align-self: center;
@@ -3320,6 +3359,22 @@
   font-size: var(--text-sm);
   font-weight: 600;
 }
+.course-health__summary--blocked {
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border-subtle));
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-input);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.course-health__summary--ready {
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border-subtle));
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius-input);
+  background: var(--warning-soft);
+  color: var(--text-primary);
+}
 .course-health__category {
   margin: 0 0 var(--space-5);
 }
@@ -3375,11 +3430,18 @@
   font-size: var(--text-sm);
   cursor: pointer;
 }
+.course-health__item-btn:hover,
+.course-health__item-btn:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+}
 .course-health__item--error .course-health__item-btn {
   border-left-color: var(--color-error, #EF4444);
+  background: var(--danger-soft);
 }
 .course-health__item--warning .course-health__item-btn {
   border-left-color: var(--color-warning);
+  background: var(--warning-soft);
 }
 .course-health__group-row {
   display: flex;
@@ -3394,9 +3456,11 @@
 }
 .course-health__item--error .course-health__group-row {
   border-left-color: var(--color-error, #EF4444);
+  background: var(--danger-soft);
 }
 .course-health__item--warning .course-health__group-row {
   border-left-color: var(--color-warning);
+  background: var(--warning-soft);
 }
 .course-health__group-label {
   font-size: var(--text-sm);

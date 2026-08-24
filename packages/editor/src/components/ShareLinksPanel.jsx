@@ -134,7 +134,7 @@ export default function ShareLinksPanel({ courseId, canManage, published }) {
       <p className="settings-panel__hint">Share the latest published course with someone who does not have a Mnemonify account. Links are read-only and never expose comments or draft edits.</p>
       {!published && <p className="share-links-panel__notice">Publish this course before creating a share link.</p>}
       {error && <p className="share-links-panel__error" role="alert">{error}</p>}
-      <form className="share-links-panel__create" onSubmit={createLink}>
+      <form className="share-links-panel__create" onSubmit={createLink} noValidate>
         <label htmlFor="share-link-expiration">Expiration (optional)</label>
         <div className="share-links-panel__create-row">
           <input

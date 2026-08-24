@@ -76,6 +76,16 @@ a {
 .btn-danger:hover {
   background: var(--danger-soft);
 }
+.btn-secondary {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+.btn-secondary:hover {
+  background: var(--bg-canvas);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
 .btn-text {
   border: none;
   background: none;

@@ -71,7 +71,7 @@ export default function VersionHistoryModal({ versions = [], loading = false, er
           <button type="button" className="btn-text modal-close" aria-label="Close version history" onClick={onClose} disabled={busy}>✕</button>
         </div>
 
-        <form className="version-history-modal__save" onSubmit={handleSave}>
+        <form className="version-history-modal__save" onSubmit={handleSave} noValidate>
           <label htmlFor="version-name">Save as version</label>
           <div className="version-history-modal__save-row">
             <input

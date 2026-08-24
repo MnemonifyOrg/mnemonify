@@ -8,8 +8,11 @@
 .auth-card { width: min(100%, 420px); padding: 32px; }
 .auth-card__logo { width: 180px; margin-bottom: 24px; }
 .auth-card h1 { margin: 0 0 24px; }
-.auth-form { display: grid; gap: 16px; }
-.auth-form label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+.auth-form { display: grid; gap: 8px; }
+.auth-form label { color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
+.auth-form .auth-field-error { margin: 0; }
+.auth-field-error { color: var(--danger); font-size: 13px; line-height: 1.35; }
+.auth-form .input[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .auth-form .btn { justify-content: center; margin-top: 4px; }
 .auth-links, .auth-dev-note { color: var(--text-secondary); font-size: 13px; }
 .auth-dev-note { color: var(--text-tertiary); font-size: 12px; }

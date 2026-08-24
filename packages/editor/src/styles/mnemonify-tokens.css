@@ -6,7 +6,8 @@
   --border-strong: #CBD2DC;
   --text-primary: #101828;
   --text-secondary: #475467;
-  --text-tertiary: #98A2B3;
+  /* 4.8:1 against the white surface, readable for helper/placeholder text. */
+  --text-tertiary: #667085;
   --accent: #0E7A8A;
   --accent-soft: #E0F2F5;
   --navy: #0B1530;

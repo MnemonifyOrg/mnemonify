@@ -104,7 +104,7 @@ export default function GlossaryPanel({
         {libraryGlossaries.map((glossary) => <option key={glossary.glossary_id} value={glossary.glossary_id}>{glossary.name} ({glossary.term_count || 0} terms)</option>)}
       </select>
 
-      <form className="glossary-panel__create" onSubmit={createGlossary}>
+      <form className="glossary-panel__create" onSubmit={createGlossary} noValidate>
         <label htmlFor="new-glossary-name">Create shared glossary</label>
         <div className="glossary-panel__create-row">
           <input id="new-glossary-name" className="input" value={newGlossaryName} onChange={(event) => setNewGlossaryName(event.target.value)} placeholder="e.g. Pathology terms" />

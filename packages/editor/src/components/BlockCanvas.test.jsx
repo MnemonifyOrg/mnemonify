@@ -28,6 +28,24 @@ const commonProps = {
 };
 
 describe('block canvas hover toolbar', () => {
+  it('guides an empty page toward adding a block or choosing a template', () => {
+    const emptyPage = { ...page, blocks: [] };
+    const html = renderToStaticMarkup(
+      <BlockCanvas
+        {...commonProps}
+        page={emptyPage}
+        pages={[emptyPage]}
+        selectedBlockId={null}
+        onInsertFromTemplate={() => {}}
+      />,
+    );
+
+    expect(html).toContain('Start building this page');
+    expect(html).toContain('Add your first block');
+    expect(html).toContain('Choose a page template');
+    expect(html).not.toContain('block-canvas__add');
+  });
+
   it('keeps the chrome in the DOM while unselected blocks use the hidden visual state', () => {
     const html = renderToStaticMarkup(<BlockCanvas {...commonProps} selectedBlockId={null} />);
 

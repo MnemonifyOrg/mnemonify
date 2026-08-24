@@ -1776,3 +1776,7 @@ Sebastin needs a genuinely self-contained SCORM package: everything (player, cou
 - External embeds (if any) are clearly flagged to the author as still requiring third-party connectivity
 - Only Owner/Editor roles can trigger export; enforced server-side
 - Manual verification: Sebastin builds a real test course (ideally reusing course f9dc55f6 or a similar test course already used throughout this project), exports it, and uploads the resulting zip directly to SCORM Cloud with his own local network completely disconnected from Mnemonify's server (or Mnemonify's server temporarily stopped) to prove genuine independence — completing a full run-through including scored questions and confirming SCORM Cloud reports the score/completion correctly
+
+## UX Redesign — Phase 0 Baseline
+
+See UX_REDESIGN_INVENTORY.md for the current UI surface inventory, and UX_Redesign_Acceptance_Checklist.md for the acceptance criteria this redesign is measured against. Both are the Phase 0 deliverable for the editor UX redesign, tracked on the ux-redesign branch.

@@ -1910,3 +1910,45 @@ Organize into the two-step structure:
 - An unpublished course clearly communicates that sharing/export require publishing first, rather than presenting confusing or silently-broken options
 - All existing functionality (publish, share link create/revoke/expire, SCORM export, PDF settings) remains fully reachable and working exactly as before — this is a reorganization, not a rebuild
 - Manual verification: Sebastin opens Publish & Share on both a never-published course and an already-published course, confirms the sequence reads clearly in both states, and confirms he can still successfully publish, create a share link, and export a SCORM package through the reorganized panel
+
+# UX Redesign Phase 5: Visual Modernization and Responsive Polish
+
+Add this section to ARCHITECTURE.md on the ux-redesign branch. Commit before requesting a build prompt. Depends on Phases 1-4 being complete (this phase polishes the shell/panels/picker/hub they built, it doesn't restructure anything further).
+
+## Purpose
+
+Phases 1-4 changed structure and content; this phase makes the whole result look and feel coherent and calm, per the original audit's visual critique: too many competing outlined buttons, heavy borders/shadows, all-caps section labels everywhere, light/low-contrast helper text, and a persistent gray-canvas admin-tool feel.
+
+## Requirements
+
+Apply systematically using the existing design token system (add/adjust tokens centrally rather than one-off overrides scattered through components):
+
+1. **One primary action per screen/panel.** Audit every screen touched by Phases 1-4 (contextual inspector, Tools menu panels, block picker, Publish & Share hub) and ensure only one clearly-filled/primary-colored button exists per screen; everything else should read as secondary (outlined or text-only).
+
+2. **Reduce borders and shadows.** Let spacing do more of the work of separating sections; reserve visible borders/shadows for drawers, modals, and truly elevated surfaces (consistent with the card recipe already established in earlier design-token work), not every panel or section.
+
+3. **Sentence-case section labels.** Replace repeated ALL-CAPS section headers (e.g. "COURSE SETTINGS") with sentence-case ("Course settings"), consistent across every panel touched by this redesign.
+
+4. **Typography and contrast.** Increase normal body text to ~15-16px where space allows; darken helper/placeholder text further if anything still reads too light after Phase 1's contrast pass; keep the existing type scale/font pairing (Inter body, DM Sans headings) — this phase adjusts sizes/weights/colors within that system, not the fonts themselves.
+
+5. **Consistent spacing and corner radii.** Audit for inconsistent padding, gaps, and border-radius values across the panels touched by this redesign; standardize on the existing token values.
+
+6. **Modal and drawer headers.** Review headers across modals/drawers (bank editor, team members, any others) for consistent styling with the rest of the redesign — this may surface small leftover inconsistencies from before this redesign began.
+
+7. **Narrower desktop layouts.** Confirm the new shell (Phase 2's contextual inspector, Tools menu) doesn't produce truncated labels or cramped layouts at smaller desktop widths (this was an explicit prior complaint about the old icon-rail labels) — test at a couple of realistic smaller desktop widths, not just a large monitor.
+
+## Out of scope for this phase
+
+- Mobile/tablet responsive support (out of scope for the whole project's v1, per earlier decisions)
+- Any further structural/navigation changes (that's done, Phases 1-4)
+- Dark theme (previously deferred, not part of this redesign either)
+
+## Acceptance criteria
+
+- Every screen touched by this redesign has exactly one clearly primary action, others read as secondary
+- No unnecessary borders/shadows remain outside drawers/modals/elevated surfaces
+- No ALL-CAPS section labels remain in redesigned areas
+- Contrast and text size read comfortably per the acceptance checklist's contrast criteria
+- Spacing and corner radii are visually consistent across redesigned panels
+- The shell remains usable and uncramped at a couple of smaller realistic desktop widths
+- Manual verification: Sebastin reviews the whole redesigned flow (contextual inspector, Tools menu, block picker, Publish & Share hub) end to end and confirms it genuinely reads as calmer and more polished than before this phase, not just structurally reorganized

@@ -3612,6 +3612,69 @@
   flex: 0 0 auto;
   border-radius: var(--radius-input);
 }
+.course-editor__publish-split {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+.course-editor__publish-split .course-editor__publish-button {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.course-editor__publish-split-toggle {
+  display: inline-grid;
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  place-items: center;
+  border-left: 1px solid color-mix(in srgb, #fff 35%, var(--accent));
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.course-editor__publish-menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: var(--space-1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay);
+}
+.course-editor__publish-menu-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-input);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+  text-align: left;
+  cursor: pointer;
+}
+.course-editor__publish-menu-item:hover,
+.course-editor__publish-menu-item:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.course-editor__publish-menu-item:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+.course-editor__publish-menu-description {
+  color: var(--text-secondary);
+  font-size: var(--font-size-helper);
+  line-height: 1.3;
+}
+.course-editor__publish-menu-item:disabled .course-editor__publish-menu-description {
+  color: var(--text-tertiary);
+}
 
 /* Modal overlays stay above the inspector so dialogs never leave a live strip
    of editor chrome over their right edge. */

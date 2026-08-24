@@ -23,6 +23,7 @@ import BulkAltTextReview from '../components/BulkAltTextReview.jsx';
 import OnboardingTour from '../components/OnboardingTour.jsx';
 import MoreToolsMenu from '../components/MoreToolsMenu.jsx';
 import ToolsMenu from '../components/ToolsMenu.jsx';
+import PublishSplitButton from '../components/PublishSplitButton.jsx';
 import EditorDrawerShell from '../components/EditorDrawerShell.jsx';
 import LinkedEntityPrompt from '../components/LinkedEntityPrompt.jsx';
 import { applyGlossarySuggestion } from '@mnemonify/schema/glossary.js';
@@ -217,6 +218,14 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setContextualDrawer(null);
     setSelectedBlockId(null);
     if (itemId === 'version-history') openVersionHistory();
+  }
+
+  function handlePublishQuickAction(section) {
+    clearContextualSelection();
+    setActiveTool('publish-share');
+    window.setTimeout(() => {
+      document.getElementById(`publish-share-${section}`)?.scrollIntoView({ block: 'start' });
+    }, 0);
   }
 
   function handleSelectBlock(blockId) {
@@ -1571,9 +1580,14 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
           {saveLabel}
         </span>
         <TopBarDivider />
-        {canEdit && <button className="btn btn-primary course-editor__publish-button" onClick={handlePublish} disabled={publishing}>
-          {publishing ? 'Publishing...' : 'Publish'}
-        </button>}
+        {canEdit && (
+          <PublishSplitButton
+            onPublish={handlePublish}
+            onSelect={handlePublishQuickAction}
+            publishing={publishing}
+            published={course.status === 'published'}
+          />
+        )}
         </div>
       </header>
 

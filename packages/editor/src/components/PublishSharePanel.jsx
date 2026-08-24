@@ -39,7 +39,9 @@ export default function PublishSharePanel({
           </div>
           <span className={`publish-share-hub__status publish-share-hub__status--${status.tone}`}>{status.label}</span>
         </div>
-        <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />
+        <div id="publish-share-publish-settings">
+          <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />
+        </div>
       </section>
 
       <section className="publish-share-hub__step" aria-labelledby="publish-share-step-two">
@@ -59,8 +61,12 @@ export default function PublishSharePanel({
           </p>
         )}
 
-        <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
-        <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
+        <div id="publish-share-share-links">
+          <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
+        </div>
+        <div id="publish-share-scorm-export">
+          <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
+        </div>
 
         <SettingsSection title="Ready to share">
           <p className={`publish-share-hub__health-summary ${errorCount > 0 ? 'publish-share-hub__health-summary--blocked' : 'publish-share-hub__health-summary--ready'}`}>

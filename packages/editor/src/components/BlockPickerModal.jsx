@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBlockTypesByCategory } from '@mnemonify/schema/block-registry.js';
-import { filterBlockDefinitions, firstMatchingBlockType } from '../lib/blockPicker.js';
+import { getBlockDescription, START_HERE_TYPES, filterBlockDefinitions, firstMatchingBlockType } from '../lib/blockPicker.js';
 
 function BlockTypeIcon({ definition }) {
   const paths = definition.iconPaths || ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z'];
@@ -11,15 +11,32 @@ function BlockTypeIcon({ definition }) {
   );
 }
 
+function BlockTypeButton({ definition, onPick }) {
+  return (
+    <button type="button" className="block-picker-grid__item card" onClick={() => onPick(definition.type)}>
+      <BlockTypeIcon definition={definition} />
+      <span className="block-picker-grid__copy">
+        <span className="block-picker-grid__name">{definition.displayName}</span>
+        <span className="block-picker-grid__description">{getBlockDescription(definition.type)}</span>
+      </span>
+    </button>
+  );
+}
+
 // Grouped by category (Phase 4.5b) -- reads packages/schema/block-registry.js
 // directly rather than a flat hardcoded list, so a new block type appearing
 // in the registry shows up here, correctly grouped, with no picker-specific
 // edit required. See DECISIONS.md.
 export default function BlockPickerModal({ onPick, onClose }) {
   const grouped = useMemo(() => getBlockTypesByCategory(), []);
+  const startHere = useMemo(() => {
+    const definitions = new Map(Object.values(grouped).flat().map((definition) => [definition.type, definition]));
+    return START_HERE_TYPES.map((type) => definitions.get(type)).filter(Boolean);
+  }, [grouped]);
   const searchRef = useRef(null);
   const [query, setQuery] = useState('');
   const filteredGrouped = useMemo(() => filterBlockDefinitions(grouped, query), [grouped, query]);
+  const showStartHere = query.trim().length === 0;
 
   useEffect(() => {
     searchRef.current?.focus();
@@ -52,16 +69,19 @@ export default function BlockPickerModal({ onPick, onClose }) {
             onKeyDown={handleSearchKeyDown}
           />
         </div>
+        {showStartHere && (
+          <div className="block-picker-category block-picker-category--start">
+            <h3 className="block-picker-category__title">Start here</h3>
+            <div className="block-picker-grid">
+              {startHere.map((definition) => <BlockTypeButton key={definition.type} definition={definition} onPick={onPick} />)}
+            </div>
+          </div>
+        )}
         {Object.entries(filteredGrouped).map(([category, defs]) => (
           <div className="block-picker-category" key={category}>
             <h3 className="block-picker-category__title">{category}</h3>
             <div className="block-picker-grid">
-              {defs.map((def) => (
-                <button type="button" key={def.type} className="block-picker-grid__item card" onClick={() => onPick(def.type)}>
-                  <BlockTypeIcon definition={def} />
-                  <span>{def.displayName}</span>
-                </button>
-              ))}
+              {defs.map((definition) => <BlockTypeButton key={definition.type} definition={definition} onPick={onPick} />)}
             </div>
           </div>
         ))}

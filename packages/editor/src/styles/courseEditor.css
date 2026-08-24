@@ -3732,23 +3732,28 @@
 }
 .editor-tools-menu__group h3 {
   margin: 0;
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-1);
   color: var(--text-secondary);
-  font-size: var(--font-size-label);
-  font-weight: 700;
-  letter-spacing: normal;
+  font-size: var(--font-size-helper);
+  font-weight: 600;
+  letter-spacing: .01em;
+  cursor: default;
+  user-select: none;
 }
 .editor-tools-menu__item {
   display: block;
   width: 100%;
+  min-height: 36px;
   padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: var(--radius-input);
   background: transparent;
   color: var(--text-primary);
   font-size: var(--font-size-body);
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 .editor-tools-menu__item:hover,
 .editor-tools-menu__item:focus-visible {

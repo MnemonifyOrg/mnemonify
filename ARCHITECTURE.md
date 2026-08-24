@@ -1863,3 +1863,50 @@ The current "Add Block" popup (built in commit ceeedcd2, with search and categor
 - All existing block types remain reachable via their categories and via search — nothing is removed or hidden
 - Existing search/autofocus/Enter-to-insert behavior is unaffected
 - Manual verification: Sebastin opens the Add Block popup fresh and confirms the "Start here" group is immediately useful and clear, that descriptions actually help for at least one or two less-obvious block types (e.g. Reflection, Hotspot), and that search still works exactly as before
+
+# UX Redesign Phase 4: Publish and Share Hub
+
+Add this section to ARCHITECTURE.md on the ux-redesign branch. Commit before requesting a build prompt. Depends on Phase 2 (editor shell, which already established the "Publish & Share" entry point in the Tools menu).
+
+## Problem
+
+Currently, Publish, anonymous share links, SCORM export, PDF publishing settings, and release checks (Course Health) are either scattered or, since Phase 2, grouped under one "Publish & Share" entry — but as flat, equally-weighted options with no visible relationship between them. This reads as confusing to an experienced instructional designer: is Publish the final step, or is SCORM export? In reality, Publish is the prerequisite step that creates the official version; share links and SCORM export are downstream steps that consume that published version and cannot exist without it.
+
+## Requirements
+
+### Make the sequence explicit
+
+- The Publish & Share panel should visually communicate a clear order: **1. Publish this version** first, then **2. Share or export**, which becomes available/relevant only once a published version exists.
+- If the course has never been published, the "Share or export" section should clearly indicate this (e.g. "Publish first to enable sharing and export" rather than showing disabled or confusing options).
+- The actual Publish button in the top bar is UNCHANGED by this phase — it remains the dedicated, prominent, always-visible action it already is. This panel is about organizing what happens in relation to publishing, not replacing the Publish button itself.
+
+### Content of the panel
+
+Organize into the two-step structure:
+
+**Step 1: Publish**
+- Current publish status (published / not yet published / has unpublished changes since last publish)
+- A link/button to the actual Publish action if it makes sense to surface here too (though the top-bar Publish button remains primary)
+- PDF publishing settings (currently in Player-adjacent settings — relocate here since it's a publish-time concern)
+
+**Step 2: Share or export** (shown as available once Step 1 is satisfied)
+- Anonymous share link management (create/view/revoke/expire — from Phase 6c)
+- SCORM package export (from the self-contained SCORM export feature)
+- Release checks: a summary of Course Health status specifically framed for "is this ready to share," not just a generic health check (e.g. "0 errors — ready to share" or "2 errors — fix before sharing" with a link into Course Health)
+
+### What stays where it already is
+
+- Course Health itself (the full findings panel) stays as its own Review & Release item — this phase only adds a summary/pointer to it from within Publish & Share, it doesn't duplicate or move the full panel.
+- Comments and Version History are unaffected by this phase.
+
+## Out of scope for this phase
+
+- Any change to the underlying publish/share-link/SCORM-export logic itself — this is a UI organization change only, reusing all existing functionality and API calls
+- Visual polish beyond what's needed for this panel to read clearly (Phase 5)
+
+## Acceptance criteria
+
+- The Publish & Share panel clearly shows Publish as step 1 and Share/Export as step 2, with the dependency between them visible
+- An unpublished course clearly communicates that sharing/export require publishing first, rather than presenting confusing or silently-broken options
+- All existing functionality (publish, share link create/revoke/expire, SCORM export, PDF settings) remains fully reachable and working exactly as before — this is a reorganization, not a rebuild
+- Manual verification: Sebastin opens Publish & Share on both a never-published course and an already-published course, confirms the sequence reads clearly in both states, and confirms he can still successfully publish, create a share link, and export a SCORM package through the reorganized panel

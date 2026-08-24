@@ -54,7 +54,7 @@ function ContactSection({ contact, onChange }) {
   );
 }
 
-function PdfSection({ settings, onChange }) {
+export function PdfSection({ settings, onChange }) {
   const value = { enabled: true, mode: 'both', resources_page: true, ...(settings || {}) };
   return <SettingsSection title="PDF publishing">
     <label className="settings-panel__checkbox-row"><input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} /> Generate PDF artifacts when publishing</label>
@@ -357,7 +357,6 @@ export default function PlayerSettingsPanel({
     <div className="player-settings-panel">
       <PublishSettingsSection meta={meta} pages={pages} onChangeMeta={onChangeMeta} />
       <ContactSection contact={utilityBar.contact} onChange={(contact) => updateUtilityBar({ contact })} />
-      <PdfSection settings={meta.pdf_settings} onChange={(pdf_settings) => onChangeMeta({ ...meta, pdf_settings })} />
       <ResourcesSection
         resourcesEnabled={utilityBar.resources?.enabled}
         resources={meta.resources || []}

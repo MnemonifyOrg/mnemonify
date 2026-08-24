@@ -19,8 +19,7 @@ import StyledSelect from './StyledSelect.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import SettingsSection from './SettingsSection.jsx';
 import CommentsPanel from './CommentsPanel.jsx';
-import ShareLinksPanel from './ShareLinksPanel.jsx';
-import ScormExportPanel from './ScormExportPanel.jsx';
+import PublishSharePanel from './PublishSharePanel.jsx';
 import VersionHistoryModal from './VersionHistoryModal.jsx';
 
 function richTextFieldValue(field) {
@@ -38,7 +37,7 @@ function setRichTextField(meta, key, text, onChangeMeta) {
   onChangeMeta({ ...meta, [key]: { rich_text: [{ t: 'text', v: text }] } });
 }
 
-function CourseSettings({ meta, onChangeMeta, courseId, canManageShareLinks, published }) {
+function CourseSettings({ meta, onChangeMeta }) {
   return (
     <>
       <SettingsSection title="Course settings">
@@ -130,20 +129,6 @@ function CourseSettings({ meta, onChangeMeta, courseId, canManageShareLinks, pub
       </label>
       <p className="settings-panel__hint">Adds a Back button on every page after the first page.</p>
       </SettingsSection>
-      <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
-      <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
-    </>
-  );
-}
-
-function PublishShareEntry({ courseId, canManageShareLinks, published }) {
-  return (
-    <>
-      <SettingsSection title="Publish & share">
-        <p className="settings-panel__hint">Publish is available from the top bar. Share links and SCORM export use the latest published version.</p>
-      </SettingsSection>
-      <ShareLinksPanel courseId={courseId} canManage={canManageShareLinks} published={published} />
-      <ScormExportPanel courseId={courseId} canExport={canManageShareLinks} published={published} />
     </>
   );
 }
@@ -435,6 +420,7 @@ export default function DrawerSettingsContent({
   courseId,
   canManageShareLinks,
   published,
+  hasUnpublishedChanges,
   meta,
   page,
   pages,
@@ -461,6 +447,7 @@ export default function DrawerSettingsContent({
   findings,
   onNavigateToFinding,
   onOpenAltTextReview,
+  onOpenCourseHealth,
   onAddCourseAssets,
   libraryGlossaries,
   libraryGlossaryTerms,
@@ -491,9 +478,20 @@ export default function DrawerSettingsContent({
 }) {
   const conditionVariables = [...variables, ...SYSTEM_VARIABLE_DEFINITIONS];
 
-  if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} courseId={courseId} canManageShareLinks={canManageShareLinks} published={published} />;
+  if (drawer === 'course') return <CourseSettings meta={meta} onChangeMeta={onChangeMeta} />;
   if (drawer === 'publish-share') {
-    return <PublishShareEntry courseId={courseId} canManageShareLinks={canManageShareLinks} published={published} />;
+    return (
+      <PublishSharePanel
+        courseId={courseId}
+        canManageShareLinks={canManageShareLinks}
+        published={published}
+        hasUnpublishedChanges={hasUnpublishedChanges}
+        meta={meta}
+        onChangeMeta={onChangeMeta}
+        findings={findings}
+        onOpenCourseHealth={onOpenCourseHealth}
+      />
+    );
   }
   if (drawer === 'player') {
     return (

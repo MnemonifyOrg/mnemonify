@@ -127,6 +127,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   const [activeTool, setActiveTool] = useState(null);
   const [contextualDrawer, setContextualDrawer] = useState(null);
   const [saveStatus, setSaveStatus] = useState('saved');
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [previewMode, setPreviewMode] = useState(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -292,6 +293,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
     setUploadedResourceIds(null);
     api.getCourse(id).then((c) => {
       setCourse(c);
+      setHasUnpublishedChanges(false);
       setActivePageId(c.course_json.pages?.[0]?.page_id || null);
       api.listAssets(id).then((dbAssets) => {
         const metadataById = new Map(dbAssets.map((asset) => [asset.asset_id, asset]));
@@ -522,6 +524,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       const updated = await api.updateCourse(course.id, { status: 'published' });
       api.generatePublishArtifacts(course.id).catch((err) => console.error('[course-editor] PDF generation could not be queued:', err));
       setCourse((prev) => ({ ...prev, status: updated.status }));
+      setHasUnpublishedChanges(false);
       const warningCount = freshFindings.filter((finding) => finding.severity === 'warning').length;
       setPublishNotice({
         type: 'success',
@@ -576,6 +579,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // or scripted/automated actions) must not silently coalesce into one undo
   // step the way a burst of keystrokes should.
   function updateCourseJson(updater, { forceSnapshot = false } = {}) {
+    setHasUnpublishedChanges(true);
     const prevJson = courseRef.current.course_json;
     if (forceSnapshot || !burstActiveRef.current) {
       pushUndoSnapshot(prevJson);
@@ -603,6 +607,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // snapshot, or undo/redo would corrupt their own stacks. Still schedules
   // autosave, per spec: an undo is itself a change to the current document.
   function applyRestoredJson(restoredJson) {
+    setHasUnpublishedChanges(true);
     burstActiveRef.current = false;
     if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
     setCourse((prev) => ({ ...prev, course_json: restoredJson, title: restoredJson.meta?.title ?? prev.title }));
@@ -1752,6 +1757,7 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             courseId={course.id}
             canManageShareLinks={canEdit}
             published={course.status === 'published'}
+            hasUnpublishedChanges={hasUnpublishedChanges}
             meta={json.meta}
             page={page}
             pages={json.pages}
@@ -1779,6 +1785,10 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
             findings={findings}
             onNavigateToFinding={handleNavigateToFinding}
             onOpenAltTextReview={() => setShowAltTextReview(true)}
+            onOpenCourseHealth={() => {
+              clearContextualSelection();
+              setActiveTool('course-health');
+            }}
             comments={comments}
             commentAnchor={commentAnchor}
             defaultCommentAnchor={defaultCommentAnchor}

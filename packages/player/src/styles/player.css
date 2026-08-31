@@ -1,3 +1,13 @@
+/* Keep width-constrained player content inside its available frame. The
+   editor's phone/tablet preview is an iframe, so a border or padding added
+   outside a `width: 100%` declaration becomes visible as horizontal
+   overflow instead of simply reducing the content box. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -485,7 +495,12 @@ input:focus-visible {
 }
 @media (min-width: 768px) {
   .block-two-column {
-    grid-template-columns: var(--two-column-split, 50%) var(--two-column-split-complement, 50%);
+    /* Percentage tracks consume the whole grid width before `gap` is
+       added. Subtract half the gap from each track so the author's split
+       remains proportional without making the pair wider than its frame. */
+    grid-template-columns:
+      minmax(0, calc(var(--two-column-split, 50%) - var(--space-5) / 2))
+      minmax(0, calc(var(--two-column-split-complement, 50%) - var(--space-5) / 2));
     align-items: start;
   }
 }

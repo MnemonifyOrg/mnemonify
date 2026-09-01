@@ -48,6 +48,20 @@ function publishSettings(course) {
   };
 }
 
+function completionState(course, completedPageIds, scoreArg) {
+  const settings = publishSettings(course);
+  const score = scoreVariables(course, scoreArg);
+  const hasScored = score.ScoreMax > 0;
+  const viewedAllPages = completedPageIds.length >= course.pages.length;
+  const passedAssessment = hasScored && score.ScorePassed;
+  const isComplete = settings.completion_criteria === 'passed_assessment'
+    ? (hasScored ? passedAssessment : viewedAllPages)
+    : settings.completion_criteria === 'either'
+      ? (viewedAllPages || passedAssessment)
+      : viewedAllPages;
+  return { settings, score, hasScored, passedAssessment, isComplete };
+}
+
 // Total knowledge checks across every page, not just the current one --
 // used for the 'passed_final_quiz' completion rule and SCORM scoring,
 // both of which are course-wide, not page-scoped.
@@ -65,6 +79,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   const [isScorm, setIsScorm] = useState(false);
   const [modalPayload, setModalPayload] = useState(null);
   const [shareError, setShareError] = useState(null);
+  const [completionMessage, setCompletionMessage] = useState(null);
   const [glossaryTerms, setGlossaryTerms] = useState([]);
   const [currentPageId, setCurrentPageId] = useState(null);
   // Runtime learner state (ARCHITECTURE.md 5.1/5.6) -- never stored in the
@@ -121,19 +136,11 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
   async function evaluateCourseCompletion(courseArg, variablesArg, completedPageIdsArg, currentPageIdArg, scoreArg = scoreStateRef.current) {
     if (completedRef.current || !courseArg) return;
-    const settings = publishSettings(courseArg);
-    const score = scoreVariables(courseArg, scoreArg);
-    const hasScored = score.ScoreMax > 0;
-    const viewedAllPages = completedPageIdsArg.length >= courseArg.pages.length;
-    const passedAssessment = hasScored && score.ScorePassed;
-    const isComplete = settings.completion_criteria === 'passed_assessment'
-      ? (hasScored ? passedAssessment : viewedAllPages)
-      : settings.completion_criteria === 'either'
-        ? (viewedAllPages || passedAssessment)
-        : viewedAllPages;
+    const { settings, score, hasScored, isComplete } = completionState(courseArg, completedPageIdsArg, scoreArg);
     if (!isComplete) return;
 
     completedRef.current = true;
+    setCompletionMessage({ tone: 'success', text: "You've completed this course." });
     track('course_complete', {
       pageId: currentPageIdArg,
       payload: {
@@ -555,6 +562,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   // first page) via the useEffect above, keyed on currentPageId.
   function goToPage(pageId) {
     if (!isDesktopViewport()) setNavDrawerOpen(false);
+    setCompletionMessage(null);
     setCurrentPageId(pageId);
   }
 
@@ -603,9 +611,17 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   function handleContinue() {
     const currentPage = course.pages.find((p) => p.page_id === currentPageId);
     if (!currentPage) return;
+    if (!completedRef.current) setCompletionMessage(null);
     const nextCompletedPageIds = completedPageIds.includes(currentPageId)
       ? completedPageIds
       : [...completedPageIds, currentPageId];
+    const nextCompletionState = completionState(course, nextCompletedPageIds, scoreStateRef.current);
+    if (isLastPage && nextCompletionState.settings.completion_criteria === 'passed_assessment') {
+      const state = nextCompletionState;
+      if (state.hasScored && !state.passedAssessment) {
+        setCompletionMessage({ tone: 'warning', text: 'Complete the assessment with a passing score to finish this course.' });
+      }
+    }
     setCompletedPageIds(nextCompletedPageIds);
     trackPageExit(currentPageId);
     track('continue_clicked', {
@@ -743,6 +759,11 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
             <ContinueButton
               label={isLastPage ? 'Finish' : 'Continue'}
               disabled={continueDisabled}
+              message={continueDisabled
+                ? (isLastPage
+                  ? 'Complete the requirements on this page before finishing the course.'
+                  : 'Complete the requirements on this page to continue.')
+                : completionMessage}
               onClick={handleContinue}
             />
             {course.meta.footer && (

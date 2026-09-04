@@ -154,6 +154,21 @@ function OverlayContentEditor({ action, onChange }) {
               </label>
             </div>
           ))}
+          <label className="settings-panel__checkbox-row trigger-builder__overlay-require-answer">
+            <input
+              type="checkbox"
+              checked={block.require_answer === true}
+              onChange={(e) =>
+                onChange(
+                  updateOverlayBlock(action, (current) => ({
+                    ...current,
+                    require_answer: e.target.checked,
+                  }))
+                )
+              }
+            />
+            Require an answer before continuing
+          </label>
         </>
       )}
     </div>

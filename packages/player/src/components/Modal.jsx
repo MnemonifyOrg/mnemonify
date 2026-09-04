@@ -95,23 +95,30 @@ export default function Modal({ payload, onClose, featureFlags = FEATURE_FLAGS }
           ✕
         </button>
         {isOverlay ? (
-          overlayBlock?.type === 'button' ? (
-            <div className="modal-payload modal-payload--overlay">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => payload.onTrigger?.(overlayBlock, 'onClick')}
-              >
-                {overlayBlock.content?.label || 'Continue'}
-              </button>
-            </div>
-          ) : overlayBlock ? (
-            <div className="modal-payload modal-payload--overlay">
-              <BlockRenderer block={overlayBlock} assets={payload.assets || []} onTrigger={payload.onTrigger} />
-            </div>
-          ) : (
-            <p className="modal-payload__placeholder">No overlay content.</p>
-          )
+          <>
+            {payload.requireAnswer && (
+              <p className="modal-payload__overlay-hint" role="status">
+                Answer the question to continue the video.
+              </p>
+            )}
+            {overlayBlock?.type === 'button' ? (
+              <div className="modal-payload modal-payload--overlay">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => payload.onTrigger?.(overlayBlock, 'onClick')}
+                >
+                  {overlayBlock.content?.label || 'Continue'}
+                </button>
+              </div>
+            ) : overlayBlock ? (
+              <div className="modal-payload modal-payload--overlay">
+                <BlockRenderer block={overlayBlock} assets={payload.assets || []} onTrigger={payload.onTrigger} />
+              </div>
+            ) : (
+              <p className="modal-payload__placeholder">No overlay content.</p>
+            )}
+          </>
         ) : PayloadComponent ? (
           <PayloadComponent payload={payload} onClose={onClose} featureFlags={featureFlags} />
         ) : (

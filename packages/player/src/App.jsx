@@ -24,6 +24,7 @@ import { GlossaryContext } from './blocks/RichText.jsx';
 import { FEATURE_FLAGS } from '@mnemonify/schema/featureFlags.js';
 import { shouldRenderPageTitle } from './engine/pageTitle.js';
 import { readEmbeddedJson } from './lib/runtimeUrl.js';
+import { canContinueFromOverlay, requiresAnswerBeforeContinuing } from './engine/overlayQuestion.js';
 
 function RichTextPreview({ field, variables }) {
   if (!field?.rich_text?.length) return null;
@@ -441,11 +442,17 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
       } else if (effect.action === 'OPEN_MODAL') {
         const block = effect.content?.block;
         if (!block) return;
-        if (timelineContextRef.current) timelineContextRef.current.modalOpen = true;
+        const requiresAnswer = requiresAnswerBeforeContinuing(block);
+        if (timelineContextRef.current) {
+          timelineContextRef.current.modalOpen = true;
+          timelineContextRef.current.requiresAnswer = requiresAnswer;
+          timelineContextRef.current.answered = false;
+        }
         setModalPayload({
           type: effect.payload_type,
           block,
           assets: course?.assets || [],
+          requireAnswer: requiresAnswer,
           onTrigger: handleOverlayTrigger,
         });
       }
@@ -482,6 +489,7 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
 
   function handleCloseModal() {
     const timelineContext = timelineContextRef.current;
+    if (!canContinueFromOverlay(timelineContext)) return;
     setModalPayload(null);
     if (timelineContext) {
       const resumeTimestamp = timelineContext.resumeTimestamp ?? timelineContext.timestamp;
@@ -492,6 +500,9 @@ export default function App({ featureFlags = FEATURE_FLAGS }) {
   }
 
   function handleTrigger(block, eventName, eventPayload) {
+    if (timelineContextRef.current?.modalOpen && block.type === 'knowledge-check' && eventName === 'onComplete') {
+      timelineContextRef.current.answered = true;
+    }
     if (block.type === 'knowledge-check' && eventName === 'onComplete') {
       track('knowledge_check_attempt', {
         pageId: currentPageId,

@@ -936,6 +936,15 @@ input:focus-visible {
   text-align: center;
   color: var(--color-text-secondary);
 }
+.modal-payload__overlay-hint {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
 .glossary-payload h2 {
   margin-top: 0;
 }

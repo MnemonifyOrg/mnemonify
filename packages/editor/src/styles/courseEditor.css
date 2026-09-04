@@ -2424,6 +2424,19 @@
   display: flex;
   margin-bottom: var(--space-2);
 }
+.image-block-editor__display-controls {
+  margin-top: var(--space-3);
+}
+.image-block-editor__display-controls > label {
+  display: block;
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.image-block-editor__display-controls .image-block-settings__segmented {
+  flex-wrap: wrap;
+}
 .image-block-editor img {
   max-width: 100%;
   border-radius: var(--radius-sm);

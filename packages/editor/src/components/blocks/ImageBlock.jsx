@@ -69,6 +69,9 @@ export default function ImageBlockEditor({ block, assets, onChange, courseId, on
       </button>
       <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
       {error && <p className="image-block-editor__error">{error}</p>}
+      <div className="image-block-editor__display-controls">
+        <ImageSizeAlignmentFields block={block} onChange={onChange} />
+      </div>
     </div>
   );
 }

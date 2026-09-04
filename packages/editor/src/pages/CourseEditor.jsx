@@ -51,6 +51,10 @@ const AUTOSAVE_DELAY_MS = 5000;
 const PREVIEW_WIDTHS = { phone: '375px', tablet: '768px', desktop: '100%' };
 const BLOCK_SETTINGS_HINT_STORAGE_KEY = 'mnemonify_block_settings_hint_seen';
 const BLOCK_SETTINGS_HINT_DURATION_MS = 5000;
+const MEDIA_CAPTION_FINDING_RULES = new Set([
+  'a11y.video_captions_missing',
+  'accessibility.video_transcript_missing',
+]);
 
 // Undo/redo (ARCHITECTURE.md 3.9). MAX_UNDO_STACK caps memory; TYPING_BURST_MS
 // coalesces a run of rapid changes (e.g. keystrokes in a controlled input)
@@ -822,8 +826,10 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
   // Course Health "click a finding, go to what it's about" (Phase 4.5c
   // Step 4). Variable/asset findings have no page/block location -- they
   // navigate to the Variables tab or Media Library instead, the same way
-  // an author would go find that entity themselves. Block-scoped findings
-  // switch to the block's own page, select it (which switches
+  // an author would go find that entity themselves. Caption/transcript
+  // findings use the dependency index to switch to the relevant media
+  // block's page and settings; other asset findings keep the library
+  // destination. Block-scoped findings switch to the block's own page, select it (which switches
   // drawer settings out of the course-level view into that block's
   // settings, same as clicking the block in the canvas would), and
   // scroll it into view -- selection alone doesn't guarantee visibility
@@ -840,6 +846,30 @@ export default function CourseEditor({ featureFlags = FEATURE_FLAGS }) {
       return;
     }
     if (finding.entityType === 'asset') {
+      // Caption/transcript findings are about a video block, not the
+      // image-only library. The same is true of other findings for video or
+      // audio assets (for example, an over-large media warning). Use the
+      // dependency index to find the block that uses the asset, then open its
+      // settings so the author lands on the relevant media object. Image-alt
+      // findings retain their existing Image Library destination, and
+      // orphaned assets still use the library as their general destination.
+      const currentCourse = materializeLinkedEntities(courseRef.current?.course_json);
+      const asset = currentCourse?.assets?.find((candidate) => candidate.asset_id === finding.entityId);
+      if (MEDIA_CAPTION_FINDING_RULES.has(finding.ruleId) || ['video', 'audio'].includes(asset?.kind)) {
+        const usage = getDependents(finding.entityId, currentCourse).find(
+          (candidate) => candidate.entityType === 'block' && candidate.pageId && candidate.id,
+        );
+        if (usage) {
+          setActivePageId(usage.pageId);
+          handleOpenBlockSettings(usage.id);
+          setTimeout(() => {
+            document
+              .querySelector(`[data-block-id="${usage.id}"]`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 0);
+          return;
+        }
+      }
       clearContextualSelection();
       setShowMediaLibrary(true);
       return;
